@@ -1411,8 +1411,8 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q25 · R6-Q25 | **17(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | Danh sách Channel của bản ghi Publication / Deployment |
 | ✅ R5-Q38 · R6-Q25 | **17(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | "Được duyệt cho thị trường / kênh" đọc ở đâu |
 | ✅ R5-Q35 · R5-Q36 · R5-Q37 · R6-Q26 | **18(a) · (b) · (c)** (đã trả lời 05/11, xây 25/11/2026; R6-Q26 hỏi lại một chỗ ta đọc) | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
-| R5-Q28 | **19(a)** | Thị trường đã rút còn cần làn ký Gate 12 không |
-| R5-Q44 | **19(b)** | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
+| ✅ R5-Q28 · R6-Q27 | **19(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Thị trường đã rút còn cần làn ký Gate 12 không |
+| ✅ R5-Q44 · R6-Q27 | **19(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
 | R5-Q31 | **20** | Gate 10: trạng thái checklist và approval nào tính là xong |
 | R5-Q32 | **21** | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
 | R5-Q30 · R5-Q45 | **22(a) · (b)** | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q27 · Gate 10-12 theo từng thị trường và nghĩa vụ Gate 12 của thị trường đã rút: các chỗ ta đọc câu trả lời (Vòng 5 câu 19) 🟡
+
+**Lộ ra 25/11/2026, khi xây câu 19.** SME chọn (ii) cả hai ý: (a) thị trường đã rút vẫn giữ nghĩa vụ Gate 12 trong thời gian đóng riêng, tiêu chí do Regulatory/Quality đặt (tồn kho, ngày cung cấp cuối/hết hạn, nghĩa vụ liên quan), thị trường chưa từng ra mắt đóng được bằng một lý do; (b) Gate 10-12 mở, ký, qua theo từng thị trường sau điều kiện chung của Gate 1-9; tổng quan hiện từng thị trường kèm tóm tắt dẫn xuất. Cách đọc của ta: (1) **làn theo thị trường**: `marketGatePassed` (một làn qua khi mọi mục của thị trường đó đạt — mục riêng đọc lát cắt của thị trường, mục chung như công thức/an toàn/claim vẫn chặn mọi làn (`PER_MARKET_ITEM_IDS`) — và ba chữ ký còn hiệu lực với quyết định Proceed/Proceed with Conditions của người duyệt); `isGateLaneOpen` (làn mở khi Gate 1-9 xong và thị trường đó đã qua gate trước); `isGateUnlocked` và `gateState` coi gate theo thị trường là mở khi có làn nào mở, nên Việt Nam làm Gate 11 trong khi Úc còn ở Gate 10; máy chủ từ chối ký làn chưa mở (403); dòng gate của dự án vẫn là tổng hợp (qua khi mọi làn qua); (2) **"sẵn sàng"** = đã qua Gate 11; tóm tắt `marketsReadySummary` (Không thị trường nào sẵn sàng / Một số / Mọi thị trường) bỏ qua thị trường đã rút; (3) **thị trường đã rút**: Gate 10-11 hết cùng việc rút; Gate 12 còn làn (`gate12Markets`) chừng nào còn một đóng-sau-rút mở — thị trường đã có ngày bán thật mà chưa ai xác nhận đóng; đóng gồm hai việc, đặt tiêu chí + hạn (`PUT …/markets/:market/withdrawal-closure`) rồi xác nhận (`POST …/confirm`) sau khi hạn qua và không còn khiếu nại/biến cố/CAPA của thị trường chưa đóng (`withdrawalClosureGaps`); chỉ người vai Regulatory hoặc Quality của dự án làm, bằng tên mình, admin không thay; thị trường chưa từng ra mắt không có làn Gate 12 (lý do rút là lý do đóng); gỡ việc rút thì xoá bản ghi đóng.
+
+**Câu hỏi:** (a) việc đặt và xác nhận đóng do Regulatory hoặc Quality (một trong hai) hay cả hai cùng xác nhận.
+
+**Nếu trả lời khác:** `utils/postLaunch.ts` (`withdrawalClosureOpen`, `gate12Markets`, `withdrawalClosureGaps`); `utils/gateProgress.ts` (`marketGatePassed`, `isGateLaneOpen`, `isGateUnlocked`, `gateState`, `marketGateStandings`, `marketsReadySummary`); `config/gateSignOff.ts` (`gateSignOffMarkets`); `projects.service.ts` (`assertClosureAuthority`, `setWithdrawalClosure`, `confirmWithdrawalClosure`, lane check trong `signGateSignOff`); `WithdrawalClosureBlock.tsx`, `ProjectOverview.tsx` [ASSUMPTION: R6-Q27].
 
 #### R6-Q26 · Rà soát claim ở Gate 3: phạm vi, điều kiện, tái dùng thư viện và duyệt revision: các chỗ ta đọc câu trả lời (Vòng 5 câu 18) 🟡
 
@@ -2225,7 +2233,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` (`setAssessments`, kiểm tra `changeControlRecordId`) + `apps/web/src/components/AssessmentBlock.tsx` (danh sách lựa chọn).
 
-#### R5-Q28 · Thị trường đã rút (Withdrawn) còn cần làn ký Gate 12 không 🔴
+#### R5-Q28 · Thị trường đã rút (Withdrawn) còn cần làn ký Gate 12 không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 19(a)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Chọn (ii): vẫn cần trong một thời gian đóng riêng của từng thị trường, tiêu chí và thời hạn do Regulatory/Quality đặt dựa trên tồn kho, ngày cung cấp cuối/hết hạn và nghĩa vụ liên quan; tiếp tục giám sát và theo dõi khiếu nại/biến cố/CAPA chưa giải quyết sau khi ngừng bán; thị trường chưa từng ra mắt có thể đóng bằng một lý do; không âm thầm bỏ nghĩa vụ Gate 12. → **R6-Q27**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục A9).** Câu 18 cho Gate 10–12 ký theo từng thị trường. Trước đây làn ký đọc **mọi** thị trường của dự án, kể cả nước đã ghi ngày rút (`withdrawnDate`) — nên rút một nước là Gate 10–12 bị chặn mãi vì một chữ ký không ai còn ký. Supersession (câu 2) cũng đòi quyết định cho nước đã rút.
 
@@ -2373,7 +2383,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `acceptPreWork`.
 
-#### R5-Q44 · Gate 10–11 theo thị trường: dự án chỉ qua gate khi mọi thị trường sẵn sàng? 🔴
+#### R5-Q44 · Gate 10–11 theo thị trường: dự án chỉ qua gate khi mọi thị trường sẵn sàng? ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 19(b)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Chọn (ii): Gate 10–12 mở, ký và qua theo từng thị trường sau các điều kiện chung của Gate 1–9; Việt Nam có thể phát hành khi Gate 10 và 11 của riêng nó đạt trong khi Úc còn chờ; Tổng quan hiện từng thị trường và tóm tắt dẫn xuất "một số/mọi thị trường sẵn sàng"; vấn đề chung về công thức/an toàn vẫn ảnh hưởng mọi thị trường liên quan; một thị trường chậm hồ sơ không chặn các thị trường còn lại. → **R6-Q27**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục E3(a)).** E3(a)/Q18: Gate 10–11 vận hành theo từng thị trường. Dự án vẫn chỉ có một bản ghi Gate 10/11, nên ba mục `sg10-reg-approval`, `sg11-gate10`, `sg11-launch` giờ đòi **mọi** thị trường đang hoạt động đã đạt. Không thị trường nào chưa sẵn sàng lọt qua, nhưng một thị trường đã sẵn sàng phải chờ các thị trường khác.
 

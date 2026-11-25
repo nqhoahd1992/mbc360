@@ -15,6 +15,7 @@ import type {
   ProjectLaunchStatus,
 } from '../types';
 import { POST_LAUNCH_REVIEW_SCHEDULE } from '../config/referenceData';
+import { isDoneStatus } from './doneStatus';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -92,6 +93,40 @@ function reviewTracksByMarket(project: ProjectData): MarketTrack[] {
 export function activeMarkets(project: ProjectData): string[] {
   const withdrawn = new Set(currentMarketTracks(project).filter(isMarketWithdrawn).map((t) => t.market));
   return project.identity.markets.filter((m) => m.trim() !== '' && !withdrawn.has(m));
+}
+
+// Round 5 question 19(a), answered 2026-11-05: "Choose (ii)" — a withdrawn market's Gate 12 sign-off is still required for a set period.
+// "A market-specific closure period and criteria set by Regulatory/Quality based on remaining stock, last supply/expiry and applicable
+// obligations. Continue surveillance and unresolved complaint/adverse-event/CAPA follow-up after commercial withdrawal where needed. A
+// never-launched withdrawn market may close with a reason. Do not silently remove an existing market's Gate 12 obligations."
+//
+// So a withdrawn market keeps its Gate 12 lane exactly while a closure is OPEN: the product was sold there (an actual launch date is on
+// record) and nobody has confirmed the closure. A market it never launched in has nothing to follow up, and the reason recorded with its
+// withdrawal is the closing reason. The closure is the record of an act (criteria and period set, then confirmed), never a date passing:
+// a period ending does not close anything by itself. [ASSUMPTION: R6-Q27]
+export function withdrawalClosureOpen(track: MarketTrack): boolean {
+  return isMarketWithdrawn(track) && isMarketLaunched(track) && text(track.withdrawalClosedAt) === '';
+}
+
+// Markets that have a Gate 12 lane: the active ones, plus a withdrawn market whose closure is still open.
+export function gate12Markets(project: ProjectData): string[] {
+  const owing = new Set(currentMarketTracks(project).filter(withdrawalClosureOpen).map((t) => t.market));
+  return project.identity.markets.filter((m) => m.trim() !== '' && (activeMarkets(project).includes(m) || owing.has(m)));
+}
+
+// What the closure criteria must name — the three things the answer says the period and criteria rest on.
+export const WITHDRAWAL_CLOSURE_BASIS = ['remaining stock', 'last supply and expiry', 'applicable obligations'] as const;
+
+// Why a closure cannot be confirmed yet. Empty when it can: criteria and a period end are recorded, the period has ended, and nothing is
+// left open for that market (a complaint, adverse event or CAPA not yet done).
+export function withdrawalClosureGaps(project: ProjectData, track: MarketTrack, today: string): string[] {
+  const gaps: string[] = [];
+  if (text(track.withdrawalClosureCriteria) === '') gaps.push('the closure criteria (remaining stock, last supply and expiry, applicable obligations) are not recorded');
+  if (text(track.withdrawalClosureUntil) === '') gaps.push('the end of the closure period is not recorded');
+  else if (text(track.withdrawalClosureUntil) > today) gaps.push(`the closure period runs until ${text(track.withdrawalClosureUntil)}`);
+  const open = project.capa.filter((c) => c.market === track.market && !isDoneStatus(c.status));
+  if (open.length > 0) gaps.push(`${open.length} complaint / adverse-event / CAPA record(s) of this market are not closed: ${open.map((c) => c.id).join(', ')}`);
+  return gaps;
 }
 
 // Question 14's five project-level statuses. Deliberately DERIVED rather than

@@ -19,6 +19,7 @@ const rc = require(join(ROOT, 'packages/shared/dist/utils/registerClosures.js'))
 const snap = require(join(ROOT, 'packages/shared/dist/utils/gateSnapshot.js'));
 const refSnap = require(join(ROOT, 'packages/shared/dist/utils/referenceSnapshot.js'));
 const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/config/reviewers.js'));
+const { gateSignOffMarkets } = require(join(ROOT, 'packages/shared/dist/config/gateSignOff.js'));
 /* eslint-enable @typescript-eslint/no-require-imports */
 // The same cut the API process makes (harness.js), so readiness evaluated in this process agrees.
 for (const gate of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12']) {
@@ -2140,6 +2141,17 @@ export async function run(base: string, db: Client): Promise<number> {
     if (i < MARKETS.length - 1) {
       t(`with only ${i + 1} of ${MARKETS.length} lanes signed, SG10 has NOT passed (the other lanes still block it)`, !gp.isGatePassed(pj.project, 'SG10'));
     }
+    // Round 5 question 19(b): the market whose lane is signed is not held back by the others.
+    if (i === 0 && MARKETS.length > 1) {
+      const m0 = MARKETS[0];
+      const m1 = MARKETS[1];
+      t('the first market has passed SG10 on its own lane while the project row has not', gp.marketGatePassed(pj.project, 'SG10', m0) === true && gp.isGatePassed(pj.project, 'SG10') === false, short(gp.gateBlockers(pj.project, 'SG10', undefined, m0)));
+      t('...its SG11 lane is open, and the other market\'s is not', gp.isGateLaneOpen(pj.project, 'SG11', m0) === true && gp.isGateLaneOpen(pj.project, 'SG11', m1) === false);
+      t('...so SG11 is open for work although SG10 is still the project\'s current gate', gp.isGateUnlocked(pj.project, 'SG11') === true && gp.currentGateIndex(pj.project) === 9);
+      t('...and the project reads "No market ready" (nobody has passed Gate 11)', gp.marketsReadySummary(pj.project).state === 'No market ready', short(gp.marketsReadySummary(pj.project)));
+      const ahead = await api('admin', 'POST', `/projects/${PROJECT}/gates/SG11/sign-offs/sign`, { role: 'Prepared by', market: m1, decision: 'Proceed', comment: 'x', stepUpToken: 'x', expectedHash: 'x' });
+      t('signing the SG11 lane of a market that has not passed SG10 is refused (403)', ahead.status === 403 && /not open yet/.test(String(ahead.json?.message)), `${ahead.status} ${short(ahead.json)}`);
+    }
   }
   pj = await project();
   t('with every lane signed, SG10 passed', gp.isGatePassed(pj.project, 'SG10'));
@@ -2189,6 +2201,74 @@ export async function run(base: string, db: Client): Promise<number> {
   for (const m of MARKETS) await signLane('SG12', m);
   pj = await project();
   t('SG12 passed', gp.isGatePassed(pj.project, 'SG12'));
+
+  // ---- Round 5 question 19(a): a withdrawn market keeps its Gate 12 lane until a closure is confirmed
+  console.log('\n--- a withdrawn market: Gate 12 obligations stay until the closure is confirmed (question 19(a))');
+  {
+    const mLaunched = MARKETS[MARKETS.length - 1];
+    const mNever = MARKETS[0];
+    const savedTracks = (await db.query(`SELECT id, market, "actualLaunchDate", "withdrawnDate", "withdrawnReason", "launchApproval", "pifStatus", "launchApprovedDate" FROM market_tracks WHERE "projectId" = $1 AND market = ANY($2)`, [PROJECT, [mLaunched, mNever]])).rows;
+    const savedReviewers = (await db.query(`SELECT "roleKey", name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = ANY($2)`, [PROJECT, ['regulatory', 'quality']])).rows;
+    const meName2 = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const closure = async (market: string, body: Record<string, unknown>) =>
+      api('admin', 'PUT', `/projects/${PROJECT}/markets/${encodeURIComponent(market)}/withdrawal-closure`, { ...body, expectedVersion: await version() });
+    const confirmClosure = async (market: string) =>
+      api('admin', 'POST', `/projects/${PROJECT}/markets/${encodeURIComponent(market)}/withdrawal-closure/confirm`, { expectedVersion: await version() });
+    const lanes12 = async () => gateSignOffMarkets((await project()).project, 'SG12') as string[];
+
+    await db.query(`UPDATE market_tracks SET "actualLaunchDate" = '2026-01-01', "launchApproval" = 'Approved', "pifStatus" = 'Approved', "launchApprovedDate" = '2025-12-01', "withdrawnDate" = '2026-06-01', "withdrawnReason" = 'e2e withdrawal' WHERE "projectId" = $1 AND market = $2`, [PROJECT, mLaunched]);
+    await db.query(`UPDATE market_tracks SET "actualLaunchDate" = NULL, "withdrawnDate" = '2026-06-01', "withdrawnReason" = 'e2e never launched' WHERE "projectId" = $1 AND market = $2`, [PROJECT, mNever]);
+    t('a withdrawn market the product was sold in keeps its Gate 12 lane; one it never launched in has none', (await lanes12()).includes(mLaunched) && !(await lanes12()).includes(mNever), short(await lanes12()));
+    pj = await project();
+    t('...while Gates 10 and 11 end with the withdrawal for both', [mLaunched, mNever].every((m) => !gateSignOffMarkets(pj.project, 'SG10').includes(m) && !gateSignOffMarkets(pj.project, 'SG11').includes(m)));
+
+    let q: any = await closure(mLaunched, { criteria: 'Stock sold through; last supply Mar 2026; expiry Mar 2028', until: '2026-06-02' });
+    t('only the project\'s Regulatory or Quality person sets a closure: the administrator is neither (403)', q.status === 403 && /Regulatory person or Quality person/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, meName2, sessions['admin'].id]);
+    q = await closure(mLaunched, { criteria: '', until: '' });
+    t('a closure needs its criteria and the end of its period (400)', q.status === 400 && /criteria/.test(String(q.json?.message)) && /end of the closure period/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await closure(mNever, { criteria: 'x', until: '2026-06-02' });
+    t('a market that never launched has nothing to close (400)', q.status === 400 && /never launched/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await closure(mLaunched, { criteria: 'Stock sold through; last supply Mar 2026; expiry Mar 2028', until: '2999-01-01' });
+    t('the Regulatory person sets the criteria and a period end', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await confirmClosure(mLaunched);
+    t('confirming before the period has ended is refused, naming the period (400)', q.status === 400 && /runs until 2999-01-01/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    t('...and the market keeps its Gate 12 lane meanwhile', (await lanes12()).includes(mLaunched));
+    q = await closure(mLaunched, { criteria: 'Stock sold through; last supply Mar 2026; expiry Mar 2028', until: '2026-06-02' });
+    t('the period is moved to a date that has passed', q.status < 300, `${q.status} ${short(q.json)}`);
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, savedReviewers.find((x: any) => x.roleKey === 'regulatory').name, savedReviewers.find((x: any) => x.roleKey === 'regulatory').userId]);
+    q = await confirmClosure(mLaunched);
+    t('confirmation is refused again for someone who is not Regulatory or Quality (403)', q.status === 403, `${q.status} ${short(q.json)}`);
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, meName2, sessions['admin'].id]);
+    const openCapa = { id: 'CAPA-E2E-CLOSURE', market: mLaunched };
+    const capaBefore = (await project()).project.capa ?? [];
+    q = await api('admin', 'PUT', `/projects/${PROJECT}/capa`, { records: [...capaBefore, { ...openCapa, eventType: 'Complaint', summary: 'e2e', severity: 'Low', status: 'In Progress', owner: meName2 }], expectedVersion: await version() });
+    const capaSaved = q.status < 300;
+    if (capaSaved) {
+      q = await confirmClosure(mLaunched);
+      t('an unresolved complaint / adverse-event / CAPA of the market stops the closure (400)', q.status === 400 && /not closed/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+      await api('admin', 'PUT', `/projects/${PROJECT}/capa`, { records: capaBefore, expectedVersion: await version() });
+    } else {
+      console.log('   NOTE: the CAPA record could not be saved here, so the open-CAPA case was not run', q.status, short(q.json));
+    }
+    q = await confirmClosure(mLaunched);
+    t('with the period over and nothing open, the Regulatory person confirms the closure', q.status < 300, `${q.status} ${short(q.json)}`);
+    t('...and only now does the market leave the Gate 12 lanes', !(await lanes12()).includes(mLaunched), short(await lanes12()));
+    q = await confirmClosure(mLaunched);
+    t('a closure cannot be confirmed twice (400)', q.status === 400 && /already confirmed/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks: (await project()).project.marketTracks.map((x: any) => (x.market === mLaunched ? { ...x, withdrawnDate: undefined, withdrawnReason: undefined } : x)), expectedVersion: await version() });
+    t('taking the withdrawal back clears the closure record (the market is selling again)', q.status < 300 && !(await project()).project.marketTracks.find((x: any) => x.market === mLaunched)?.withdrawalClosedAt, `${q.status} ${short(q.json)}`);
+
+    // Leave the run as it was.
+    for (const row of savedTracks) {
+      await db.query(
+        `UPDATE market_tracks SET "actualLaunchDate" = $2, "withdrawnDate" = $3, "withdrawnReason" = $4, "launchApproval" = $5, "pifStatus" = $6, "launchApprovedDate" = $7, "withdrawalClosureCriteria" = NULL, "withdrawalClosureUntil" = NULL, "withdrawalClosureSetBy" = NULL, "withdrawalClosedAt" = NULL, "withdrawalClosedBy" = NULL WHERE id = $1`,
+        [row.id, row.actualLaunchDate, row.withdrawnDate, row.withdrawnReason, row.launchApproval, row.pifStatus, row.launchApprovedDate],
+      );
+    }
+    for (const r of savedReviewers) await db.query(`UPDATE project_reviewers SET name = $3, "userId" = $4 WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, r.roleKey, r.name, r.userId]);
+    t('the test withdrawals and the Regulatory assignment are put back', (await lanes12()).length === MARKETS.length, short(await lanes12()));
+  }
 
   console.log('\n--- all twelve gates');
   const GATES12 = ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12'];

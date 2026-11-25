@@ -761,3 +761,13 @@ We built it as follows. Each claim has a **scope**: "In scope" or "Excluded — 
 **(a)** Who accepts the conditions of an "Approved with Conditions" review: the owner of the claim, the person who holds the function, or the reviewer who gave the review?
 
 **(b)** Must the Technical approval of a revision be on record before Gate 10 can pass, and when is it "where required"? We do not block Gate 10 on it today.
+
+## Question 27 — Gates 10–12 per market and withdrawn markets: have we read your answer correctly?
+
+*Where in the application:* **Phase 4** page, Gates 10–12 tabs (the per-market sign-off and **Market Regulatory & Launch Tracking**); the **Market readiness** card on the project **Overview**.
+
+You chose one gate per market and, for a withdrawn market, a closure period set by Regulatory and Quality.
+
+We built it as follows. A market's lane at Gate 10, 11 or 12 passes when everything that gate asks of that market is met and its three signatures stand with the approver's Proceed; the shared items (formula, safety, claims, changes holding the gate) still block every market. A market's lane opens once Gates 1–9 are done and that market passed the gate before it, so Vietnam can work Gate 11 while Australia is still at Gate 10. The project's gate row stays a roll-up that passes when every market has. The Overview shows where each market stands and "No market ready / Some markets ready / All markets ready", where "ready" means the market passed Gate 11. A withdrawn market keeps its Gate 10–11 obligations only until the withdrawal, but keeps its Gate 12 sign-off while a **closure** is open: when the product was sold there and nobody has confirmed the closure. Closing takes two acts by the project's Regulatory or Quality person, in their own name: set the criteria (remaining stock, last supply and expiry, applicable obligations) and the end of the period, then confirm once the period has ended and no complaint, adverse event or CAPA of that market is still open. A market the product never launched in has no Gate 12 sign-off to keep; the reason recorded with its withdrawal is the closing reason. If any of this is not what you meant, please tell us.
+
+**(a)** May the closure be set and confirmed by either Regulatory or Quality, or must both confirm it?

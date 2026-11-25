@@ -841,6 +841,11 @@ function toProjectDataRaw(
       actualLaunchDate: dateOnly(t.actualLaunchDate),
       withdrawnDate: dateOnly(t.withdrawnDate),
       withdrawnReason: opt(t.withdrawnReason),
+      withdrawalClosureCriteria: opt(t.withdrawalClosureCriteria),
+      withdrawalClosureUntil: dateOnly(t.withdrawalClosureUntil),
+      withdrawalClosureSetBy: opt(t.withdrawalClosureSetBy),
+      withdrawalClosedAt: dateOnly(t.withdrawalClosedAt),
+      withdrawalClosedBy: opt(t.withdrawalClosedBy),
     })),
     postLaunchReviews: p.postLaunchReviews.map((r) => ({
       id: r.id,

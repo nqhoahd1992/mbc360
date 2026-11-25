@@ -1173,6 +1173,14 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **(c)** The authorised Regulatory reviewer approves market/wording compliance and the authorised Technical reviewer approves substantiation where required. Gate 10 confirms those decisions; being a gate approver does not itself grant Regulatory authority. Freeze the exact approved revision; amendments create a new revision and the necessary re-review. Sign only in the reviewer's own identity.
 
+### Question 19 — Gates 10-12 per market, and withdrawn markets
+
+**Verdict:** ✅ built (2026-11-25). Our readings of the details are asked in Round 6, question 27.
+
+**(a)** Choose (ii), with a market-specific closure period and criteria set by Regulatory/Quality based on remaining stock, last supply/expiry and applicable obligations. Continue surveillance and unresolved complaint/adverse-event/CAPA follow-up after commercial withdrawal where needed. A never-launched withdrawn market may close with a reason. Do not silently remove an existing market's Gate 12 obligations.
+
+**(b)** Choose (ii). Gates 10-12 open, sign and pass per market, after the shared Gates 1-9 prerequisites. Vietnam can release when its own Gate 10 and Gate 11 are satisfied while Australia remains pending. The project overview shows each market and a derived "some/all markets ready" summary. Shared formula/safety issues still affect every relevant market; one market's dossier delay does not block the rest.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

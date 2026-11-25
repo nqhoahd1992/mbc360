@@ -606,6 +606,15 @@ export const setNextActions = (
 export const setMarketTracks = (id: string, tracks: ProjectData['marketTracks'], v: number) =>
   put(id, 'market-tracks', { tracks }, v);
 
+// Round 5 question 19(a): the closure of a withdrawn market's Gate 12 obligations — set, then confirmed.
+export const setWithdrawalClosure = (id: string, market: string, criteria: string, until: string, v: number) =>
+  put(id, `markets/${encodeURIComponent(market)}/withdrawal-closure`, { criteria, until }, v);
+export const confirmWithdrawalClosure = (id: string, market: string, expectedVersion: number) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/markets/${encodeURIComponent(market)}/withdrawal-closure/confirm`,
+    { method: 'POST', body: JSON.stringify({ expectedVersion }) },
+  );
+
 export const setStudyApprovals = (id: string, approvals: ProjectData['studyApprovals'], v: number) =>
   put(id, 'study-approvals', { approvals }, v);
 

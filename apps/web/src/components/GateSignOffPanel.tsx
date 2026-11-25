@@ -33,7 +33,9 @@ import {
   gateSignOffStaleChanges,
   hardGateBlockers,
   isGatePassed,
+  isGateLaneOpen,
   isGateUnlocked,
+  marketGatePassed,
 } from '@mbc360/shared/utils/gateProgress';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { isPerMarketGate } from '@mbc360/shared/config/gateSignOff';
@@ -152,6 +154,10 @@ export default function GateSignOffPanel({
   // disabled button. Mirrors the server's guards — it does not replace them.
   const blockedReason = (market: string | undefined, role: GateSignOffRole): string | null => {
     if (!canSign) return notOpenReason;
+    // Round 5 question 19(b): a market's lane opens once THAT market has passed the gate before it, whatever the others have done.
+    if (market && isPerMarketGate(gateId) && !isGateLaneOpen(project, gateId, market) && !marketGatePassed(project, gateId, market)) {
+      return `${market} has not passed the gate before ${gateId} yet - its lane opens then`;
+    }
     // Critical gates: nobody signs until the independent-function representative is named.
     const repMissing = representativeMissingReason(project, gateId, market);
     if (repMissing) return repMissing;

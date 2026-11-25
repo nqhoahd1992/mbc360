@@ -1173,6 +1173,14 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **(c)** Reviewer Regulatory được ủy quyền duyệt tính tuân thủ về thị trường và câu chữ, reviewer Technical được ủy quyền duyệt chứng minh khi cần. Gate 10 xác nhận các quyết định đó; là người duyệt gate không tự có thẩm quyền Regulatory. Đóng băng đúng revision đã duyệt; sửa đổi tạo revision mới và rà soát lại cần thiết. Chỉ ký bằng danh tính của chính reviewer.
 
+### Câu 19 — Gate 10-12 theo từng thị trường và thị trường đã rút
+
+**Kết luận:** ✅ đã xây (25/11/2026). Những chỗ chúng tôi đọc câu trả lời được hỏi lại ở Vòng 6, câu 27.
+
+**(a)** Chọn (ii), với thời gian đóng và tiêu chí riêng cho từng thị trường do Regulatory/Quality đặt dựa trên tồn kho, ngày cung cấp cuối/hết hạn và nghĩa vụ liên quan. Tiếp tục giám sát và theo dõi khiếu nại/biến cố/CAPA chưa giải quyết sau khi ngừng bán thương mại khi cần. Thị trường đã rút nhưng chưa từng ra mắt có thể đóng bằng một lý do. Không âm thầm bỏ nghĩa vụ Gate 12 của một thị trường đang có.
+
+**(b)** Chọn (ii). Gate 10-12 mở, ký và qua theo từng thị trường, sau các điều kiện chung của Gate 1-9. Việt Nam có thể phát hành khi Gate 10 và Gate 11 của riêng nó đạt trong khi Úc còn chờ. Tổng quan dự án hiện từng thị trường và một tóm tắt dẫn xuất "một số/mọi thị trường sẵn sàng". Vấn đề chung về công thức/an toàn vẫn ảnh hưởng mọi thị trường liên quan; một thị trường chậm hồ sơ không chặn các thị trường còn lại.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

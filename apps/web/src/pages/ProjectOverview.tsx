@@ -9,7 +9,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { currentMarketTracks } from '@mbc360/shared/utils/postLaunch';
+import { currentMarketTracks, withdrawalClosureOpen } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { GATE_FIELD_LABELS, GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
@@ -19,6 +19,8 @@ import {
   gateBlockers,
   gateState,
   isGatePassed,
+  marketGateStandings,
+  marketsReadySummary,
   phaseProgress,
   type GateState,
 } from '@mbc360/shared/utils/gateProgress';
@@ -104,6 +106,9 @@ export default function ProjectOverview() {
   const backtracks = [...project.backtrackEvents].reverse();
   const gateChanges = [...project.gateChangeLog].reverse();
   const gateNumber = (id: string) => GATES.find((g) => g.id === id)?.number ?? id;
+  // Round 5 question 19(b): where each market stands across Gates 10-12, and the derived "some / all markets ready" summary.
+  const standings = marketGateStandings(project);
+  const readySummary = marketsReadySummary(project);
 
   return (
     <div className="concept po">
@@ -393,7 +398,10 @@ export default function ProjectOverview() {
           <div className="po-card-head">
             <div>
               <h2 className="po-card-title">Market readiness</h2>
-              <p className="po-card-sub">Gates 10-12 run per market; launch needs an Approved PIF first</p>
+              <p className="po-card-sub">
+                Gates 10-12 run per market; launch needs an Approved PIF first
+                {readySummary.total > 0 && ` · ${readySummary.state} (${readySummary.ready} of ${readySummary.total})`}
+              </p>
             </div>
             <Link className="c-link po-head-link" to={`/projects/${identity.id}/phase/4`}>
               Open Phase 4 <RightOutlined />
@@ -410,18 +418,36 @@ export default function ProjectOverview() {
                   <th>Regulatory</th>
                   <th>Claims</th>
                   <th>Launch</th>
+                  <th>Gates 10-12</th>
                 </tr>
               </thead>
               <tbody>
-                {currentMarketTracks(project).map((t) => (
+                {currentMarketTracks(project).map((t) => {
+                  const standing = standings.find((s) => s.market === t.market);
+                  const where = !standing
+                    ? t.withdrawnDate
+                      ? { text: 'Withdrawn', tone: 'c-tag' }
+                      : { text: 'Waiting for Gates 1-9', tone: 'c-tag' }
+                    : standing.withdrawn
+                      ? { text: withdrawalClosureOpen(t) ? 'Withdrawn · Gate 12 closure open' : 'Withdrawn', tone: 'c-tag c-tag-warn' }
+                      : standing.passed.includes('SG12')
+                        ? { text: 'Gates 10-12 passed', tone: 'c-tag c-tag-ok' }
+                        : standing.ready
+                          ? { text: `Ready · Gate 11 passed${standing.openGate ? ` · Gate ${gateNumber(standing.openGate)} open` : ''}`, tone: 'c-tag c-tag-ok' }
+                          : standing.openGate
+                            ? { text: `At Gate ${gateNumber(standing.openGate)}`, tone: 'c-tag c-tag-dot c-tag-warn' }
+                            : { text: 'Waiting for Gates 1-9', tone: 'c-tag' };
+                  return (
                   <tr key={t.market}>
                     <td className="po-strong">{t.market}</td>
                     <td data-label="PIF"><StatusBadge value={t.pifStatus} /></td>
                     <td data-label="Regulatory"><StatusBadge value={t.regulatoryStatus} /></td>
                     <td data-label="Claims"><StatusBadge value={t.claimsApproval} /></td>
                     <td data-label="Launch"><StatusBadge value={t.launchApproval} /></td>
+                    <td data-label="Gates 10-12"><span className={where.tone}>{where.text}</span></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

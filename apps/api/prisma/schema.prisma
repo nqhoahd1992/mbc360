@@ -1177,6 +1177,13 @@ model MarketTrack {
   actualLaunchDate DateTime?       @db.Date
   withdrawnDate    DateTime?       @db.Date
   withdrawnReason  String?
+  // Round 5 question 19(a), 2026-11-25: a market the product has been SOLD in keeps its Gate 12 obligations after withdrawal for a closure
+  // period and criteria set by Regulatory / Quality, until the closure is confirmed. Server-written only (the dedicated closure routes).
+  withdrawalClosureCriteria String?
+  withdrawalClosureUntil    DateTime?     @db.Date
+  withdrawalClosureSetBy    String?
+  withdrawalClosedAt        DateTime?     @db.Date
+  withdrawalClosedBy        String?
   updatedAt        DateTime        @updatedAt
 
   // F4 (SME rule audit D, 2026-10-04): one track per market PER FORMULA VERSION.

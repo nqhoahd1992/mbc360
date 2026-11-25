@@ -130,7 +130,7 @@ import {
 } from '@mbc360/shared/utils/gateSnapshot';
 
 import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
-import { changeReviewMilestone, marketAdditionReviewMilestone, marketsForLinkedReview, reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
+import { changeReviewMilestone, marketAdditionReviewMilestone, marketsForLinkedReview, reviewCycleOptions, withdrawalClosureGaps } from '@mbc360/shared/utils/postLaunch';
 import {
   checklistItemKey,
   expandChecklistOptions,
@@ -204,7 +204,9 @@ import {
   isGateRefLocked,
   evaluateTrigger,
   phaseProgress,
+  isGateLaneOpen,
   isGateUnlocked,
+  marketGatePassed,
   phaseCompletionChecklist,
   PHASE_DATA_LOCKED_REASON,
   isPhaseDataLocked,
@@ -2286,6 +2288,11 @@ export class ProjectsService {
         throw new ForbiddenException(
           `Gate ${gateId} is not the gate currently open for work — it cannot be signed (a passed gate is reopened with Backtrack)`,
         );
+      }
+      // Round 5 question 19(b): Gates 10-12 are worked per market. A market's lane opens when the shared Gates 1-9 are done and that market
+      // has passed the gate before it — and not before, whatever the other markets have done.
+      if (market && isPerMarketGate(gateId) && !isGateLaneOpen(project, gateId, market) && !marketGatePassed(project, gateId, market)) {
+        throw new ForbiddenException(`${market}'s lane at ${gateId} is not open yet — it opens once ${market} has passed the gate before it`);
       }
       const rows = await this.loadGateSignOffs(tx, id, gateId, market);
       // Critical gates: nobody signs until the independent-function representative is named (project owner, 2026-10-15).
@@ -5593,6 +5600,11 @@ export class ProjectsService {
             actualLaunchDate: this.dateOrNull(next.actualLaunchDate),
             withdrawnDate: this.dateOrNull(next.withdrawnDate),
             withdrawnReason: next.withdrawnReason ?? null,
+            // The closure belongs to a withdrawal: taking the withdrawal back leaves nothing to close. Otherwise these are written only by
+            // the closure routes below, never by this save.
+            ...(next.withdrawnDate?.trim()
+              ? {}
+              : { withdrawalClosureCriteria: null, withdrawalClosureUntil: null, withdrawalClosureSetBy: null, withdrawalClosedAt: null, withdrawalClosedBy: null }),
           },
         });
       }
@@ -5600,6 +5612,68 @@ export class ProjectsService {
         tracks: tracks.length,
         launchBlockedByPif: blocked,
       };
+    });
+  }
+
+  // Round 5 question 19(a): the closure of a withdrawn market's Gate 12 obligations — "a market-specific closure period and criteria set by
+  // Regulatory/Quality". Only the project's Regulatory or Quality person (the people named at creation) sets or confirms it, as themselves;
+  // an administrator does not stand in (it is those functions' judgement). Two acts: set the criteria and the end of the period, then
+  // confirm once the period has ended and nothing of the market is left open. [ASSUMPTION: R6-Q27]
+  private assertClosureAuthority(project: ProjectData, user: SessionUser): void {
+    const holders = ['regulatory', 'quality'].map((k) => (project.identity.reviewers[k] ?? '').trim()).filter((n) => n !== '');
+    if (!holders.some((n) => n.toLowerCase() === user.displayName.trim().toLowerCase())) {
+      throw new ForbiddenException(
+        `Only the project's Regulatory person or Quality person (${holders.join(' or ') || 'nobody is named'}) sets or confirms the closure of a withdrawn market`,
+      );
+    }
+  }
+
+  private closureTrack(project: ProjectData, row: { marketTracks: { id: string; market: string; formulaVersionId: string | null }[]; formulaVersions: { id: string }[] }, market: string) {
+    const track = project.marketTracks.find((t) => t.market === market && t.formulaVersion === project.formulaVersion);
+    const current = row.formulaVersions.at(-1);
+    const stored = row.marketTracks.find((t) => t.market === market && t.formulaVersionId === current?.id);
+    if (!track || !stored) throw new NotFoundException(`"${market}" has no market track on this project`);
+    if (!track.withdrawnDate) throw new BadRequestException(`${market} has not been withdrawn: there is no closure to set`);
+    if (!track.actualLaunchDate) {
+      throw new BadRequestException(`${market} never launched, so it has no Gate 12 obligations to close — the reason recorded with its withdrawal is the closing reason`);
+    }
+    if (track.withdrawalClosedAt) throw new BadRequestException(`${market}'s closure was already confirmed on ${track.withdrawalClosedAt}`);
+    return { track, stored };
+  }
+
+  async setWithdrawalClosure(
+    user: SessionUser,
+    id: string,
+    market: string,
+    body: { criteria?: string; until?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'market.withdrawal_closure_set', async (tx, row, project) => {
+      this.assertClosureAuthority(project, user);
+      const { stored } = this.closureTrack(project, row, market);
+      const criteria = (body.criteria ?? '').trim();
+      const until = (body.until ?? '').trim();
+      const problems: string[] = [];
+      if (criteria === '') problems.push('the closure criteria: what the remaining stock, the last supply and expiry and the applicable obligations are');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(Date.parse(until))) problems.push('the end of the closure period (a date)');
+      if (problems.length > 0) throw new BadRequestException(listMessage('The closure still needs:', problems));
+      await tx.marketTrack.update({
+        where: { id: stored.id },
+        data: { withdrawalClosureCriteria: criteria, withdrawalClosureUntil: this.dateOrNull(until), withdrawalClosureSetBy: user.displayName },
+      });
+      return { market, criteria, until };
+    });
+  }
+
+  async confirmWithdrawalClosure(user: SessionUser, id: string, market: string, expectedVersion: number): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'market.withdrawal_closure_confirmed', async (tx, row, project) => {
+      this.assertClosureAuthority(project, user);
+      const { track, stored } = this.closureTrack(project, row, market);
+      const today = new Date().toISOString().slice(0, 10);
+      const gaps = withdrawalClosureGaps(project, track, today);
+      if (gaps.length > 0) throw new BadRequestException(listMessage(`${market}'s closure cannot be confirmed yet:`, gaps));
+      await tx.marketTrack.update({ where: { id: stored.id }, data: { withdrawalClosedAt: this.dateOrNull(today), withdrawalClosedBy: user.displayName } });
+      return { market, closedAt: today };
     });
   }
 

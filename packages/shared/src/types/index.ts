@@ -1428,6 +1428,15 @@ export interface MarketTrack {
   // Question 14's per-market lifecycle beyond launch. Absent means "still selling".
   withdrawnDate?: string;
   withdrawnReason?: string;
+  // Round 5 question 19(a): product already sold in a market keeps that market's Gate 12 obligations after withdrawal, for a closure period
+  // and by criteria that Regulatory / Quality set from the remaining stock, the last supply and expiry and the applicable obligations, until
+  // the closure is confirmed. A market the product never launched in needs none (its withdrawal reason is the closing reason). All five are
+  // written by the server (the closure routes), never by the market-tracking save. [ASSUMPTION: R6-Q27]
+  withdrawalClosureCriteria?: string;
+  withdrawalClosureUntil?: string;
+  withdrawalClosureSetBy?: string;
+  withdrawalClosedAt?: string;
+  withdrawalClosedBy?: string;
 }
 
 // Round 4 question 14's project-level roll-up, transcribed. Explicitly a summary

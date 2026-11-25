@@ -761,3 +761,13 @@ Chúng tôi đã xây như sau. Mỗi claim có **phạm vi**: "In scope" hoặc
 **(a)** Ai chấp nhận điều kiện của một rà soát "Approved with Conditions": chủ claim, người giữ chức năng, hay chính reviewer đã đưa ra rà soát?
 
 **(b)** Phê duyệt Technical của một revision có phải được ghi trước khi Gate 10 qua không, và khi nào là "khi cần"? Hiện chúng tôi chưa chặn Gate 10 vì điều này.
+
+## Câu 27 — Gate 10–12 theo từng thị trường và thị trường đã rút: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* trang **Phase 4**, các tab Gate 10–12 (phần ký theo thị trường và **Market Regulatory & Launch Tracking**); thẻ **Market readiness** trong **Overview** của dự án.
+
+Các bạn chọn một gate cho mỗi thị trường và, với thị trường đã rút, một thời gian đóng do Regulatory và Quality đặt.
+
+Chúng tôi đã xây như sau. Làn của một thị trường ở Gate 10, 11 hay 12 qua khi mọi điều gate đó cần ở thị trường ấy đạt và ba chữ ký còn hiệu lực với quyết định Proceed của người duyệt; các mục chung (công thức, an toàn, claim, thay đổi đang giữ gate) vẫn chặn mọi thị trường. Làn của một thị trường mở khi Gate 1–9 xong và thị trường đó đã qua gate trước, nên Việt Nam làm Gate 11 trong khi Úc còn ở Gate 10. Dòng gate của dự án vẫn là tổng hợp, qua khi mọi thị trường đã qua. Overview hiện từng thị trường đang ở đâu và "Không thị trường nào / Một số / Mọi thị trường sẵn sàng", trong đó "sẵn sàng" là thị trường đã qua Gate 11. Một thị trường đã rút chỉ giữ nghĩa vụ Gate 10–11 đến lúc rút, nhưng giữ chữ ký Gate 12 chừng nào còn một **đóng** đang mở: sản phẩm đã bán ở đó mà chưa ai xác nhận đóng. Đóng gồm hai việc do người vai Regulatory hoặc Quality của dự án làm, dưới tên mình: đặt tiêu chí (tồn kho, ngày cung cấp cuối và hết hạn, nghĩa vụ liên quan) và ngày hết thời gian đóng, rồi xác nhận khi thời gian đã hết và không còn khiếu nại, biến cố hay CAPA nào của thị trường đó chưa đóng. Thị trường sản phẩm chưa từng ra mắt không có chữ ký Gate 12 để giữ; lý do ghi lúc rút là lý do đóng. Nếu chỗ nào chưa đúng ý các bạn, xin cho chúng tôi biết.
+
+**(a)** Việc đặt và xác nhận đóng do Regulatory hoặc Quality (một trong hai) làm là đủ, hay cả hai phải xác nhận?

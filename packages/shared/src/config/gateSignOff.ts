@@ -6,7 +6,7 @@
 // edit rather than a hunt through the engine.
 import type { GateSignOff, GateSignOffRole, ProjectData } from '../types';
 import { GATE_SIGNOFF_ROLES } from '../types';
-import { activeMarkets } from '../utils/postLaunch';
+import { activeMarkets, gate12Markets } from '../utils/postLaunch';
 
 // Question 29(3), verbatim: "Enhanced independence requirements apply to Gate 3
 // (claims) · Gate 4 (ingredient and regulatory screening) · Gate 7 (safety) ·
@@ -133,7 +133,8 @@ export function isPerMarketGate(gateId: string): boolean {
 // signature nobody would ever give. [ASSUMPTION: R5-Q28] for Gate 12.
 export function gateSignOffMarkets(project: ProjectData, gateId: string): (string | undefined)[] {
   if (!isPerMarketGate(gateId)) return [undefined];
-  return activeMarkets(project);
+  // Round 5 question 19(a): Gate 12 stays owed in a withdrawn market whose closure is open; Gates 10-11 end with the withdrawal.
+  return gateId === 'SG12' ? gate12Markets(project) : activeMarkets(project);
 }
 
 // Question 29(5): "the gate passes only when the approver records Proceed or

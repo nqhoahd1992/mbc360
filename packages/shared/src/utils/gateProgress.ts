@@ -3,7 +3,7 @@ import type { GateRecord, NaAcknowledgement, NextAction, ProjectData, RegisterRo
 import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, UNSTRUCTURED_PMS_CONDITIONS, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
-import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
+import { GATE_PASSING_DECISIONS, PER_MARKET_GATES, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned, isPerMarketGate } from '../config/gateSignOff';
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
@@ -2925,6 +2925,71 @@ export function isGatePassed(project: ProjectData, gateId: string): boolean {
   return gateBlockers(project, gateId).length === 0;
 }
 
+// ---------------------------------------------------------------------------
+// Gates 10-12 per market (Round 5 question 19(b), answered 2026-11-05: "Choose (ii). Gates 10-12 open, sign and pass per market, after the
+// shared Gates 1-9 prerequisites. Vietnam can release when its own Gate 10 and Gate 11 are satisfied while Australia remains pending. ...
+// Shared formula/safety issues still affect every relevant market; one market's dossier delay does not block the rest.")
+//
+// A market's lane at a per-market gate PASSES when everything that gate asks of THAT market is met — its own items are judged on its slice
+// of the data and every shared item (formula, safety, claims, changes holding the gate) still blocks every lane (PER_MARKET_ITEM_IDS) —
+// and its three signatures stand with the approver's Proceed / Proceed with Conditions, which IS that market's gate decision. The project's
+// gate row stays a roll-up: it passes when every lane has (isGatePassed above, unchanged), and it is what Phase 4 completion reads. A lane
+// OPENS when the shared prerequisites (Gates 1-9, Phase 3) are done and the same market passed the gate before it. Derived from the lanes
+// every time, never stored, so the roll-up cannot disagree with them. [ASSUMPTION: R6-Q27]
+// ---------------------------------------------------------------------------
+export function marketGatePassed(project: ProjectData, gateId: string, market: string): boolean {
+  if (!isPerMarketGate(gateId)) return isGatePassed(project, gateId);
+  if (!gateSignOffMarkets(project, gateId).includes(market)) return false;
+  if (unsignedGateLanes(marketView(project, market), gateId).length > 0) return false;
+  return gateBlockers(project, gateId, undefined, market).length === 0;
+}
+
+// The shared prerequisites of the per-market gates: every gate before Gate 10 passed, and Phase 3 complete.
+export function sharedPrerequisitesDone(project: ProjectData): boolean {
+  return currentGateIndex(project) >= gateIndex(PER_MARKET_GATES[0]);
+}
+
+// A market's lane at a per-market gate is open for work: the shared prerequisites are done and the market passed the gate before it (Gate 10
+// has none before it among the lanes). A market that is not a lane of the gate (withdrawn, or not on the project) has no open lane.
+export function isGateLaneOpen(project: ProjectData, gateId: string, market: string): boolean {
+  if (!isPerMarketGate(gateId)) return false;
+  if (!gateSignOffMarkets(project, gateId).includes(market)) return false;
+  if (!sharedPrerequisitesDone(project)) return false;
+  const position = PER_MARKET_GATES.indexOf(gateId);
+  return position === 0 || marketGatePassed(project, PER_MARKET_GATES[position - 1], market);
+}
+
+// Where one market stands across Gates 10-12 and how many are ready — the roll-up the Overview shows. "Ready" is a market that has passed
+// Gate 11 (it can release); a market that has passed Gate 12 too has finished its post-launch lane.
+export interface MarketGateStanding {
+  market: string;
+  withdrawn: boolean;
+  passed: string[]; // the per-market gates this market has passed
+  openGate?: string; // the per-market gate it is working on now
+  ready: boolean; // passed Gate 11
+}
+export function marketGateStandings(project: ProjectData): MarketGateStanding[] {
+  const active = new Set(gateSignOffMarkets(project, 'SG10').filter((m): m is string => !!m));
+  const lanes = new Set(PER_MARKET_GATES.flatMap((g) => gateSignOffMarkets(project, g)).filter((m): m is string => !!m));
+  return project.identity.markets
+    .filter((m) => lanes.has(m) || active.has(m))
+    .map((market) => {
+      const passed = PER_MARKET_GATES.filter((g) => marketGatePassed(project, g, market));
+      const openGate = PER_MARKET_GATES.find((g) => !passed.includes(g) && isGateLaneOpen(project, g, market));
+      return { market, withdrawn: !active.has(market), passed, openGate, ready: passed.includes('SG11') };
+    });
+}
+
+export type MarketsReadySummary = 'No markets' | 'No market ready' | 'Some markets ready' | 'All markets ready';
+// A derived summary, never a substitute for the per-market records. Markets that left (withdrawn) do not hold it back.
+export function marketsReadySummary(project: ProjectData): { state: MarketsReadySummary; ready: number; total: number } {
+  const standings = marketGateStandings(project).filter((s) => !s.withdrawn);
+  const ready = standings.filter((s) => s.ready).length;
+  const total = standings.length;
+  const state: MarketsReadySummary = total === 0 ? 'No markets' : ready === 0 ? 'No market ready' : ready === total ? 'All markets ready' : 'Some markets ready';
+  return { state, ready, total };
+}
+
 // Work is marked Complete but a passing decision (Proceed / Proceed with
 // Conditions) has not been recorded yet — the gate is Pending (rule B1).
 export function isAwaitingDecision(project: ProjectData, gateId: string): boolean {
@@ -3110,7 +3175,10 @@ export function currentGateIndex(project: ProjectData): number {
 // function's own documented intent ("the single gate currently open for
 // work", see CLAUDE.md).
 export function isGateUnlocked(project: ProjectData, gateId: string): boolean {
-  return gateIndex(gateId) === currentGateIndex(project);
+  if (gateIndex(gateId) === currentGateIndex(project)) return true;
+  // Round 5 question 19(b): a per-market gate is also open while some market's lane at it is — Vietnam works Gate 11 while Australia is
+  // still at Gate 10 — so the gate row and the lane can be worked without waiting for the slowest market.
+  return isPerMarketGate(gateId) && gateSignOffMarkets(project, gateId).some((m) => !!m && isGateLaneOpen(project, gateId, m) && !marketGatePassed(project, gateId, m));
 }
 
 // The gate `number` (e.g. '01') of the gate currently open for work, for UI
@@ -3128,6 +3196,8 @@ export function gateState(project: ProjectData, gateId: string): GateState {
   if (isGatePassed(project, gateId)) return 'passed';
   const idx = gateIndex(gateId);
   const current = currentGateIndex(project);
+  // A per-market gate ahead of the project's current gate is still current for the markets that reached it (question 19(b)).
+  if (idx > current && isPerMarketGate(gateId) && isGateUnlocked(project, gateId)) return 'current';
   return idx > current ? 'locked' : 'current';
 }
 

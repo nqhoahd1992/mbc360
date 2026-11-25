@@ -889,6 +889,27 @@ export class ProjectsController {
     return this.projects.assessMarketAddition(user, id, market, body, body.expectedVersion);
   }
 
+  // Round 5 question 19(a): set, then confirm, the closure of a withdrawn market's Gate 12 obligations.
+  @Put(':id/markets/:market/withdrawal-closure')
+  setWithdrawalClosure(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('market') market: string,
+    @Body() body: { criteria?: string; until?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setWithdrawalClosure(user, id, market, body, body.expectedVersion);
+  }
+
+  @Post(':id/markets/:market/withdrawal-closure/confirm')
+  confirmWithdrawalClosure(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('market') market: string,
+    @Body() body: { expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.confirmWithdrawalClosure(user, id, market, body.expectedVersion);
+  }
+
   @Put(':id/next-actions')
   setNextActions(
     @CurrentUser() user: SessionUser,

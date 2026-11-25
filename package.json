@@ -40,6 +40,7 @@
     "verify:reference-links": "tsx packages/shared/scripts/verify-reference-links.ts",
     "verify:claim-use": "tsx packages/shared/scripts/verify-claim-use.ts",
     "verify:claim-review": "tsx packages/shared/scripts/verify-claim-review.ts",
+    "verify:market-gates": "tsx packages/shared/scripts/verify-market-gates.ts",
     "verify:requirement-deferral": "tsx packages/shared/scripts/verify-requirement-deferral.ts",
     "verify:requirement-na": "tsx packages/shared/scripts/verify-requirement-na.ts",
     "verify:market-additions": "tsx packages/shared/scripts/verify-market-additions.ts",

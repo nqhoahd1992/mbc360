@@ -6,6 +6,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
 import OpenChangesNotice from './OpenChangesNotice';
+import WithdrawalClosureBlock from './WithdrawalClosureBlock';
 import { canChangeMarketTracks, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
 import { useSession } from '../auth/useSession';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -263,6 +264,9 @@ export default function MarketTrackingCard({
                 <span className="mt-track-note">current formula version</span>
               </div>
               {trackForm(t, index)}
+              {project && t.withdrawnDate && tracks.some((c) => c.market === t.market && c.formulaVersion === t.formulaVersion && !!c.withdrawnDate) && (
+                <WithdrawalClosureBlock project={project} track={tracks.find((c) => c.market === t.market && c.formulaVersion === t.formulaVersion)!} />
+              )}
             </section>
           ))}
           {earlierTracks.length > 0 && (

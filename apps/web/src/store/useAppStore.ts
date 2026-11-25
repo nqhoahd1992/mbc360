@@ -124,6 +124,8 @@ interface AppState {
   setNextActionsBulk: (id: string, gateIds: string[], updated: NextAction[]) => Promise<boolean>;
 
   setMarketTracksBulk: (id: string, tracks: MarketTrack[]) => void;
+  setWithdrawalClosure: (id: string, market: string, criteria: string, until: string) => Promise<void>;
+  confirmWithdrawalClosure: (id: string, market: string) => Promise<void>;
 
   // C2: dedicated study approval workflow (Study Author / Department Reviewer /
   // Independent Reviewer).
@@ -687,6 +689,9 @@ export const useAppStore = create<AppState>()(
         setChangeControlAssessments: (id, entries) =>
           writeSection(id, (v) => projectsApi.setChangeControlAssessments(id, entries, v)),
         setScaleUpAssessments: (id, entries) => writeSection(id, (v) => projectsApi.setScaleUpAssessments(id, entries, v)),
+        setWithdrawalClosure: (id, market, criteria, until) =>
+          writeSection(id, (v) => projectsApi.setWithdrawalClosure(id, market, criteria, until, v)),
+        confirmWithdrawalClosure: (id, market) => writeSection(id, (v) => projectsApi.confirmWithdrawalClosure(id, market, v)),
         setFunctionAssignees: (id, assignments) =>
           writeSection(id, (v) => projectsApi.setFunctionAssignees(id, assignments, v)),
         acknowledgeReadinessItem: (id, gateId, itemId, functionKey, confirmClear = false) =>
