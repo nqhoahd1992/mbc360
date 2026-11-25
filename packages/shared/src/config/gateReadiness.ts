@@ -450,7 +450,9 @@ export type ReadinessCheck =
   // `feasibleOnly`: the status must also SAY feasible — "Commercially Feasible",
   // or N/A with a rationale. Used where a Must commercial requirement makes a
   // failed or unresolved costing something to Hold or Proceed with Conditions on.
-  | { kind: 'costingStatusRecorded'; feasibleOnly?: boolean }
+  // `feasibleOnly`: what a plain Proceed needs (Commercially Feasible, or N/A with its scope decision). `carried`: what a Proceed with Conditions may
+  // carry (Round 5 question 21): the status's own supports — see costingCarriedGaps.
+  | { kind: 'costingStatusRecorded'; feasibleOnly?: boolean; carried?: boolean }
   // Round 4 question 6: every row of a watch-list register carries one of the six
   // Gate 4 dispositions. "Gate 4 must not pass with unassessed rows", so a blank
   // is a block and Proceed with Conditions does not clear it.
@@ -1799,6 +1801,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // and a status still "In Progress" — needs Hold or Proceed with Conditions.
       // Those two placements are ours [ASSUMPTION: R5-Q32].
       check: { kind: 'costingStatusRecorded', feasibleOnly: true },
+    },
+    {
+      // Round 5 question 21 (answered 2026-11-05): Proceed with Conditions may carry a costing that is not Commercially Feasible only with what the
+      // status needs — "Feasible with Conditions ... with commercial acceptance and tracked actions. In Progress needs enough assessed costing to bound
+      // the outstanding risk, otherwise Hold. Not Feasible normally means Hold or an explicit authorised revision of the commercial requirement/business
+      // decision; a conditional signature alone cannot declare a failed Must requirement met. N/A requires a justified scope decision." So this item is
+      // NOT cleared by Proceed with Conditions: the item above is what a conditional proceed clears, this is what it has to bring with it. [ASSUMPTION: R6-Q29]
+      id: 'sg05-costing-must-carried',
+      label: 'The costing result is supported well enough to be carried — acceptance and a tracked action, a bounded risk, or an authorised revision',
+      tier: 'Conditional',
+      trigger: 'commercialRequirementIsMust',
+      check: { kind: 'costingStatusRecorded', carried: true },
+      assumption: 'R6-Q29',
     },
     {
       // Not an F1-named item — same generalizable rule as prior gates' extra

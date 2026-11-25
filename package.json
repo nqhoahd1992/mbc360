@@ -42,6 +42,7 @@
     "verify:claim-review": "tsx packages/shared/scripts/verify-claim-review.ts",
     "verify:market-gates": "tsx packages/shared/scripts/verify-market-gates.ts",
     "verify:market-dossier": "tsx packages/shared/scripts/verify-market-dossier.ts",
+    "verify:commercial-feasibility": "tsx packages/shared/scripts/verify-commercial-feasibility.ts",
     "verify:requirement-deferral": "tsx packages/shared/scripts/verify-requirement-deferral.ts",
     "verify:requirement-na": "tsx packages/shared/scripts/verify-requirement-na.ts",
     "verify:market-additions": "tsx packages/shared/scripts/verify-market-additions.ts",

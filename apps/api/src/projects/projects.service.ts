@@ -4805,7 +4805,7 @@ export class ProjectsService {
       // a controlled list — an unrecognised value would silently never satisfy
       // `costingStatusRecorded`, the same failure sweep S1 exists to catch in
       // config.
-      const { reviewDate, feasibilityStatus, assessor, assumptions, evidenceLink, ...numbers } = patch;
+      const { reviewDate, feasibilityStatus, assessor, assumptions, evidenceLink, conditionActionId, riskBound, commercialDecisionBy, commercialDecisionAt: _clientStamp, revisionChangeId, ...numbers } = patch;
       if (
         feasibilityStatus !== undefined &&
         feasibilityStatus !== '' &&
@@ -4815,10 +4815,49 @@ export class ProjectsService {
           `Unknown costing status "${feasibilityStatus}" — expected one of: ${COSTING_FEASIBILITY_STATUSES.join(', ')}`,
         );
       }
+      // Round 5 question 21: the commercial decision a status needs (acceptance of the conditions, an authorised revision, a scope decision) is the
+      // project's Commercial Approver's, recorded as themselves — the server writes who and when, never the client. It stands for the status it was
+      // given for, so changing the status withdraws it.
+      const stored = project.costing;
+      const statusChanged = feasibilityStatus !== undefined && (feasibilityStatus || '') !== (stored.feasibilityStatus ?? '');
+      let decisionBy = (stored.commercialDecisionBy ?? '').trim();
+      let decisionAt: string | null = stored.commercialDecisionAt ?? null;
+      if (commercialDecisionBy !== undefined) {
+        const asked = commercialDecisionBy.trim();
+        if (asked === '') {
+          decisionBy = '';
+          decisionAt = null;
+        } else if (asked !== decisionBy) {
+          const holder = (project.identity.reviewers['commercial-approver'] ?? '').trim();
+          if (holder === '') {
+            throw new ForbiddenException("Nobody is named as this project's Commercial Approver yet — the project's Lead names one in Project team");
+          }
+          if (asked.toLowerCase() !== user.displayName.trim().toLowerCase() || holder.toLowerCase() !== user.displayName.trim().toLowerCase()) {
+            throw new ForbiddenException(`Only the project's Commercial Approver (${holder}) records the commercial decision, and only as themselves`);
+          }
+          decisionBy = user.displayName.trim();
+          decisionAt = new Date().toISOString().slice(0, 10);
+        }
+      }
+      if (statusChanged && !(commercialDecisionBy !== undefined && commercialDecisionBy.trim() !== '' && commercialDecisionBy.trim() !== (stored.commercialDecisionBy ?? '').trim())) {
+        decisionBy = '';
+        decisionAt = null;
+      }
+      if (conditionActionId && !project.nextActions.some((a) => a.id === conditionActionId)) {
+        throw new BadRequestException(`"${conditionActionId}" is not a Next Action of this project`);
+      }
+      if (revisionChangeId && !project.changes.some((c) => c.changeId === revisionChangeId)) {
+        throw new BadRequestException(`"${revisionChangeId}" is not a Change Control record of this project`);
+      }
       await tx.costingInputs.update({
         where: { projectId: id },
         data: {
           ...numbers,
+          ...(conditionActionId !== undefined ? { conditionActionId: conditionActionId || null } : {}),
+          ...(riskBound !== undefined ? { riskBound: riskBound || null } : {}),
+          ...(revisionChangeId !== undefined ? { revisionChangeId: revisionChangeId || null } : {}),
+          commercialDecisionBy: decisionBy || null,
+          commercialDecisionAt: decisionAt ? new Date(decisionAt) : null,
           ...(feasibilityStatus !== undefined ? { feasibilityStatus: feasibilityStatus || null } : {}),
           ...(assessor !== undefined ? { assessor: assessor || null } : {}),
           ...(assumptions !== undefined ? { assumptions: assumptions || null } : {}),

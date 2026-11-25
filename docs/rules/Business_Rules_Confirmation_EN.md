@@ -1189,6 +1189,12 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **Multiple rows.** Allow several dossier/compliance components per market, each with a component/dossier type, version and unique ID; assess all applicable components. Keep one derived market summary. ASEAN PIF mapping/checklist can be shared evidence, but each market still needs a country-specific regulatory/readiness conclusion and any additional local requirements. Synchronise summary values from the same underlying decisions; do not maintain contradictory approval fields.
 
+### Question 21 — Commercial feasibility at Gate 5
+
+**Verdict:** ✅ built (2026-11-26). Our reading of one detail is asked in Round 6, question 29.
+
+Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional achievement of a Must cost target; neither permits plain Proceed. Feasible with Conditions can use Proceed with Conditions with commercial acceptance and tracked actions. In Progress needs enough assessed costing to bound the outstanding risk, otherwise Hold. Not Feasible normally means Hold or an explicit authorised revision of the commercial requirement/business decision; a conditional signature alone cannot declare a failed Must requirement met. N/A requires a justified scope decision, not missing costing.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

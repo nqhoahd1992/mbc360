@@ -737,6 +737,21 @@ export interface CostingInputs {
   assumptions?: string;
   // "Evidence or costing-version link."
   evidenceLink?: string;
+  // Round 5 question 21 (SME answer, 2026-11-05) — what lets a Gate 5 Proceed with Conditions CARRY a costing that is not Commercially Feasible on a
+  // commercially dependent project: "Feasible with Conditions can use Proceed with Conditions with commercial acceptance and tracked actions. In
+  // Progress needs enough assessed costing to bound the outstanding risk, otherwise Hold. Not Feasible normally means Hold or an explicit authorised
+  // revision of the commercial requirement/business decision; a conditional signature alone cannot declare a failed Must requirement met. N/A
+  // requires a justified scope decision, not missing costing."
+  // The tracked action carrying the conditions (Feasible with Conditions).
+  conditionActionId?: string;
+  // The outstanding costing risk and its bound — a figure or range, not "to be confirmed" (In Progress). [ASSUMPTION: R6-Q29]
+  riskBound?: string;
+  // Who took the commercial decision this status needs — the acceptance of the conditions (Feasible with Conditions), the authorised revision of
+  // the requirement (Not Feasible) or the scope decision (N/A) — and when. Written by the server from the project's Commercial Approver, never typed.
+  commercialDecisionBy?: string;
+  commercialDecisionAt?: string;
+  // The Change Control record that revises the commercial requirement (Not Feasible), approved to implement.
+  revisionChangeId?: string;
 }
 
 // Properties of the formula itself that gate readiness has to reason about,

@@ -1414,7 +1414,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q28 · R6-Q27 | **19(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Thị trường đã rút còn cần làn ký Gate 12 không |
 | ✅ R5-Q44 · R6-Q27 | **19(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
 | ✅ R5-Q31 · R6-Q28 | **20** (đã trả lời 05/11, xây 25/11/2026; R6-Q28 hỏi lại một chỗ ta đọc) | Gate 10: trạng thái checklist và approval nào tính là xong |
-| R5-Q32 | **21** | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
+| ✅ R5-Q32 · R6-Q29 | **21** (đã trả lời 05/11, xây 26/11/2026; R6-Q29 hỏi lại một chỗ ta đọc) | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
 | R5-Q30 · R5-Q45 | **22(a) · (b)** | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
 | R5-Q56 · R5-Q39 · R5-Q42 · R5-Q2 | **23(a) · (b) · (c) · (d)** | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
 | R5-Q60 · R5-Q61 | **24(a) · (b)** | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q29 · Costing ở Gate 5 của dự án phụ thuộc thương mại: các chỗ ta đọc câu trả lời (Vòng 5 câu 21) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 21.** SME nêu: Feasible with Conditions và In Progress không cho Proceed thường; Feasible with Conditions có thể dùng Proceed with Conditions với chấp thuận thương mại và hành động theo dõi; In Progress cần đủ costing để chặn rủi ro còn lại, nếu không là Hold; Not Feasible thường là Hold hoặc điều chỉnh có thẩm quyền yêu cầu thương mại/quyết định kinh doanh, chữ ký có điều kiện không đủ; N/A cần quyết định phạm vi có lý do. Cách đọc của ta: (1) **plain Proceed** (`sg05-costing-must`, vẫn do Proceed with Conditions xoá): chỉ Commercially Feasible, hoặc N/A kèm quyết định phạm vi; (2) mục mới **`sg05-costing-must-carried`** (Conditional theo `commercialRequirementIsMust`, KHÔNG xoá bằng Proceed with Conditions): Proceed with Conditions chỉ mang được kết quả costing khi có điều nó cần (`costingCarriedGaps`, `utils/commercialFeasibility.ts`): **Feasible with Conditions** = chấp thuận thương mại của Commercial Approver + Next Action có kiểm soát (`conditionActionId`, `controlledActionGaps`, không Cancelled); **In Progress** = rủi ro còn lại và giới hạn của nó (`riskBound`), nếu không là Hold; **Not Feasible** = người Commercial Approver cho phép + một Change Control đã duyệt triển khai điều chỉnh yêu cầu (`revisionChangeId`, `changeLinkProblem` mục đích implementation), nếu không chữ ký có điều kiện không qua; **N/A** = lý do (Assumptions) VÀ quyết định phạm vi của Commercial Approver; (3) "chấp thuận thương mại"/"điều chỉnh có thẩm quyền"/"quyết định phạm vi" đều là một việc của **Commercial Approver của dự án** (vai khai báo ở New Project), máy chủ ghi người và ngày (`commercialDecisionBy/At`, chỉ chính họ, rút lại khi đổi trạng thái); (4) "đủ costing đã đánh giá để chặn rủi ro" ta đọc là một giới hạn ghi bằng chữ, chưa có ngưỡng.
+
+**Câu hỏi:** (a) "Đủ costing đã đánh giá để chặn rủi ro còn lại" tối thiểu là gì (ví dụ một khoảng chi phí/biên lợi nhuận xấu nhất, hay một phần costing đã hoàn tất)?
+
+**Nếu trả lời khác:** `utils/commercialFeasibility.ts` (`costingCarriedGaps`, `costingPlainProceedOk`, `costingNotApplicableGaps`); `config/gateReadiness.ts` (`sg05-costing-must`, `sg05-costing-must-carried`); `projects.service.ts` (`setCosting`); `BomCosting.tsx` (thẻ Commercial feasibility) [ASSUMPTION: R6-Q29].
 
 #### R6-Q28 · Hồ sơ quy định theo thành phần ở Gate 10: các chỗ ta đọc câu trả lời (Vòng 5 câu 20) 🟡
 
@@ -2279,7 +2287,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/marketDossier.ts` — `CHECKLIST_DONE_STATUSES` / `REGULATORY_APPROVAL_DONE`.
 
-#### R5-Q32 · Dự án phụ thuộc thương mại: costing thế nào thì được Proceed thường 🔴
+#### R5-Q32 · Dự án phụ thuộc thương mại: costing thế nào thì được Proceed thường ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 21) và đã xây 26/11/2026 — phần dưới là lịch sử.** Feasible with Conditions và In Progress đều không chứng minh đạt vô điều kiện mục tiêu chi phí Must, đều không cho Proceed thường. Feasible with Conditions dùng Proceed with Conditions với chấp thuận thương mại và hành động được theo dõi; In Progress cần đủ costing đã đánh giá để chặn rủi ro còn lại, nếu không thì Hold; Not Feasible thường là Hold hoặc điều chỉnh có thẩm quyền rõ ràng đối với yêu cầu thương mại/quyết định kinh doanh, chữ ký có điều kiện không đủ để tuyên bố một yêu cầu Must thất bại là đã đạt; N/A cần một quyết định phạm vi có lý do, không phải thiếu costing. → **R6-Q29**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B11).** Câu 36(b): khi yêu cầu thương mại là Must, "thất bại" phải dẫn tới Hold hoặc PwC. Đang chọn: chỉ "Commercially Feasible" (hoặc N/A có lý do) qua được Proceed thường; "Feasible with Conditions", "In Progress", "Not Feasible" đều cần Hold/PwC.
 

@@ -1189,6 +1189,12 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **Nhiều dòng.** Cho phép nhiều thành phần hồ sơ/tuân thủ mỗi thị trường, mỗi thành phần có loại, phiên bản và ID duy nhất; đánh giá mọi thành phần áp dụng. Giữ một tóm tắt thị trường dẫn xuất. Ánh xạ/checklist ASEAN PIF có thể là bằng chứng dùng chung, nhưng mỗi thị trường vẫn cần kết luận quy định/sẵn sàng riêng của quốc gia và các yêu cầu địa phương bổ sung. Đồng bộ các giá trị tóm tắt từ cùng một quyết định gốc; không duy trì các trường phê duyệt mâu thuẫn nhau.
 
+### Câu 21 — Tính khả thi thương mại ở Gate 5
+
+**Kết luận:** ✅ đã xây (26/11/2026). Một chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 29.
+
+Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh việc đạt vô điều kiện một mục tiêu chi phí Must; cả hai đều không cho phép Proceed thường. Feasible with Conditions có thể dùng Proceed with Conditions với chấp thuận thương mại và các hành động được theo dõi. In Progress cần đủ costing đã đánh giá để chặn rủi ro còn lại, nếu không thì Hold. Not Feasible thường nghĩa là Hold hoặc một điều chỉnh có thẩm quyền, rõ ràng đối với yêu cầu thương mại/quyết định kinh doanh; chữ ký có điều kiện một mình không thể tuyên bố một yêu cầu Must thất bại là đã đạt. N/A cần một quyết định phạm vi có lý do, không phải thiếu costing.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

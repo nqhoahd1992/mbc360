@@ -8,6 +8,7 @@ import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateS
 import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
 import { requirementNaAckSettled } from './requirementNaAck';
+import { costingCarriedGaps, costingNotApplicableGaps, costingPlainProceedOk } from './commercialFeasibility';
 import { untrackedDeferrals } from './requirementDeferral';
 import { GENERAL_CAUTION_REGISTER, generalCautionBlockers } from './generalCaution';
 import { restrictedCautionMatchesNotTakenUp } from './restrictedCaution';
@@ -1619,10 +1620,13 @@ export function evaluateReadinessCheck(
     case 'costingStatusRecorded': {
       const status = project.costing.feasibilityStatus?.trim() ?? '';
       if (status === '' || status === 'Not Started') return { evaluable: true, satisfied: false };
+      // Round 5 question 21: a plain Proceed needs Commercially Feasible (or an N/A whose scope decision is recorded); a Proceed with Conditions
+      // may carry the other statuses only with what each needs (utils/commercialFeasibility.ts). "N/A requires a justified scope decision".
+      if (check.carried) return { evaluable: true, satisfied: costingCarriedGaps(project).length === 0 };
       if (status === COSTING_STATUS_NOT_APPLICABLE) {
-        return { evaluable: true, satisfied: (project.costing.assumptions ?? '').trim() !== '' };
+        return { evaluable: true, satisfied: costingNotApplicableGaps(project).length === 0 };
       }
-      if (check.feasibleOnly) return { evaluable: true, satisfied: status === 'Commercially Feasible' };
+      if (check.feasibleOnly) return { evaluable: true, satisfied: costingPlainProceedOk(project) };
       return { evaluable: true, satisfied: true };
     }
     case 'identityFieldFilled':

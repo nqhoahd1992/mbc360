@@ -1150,6 +1150,13 @@ model CostingInputs {
   reviewDate            DateTime? @db.Date
   assumptions           String?
   evidenceLink          String?
+  // Round 5 question 21: what lets Proceed with Conditions carry a costing that is not Commercially Feasible. commercialDecision* are written by the
+  // server from the project's Commercial Approver.
+  conditionActionId     String?
+  riskBound             String?
+  commercialDecisionBy  String?
+  commercialDecisionAt  DateTime? @db.Date
+  revisionChangeId      String?
 
   @@map("costing_inputs")
 }

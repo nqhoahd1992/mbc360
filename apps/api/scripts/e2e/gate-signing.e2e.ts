@@ -1009,6 +1009,38 @@ export async function run(base: string, db: Client): Promise<number> {
   }
   cr = await putDossier([dossierRow(nonAsean)]);
   t('one row for a market is accepted', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  // ---- Round 5 question 21: the commercial decision a costing status needs is the Commercial Approver's, written by the server
+  console.log('--- Costing: the commercial decision belongs to the Commercial Approver (question 21)');
+  {
+    const meNameC = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const putCosting = async (patch: Record<string, unknown>) => api('admin', 'PUT', `/projects/${PROJECT}/costing`, { patch, expectedVersion: await version() });
+    const costingNow = async () => (await project()).project.costing;
+    cr = await putCosting({ feasibilityStatus: 'Feasible with Conditions', commercialDecisionBy: meNameC });
+    t('the commercial acceptance needs the project\'s Commercial Approver: nobody is named, so it is refused (403)', cr.status === 403 && /Commercial Approver/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'commercial-approver'`, [PROJECT]);
+    await db.query(`INSERT INTO project_reviewers (id, "projectId", "roleKey", name, "userId", "assignedAt") VALUES ('e2e-commercial-approver', $1, 'commercial-approver', $2, $3, now())`, [PROJECT, meNameC, sessions['admin'].id]);
+    cr = await putCosting({ feasibilityStatus: 'Feasible with Conditions', commercialDecisionBy: 'Somebody Else' });
+    t('...another person\'s name is refused even then (403)', cr.status === 403, `${cr.status} ${short(cr.json)}`);
+    cr = await putCosting({ feasibilityStatus: 'Feasible with Conditions', commercialDecisionBy: meNameC, commercialDecisionAt: '1999-01-01' });
+    {
+      const c = await costingNow();
+      t('the Commercial Approver records it as themselves, and the date is the server\'s, not the request\'s', cr.status < 300 && c.commercialDecisionBy === meNameC && c.commercialDecisionAt !== '1999-01-01' && !!c.commercialDecisionAt, `${cr.status} ${short(c)}`);
+    }
+    cr = await putCosting({ conditionActionId: 'NA-DOES-NOT-EXIST' });
+    t('a tracked action that is not a Next Action of the project is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+    cr = await putCosting({ revisionChangeId: 'CHG-DOES-NOT-EXIST' });
+    t('...and so is a revising change that is not a Change Control record of it (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+    cr = await putCosting({ feasibilityStatus: 'In Progress', riskBound: 'up to 3% of margin' });
+    {
+      const c = await costingNow();
+      t('changing the status withdraws the decision (it stood for the status it was given for)', cr.status < 300 && !c.commercialDecisionBy && !c.commercialDecisionAt && c.riskBound === 'up to 3% of margin', `${cr.status} ${short(c)}`);
+    }
+    // Leave the run as it was.
+    cr = await putCosting({ feasibilityStatus: '', riskBound: '', conditionActionId: '', revisionChangeId: '', commercialDecisionBy: '' });
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'commercial-approver'`, [PROJECT]);
+    t('the test costing status and the Commercial Approver assignment are put back', cr.status < 300 && !(await costingNow()).feasibilityStatus, `${cr.status} ${short(cr.json)}`);
+  }
+
   // SW-59 (2026-11-23): the dossier type of a market is Regulatory's, from its market profile, derived on every read and save.
   cr = await api('admin', 'PUT', `/reference/market-profiles/${nonAsean}`, { patch: { dossierType: 'ARTG listing' }, signal: { criticality: 'Low', dueDate: '2099-01-01' } });
   t('a market profile naming the dossier type is saved', cr.status < 300, `${cr.status} ${short(cr.json)}`);

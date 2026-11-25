@@ -1915,7 +1915,7 @@ const regulatoryChecklistStatus: RegisterConfig = {
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   drawerSections: [
-    { title: 'Dossier component', columns: ['componentId', 'market', 'dossierType', 'component', 'componentVersion', 'owner', 'checklistLink', 'otherMarketName'] },
+    { title: 'Component', columns: ['componentId', 'market', 'dossierType', 'component', 'componentVersion', 'owner', 'checklistLink', 'otherMarketName'] },
     { title: 'Internal regulatory decision', columns: ['status', 'regulatoryApproval', 'approvalConditions', 'conditionTiming', 'conditionActionId', 'naRationale', 'naReviewer'] },
     { title: 'External notification / authorisation', columns: ['externalAuthorisation', 'externalEvidenceLink'] },
     { title: 'Notes', columns: ['notes'] },

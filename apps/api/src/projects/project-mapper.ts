@@ -728,6 +728,11 @@ function toProjectDataRaw(
       ...(p.costing?.reviewDate ? { reviewDate: dateOnly(p.costing.reviewDate) as string } : {}),
       ...(p.costing?.assumptions ? { assumptions: p.costing.assumptions } : {}),
       ...(p.costing?.evidenceLink ? { evidenceLink: p.costing.evidenceLink } : {}),
+      ...(p.costing?.conditionActionId ? { conditionActionId: p.costing.conditionActionId } : {}),
+      ...(p.costing?.riskBound ? { riskBound: p.costing.riskBound } : {}),
+      ...(p.costing?.commercialDecisionBy ? { commercialDecisionBy: p.costing.commercialDecisionBy } : {}),
+      ...(p.costing?.commercialDecisionAt ? { commercialDecisionAt: dateOnly(p.costing.commercialDecisionAt) as string } : {}),
+      ...(p.costing?.revisionChangeId ? { revisionChangeId: p.costing.revisionChangeId } : {}),
     },
     // The workbook's row order (EVIDENCE_AREAS), not the database's: the rows are created together, so their ids carry no order.
     evidence: [...p.evidenceItems]

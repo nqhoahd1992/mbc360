@@ -81,7 +81,11 @@ const NON_CRIT = 'sg05-product-form';
   const gatesWithTrigger = new Map<string, string[]>();
   for (const [g, items] of Object.entries(GATE_READINESS))
     for (const r of items) if (r.tier === 'Conditional' && r.trigger) gatesWithTrigger.set(g, [...(gatesWithTrigger.get(g) ?? []), r.id]);
-  const all = [...gatesWithTrigger.values()].flat();
+  // Items we added after the team's table was sent, none of them in it: a conditional proceed's own supports (Round 5 question 21, R6-Q29). Their
+  // generated "not triggered" reading needs no acknowledgement, because nothing classifies them as critical.
+  const OUR_ADDITIONS = new Set(['sg05-costing-must-carried']);
+  const all = [...gatesWithTrigger.values()].flat().filter((id) => !OUR_ADDITIONS.has(id));
+  t('...and an item of ours outside the table is never classified critical', [...OUR_ADDITIONS].every((id) => !isCriticalForAcknowledgement('SG05', id)));
   t('31 Conditional items with a trigger — the table in question 1 lists exactly these', all.length === 31, `got ${all.length}`);
   t('SG11 has no such item (question 1 says so)', !gatesWithTrigger.has('SG11'));
 

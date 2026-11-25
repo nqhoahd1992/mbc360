@@ -32,6 +32,9 @@ import { TABLE_STICKY } from '../theme/tokens';
 import '../styles/concept.css';
 import './BomCosting.css';
 import ReferenceSource from '../components/ReferenceSource';
+import NextActionSelect from '../components/NextActionSelect';
+import ChangeRefSelect from '../components/ChangeRefSelect';
+import SelfAttestField from '../components/SelfAttestField';
 
 // Formula BOM's own review-owner combo (workbook): Formulation owner, Quality
 // co-review (Formula BOM & sensory testing), Project Manager co-sign (appended
@@ -1233,6 +1236,79 @@ export default function BomCosting() {
                     />
                   </label>
                 </div>
+                {/* Round 5 question 21: what a Proceed with Conditions needs to carry a costing that is not Commercially Feasible on a commercially
+                    dependent project. Each status shows only what it needs. */}
+                {costing.feasibilityStatus === 'Feasible with Conditions' && (
+                  <div className="bom-form" style={{ marginTop: 12 }}>
+                    <label className="bom-field cc-f6">
+                      <span className="bom-label">Tracked action carrying the conditions<span className="as-req">&nbsp;*</span></span>
+                      <NextActionSelect
+                        disabled={formulaLocked}
+                        value={costing.conditionActionId || undefined}
+                        onChange={(v) => costingDraft.update((prev) => ({ ...prev, conditionActionId: v ?? '' }))}
+                      />
+                    </label>
+                    <label className="bom-field cc-f6">
+                      <span className="bom-label">Commercial acceptance of the conditions<span className="as-req">&nbsp;*</span></span>
+                      <SelfAttestField
+                        disabled={formulaLocked}
+                        value={costing.commercialDecisionBy}
+                        onChange={(v) => costingDraft.update((prev) => ({ ...prev, commercialDecisionBy: v }))}
+                      />
+                      <span className="bom-hint">Recorded by the project&apos;s Commercial Approver. Without it the gate is Hold, not Proceed with Conditions.</span>
+                    </label>
+                  </div>
+                )}
+                {costing.feasibilityStatus === 'In Progress' && (
+                  <div className="bom-form" style={{ marginTop: 12 }}>
+                    <label className="bom-field cc-f12">
+                      <span className="bom-label">Outstanding costing risk and its bound<span className="as-req">&nbsp;*</span></span>
+                      <Input.TextArea
+                        autoSize={{ minRows: 2, maxRows: 4 }}
+                        disabled={formulaLocked}
+                        placeholder="What is still unknown and the most it could move the cost or margin"
+                        value={costing.riskBound}
+                        onChange={(e) => costingDraft.update((prev) => ({ ...prev, riskBound: e.target.value }))}
+                      />
+                      <span className="bom-hint">Costing that is still in progress can be carried only when the outstanding risk is bounded; otherwise the gate is Hold.</span>
+                    </label>
+                  </div>
+                )}
+                {costing.feasibilityStatus === 'Not Feasible' && (
+                  <div className="bom-form" style={{ marginTop: 12 }}>
+                    <label className="bom-field cc-f6">
+                      <span className="bom-label">Change that revises the commercial requirement<span className="as-req">&nbsp;*</span></span>
+                      <ChangeRefSelect
+                        disabled={formulaLocked}
+                        purpose="implementation"
+                        value={costing.revisionChangeId || undefined}
+                        onChange={(v) => costingDraft.update((prev) => ({ ...prev, revisionChangeId: v ?? '' }))}
+                      />
+                    </label>
+                    <label className="bom-field cc-f6">
+                      <span className="bom-label">Authorised by<span className="as-req">&nbsp;*</span></span>
+                      <SelfAttestField
+                        disabled={formulaLocked}
+                        value={costing.commercialDecisionBy}
+                        onChange={(v) => costingDraft.update((prev) => ({ ...prev, commercialDecisionBy: v }))}
+                      />
+                      <span className="bom-hint">A conditional signature cannot declare a failed Must requirement met: Hold, or revise the requirement through an approved change.</span>
+                    </label>
+                  </div>
+                )}
+                {costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE && (
+                  <div className="bom-form" style={{ marginTop: 12 }}>
+                    <label className="bom-field cc-f6">
+                      <span className="bom-label">Scope decision recorded by<span className="as-req">&nbsp;*</span></span>
+                      <SelfAttestField
+                        disabled={formulaLocked}
+                        value={costing.commercialDecisionBy}
+                        onChange={(v) => costingDraft.update((prev) => ({ ...prev, commercialDecisionBy: v }))}
+                      />
+                      <span className="bom-hint">N/A needs a justified scope decision by the Commercial Approver, not missing costing.</span>
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
           </div>
