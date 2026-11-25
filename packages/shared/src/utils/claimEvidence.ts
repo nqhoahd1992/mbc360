@@ -43,10 +43,14 @@
 //       file or artwork reference · published version · person responsible ·
 //       withdrawal or supersession date). For printed packaging the equivalent
 //       event is Release to Print, which is a channel value there.
-import { isDoneStatus } from './doneStatus';
-import type { RegisterRow } from '../types';
+import type { ProjectData, RegisterRow } from '../types';
+import { claimCoveredByLibrary } from '../config/referenceData';
 import {
   CLAIM_STATUSES_BLOCKING_ARTWORK,
+  CLAIM_USE_APPROVING,
+  PACKAGING_LABEL_CHANNEL,
+  PUBLICATION_EVENTS_PUTTING_OUT,
+  PUBLICATION_EVENT_RELEASE_TO_PRINT,
   RELEASED_INFO_STATES,
   WORDING_EQUIVALENT_VALUES,
   WORDING_MATERIAL_CHANGE,
@@ -262,11 +266,31 @@ export function frozenRevisionEdits(
 // cleared for one market is not cleared for another.
 //
 // The market/channel record is the SKU claim register: one row per claim × SKU ×
-// market × intended channel, with its own status. A use counts as approved when a
-// row for that claim and market is Completed, and — where both sides name a
-// channel — that row's intended channel covers it. Reading approval for a market
-// from that register, and "Completed" as approved, is ours [ASSUMPTION: R5-Q38].
+// market × intended channel. Round 5 question 17(b) (answered 2026-11-05) replaced the
+// first reading ("Completed is approved"): "'Complete' is a work status, not approval.
+// Add an explicit claim-use decision ... Artwork/publication reads that decision and
+// the matching revision; a Complete row alone cannot authorise a claim." A use is
+// authorised by a row for that claim, market and channel whose decision is Approved
+// (or Approved with Conditions with the conditions confirmed met) and whose recorded
+// revision is the claim's CURRENT one. Everything else — Pending, Not Approved,
+// Withdrawn, a blank decision, conditions not yet met, a claim revised since — does
+// not. (The first reading, "a Completed row is approved", was [ASSUMPTION: R5-Q38].) [ASSUMPTION: R6-Q25]
 const CLAIM_REVIEW_REFUSED = ['Not Approved', 'Further Information Required'];
+
+// A blank decision is Pending (question 17(b) lists Pending first, and nothing has been decided).
+export const claimUseDecisionOf = (row: RegisterRow): string => text(row.claimUseDecision) || 'Pending';
+
+// Why one claim-use row does NOT authorise its claim, or undefined when it does.
+export function claimUseRowRefusal(row: RegisterRow, claim: RegisterRow): string | undefined {
+  const decision = claimUseDecisionOf(row);
+  if (decision === 'Pending') return 'the claim-use decision is still Pending (a Complete work status is not an approval)';
+  if (decision === 'Not Approved' || decision === 'Withdrawn') return `the claim-use decision is "${decision}"`;
+  if (decision === 'Approved with Conditions' && text(row.conditionsMet) !== 'Y') return 'its conditions are not yet confirmed as met';
+  const decided = cell(row.approvedRevision);
+  const current = cell(claim.revision);
+  if (decided !== current) return `the decision covers revision ${decided || '(none recorded)'}, and the claim is now at revision ${current || '(none)'}`;
+  return undefined;
+}
 
 export function claimUseBlocker(
   claim: RegisterRow,
@@ -279,15 +303,100 @@ export function claimUseBlocker(
   const market = text(use.market);
   if (market === '') return undefined;
   const rows = skuClaimRows.filter((r) => text(r.claimId) === id && text(r.market) === market);
-  const approved = rows.filter((r) => isDoneStatus(r.status));
-  if (approved.length === 0) return `claim ${id} is not approved for ${market} on the SKU claim register`;
-  const channel = text(use.channel).toLowerCase();
-  if (channel === '') return undefined;
-  const covers = approved.some((r) => {
-    const intended = text(r.intendedChannel).toLowerCase();
-    return intended === '' || intended.includes(channel);
+  if (rows.length === 0) return `claim ${id} is not approved for ${market} on the SKU claim register`;
+  const channel = text(use.channel);
+  // One row per channel: a use names the channel it goes out on, and only a decision recorded for that channel counts.
+  const forChannel = channel === '' ? rows : rows.filter((r) => text(r.intendedChannel) === channel);
+  if (forChannel.length === 0) return `claim ${id} is not approved for the "${channel}" channel in ${market}`;
+  const refusals = forChannel.map((r) => claimUseRowRefusal(r, claim));
+  if (refusals.some((r) => r === undefined)) return undefined;
+  return `claim ${id} is not approved for ${market}${channel ? ` on the "${channel}" channel` : ''}: ${refusals[0]}`;
+}
+
+// ---------------------------------------------------------------------------
+// The claim-use decision and the publication record (Round 5 question 17)
+// ---------------------------------------------------------------------------
+const useLabel = (row: RegisterRow, index: number): string =>
+  [text(row.productSku), text(row.market), text(row.claimId)].filter((p) => p !== '').join(' · ') || `row ${index + 1}`;
+
+// What a claim-use row still needs before its decision can stand: "Technical/Regulatory approvals as required" (17(b)). Regulatory when the
+// row says Regulatory review is required; Technical when the claim is NOT covered by an Approved Claims Library entry — the same condition that
+// makes a new claim need a Technical review (question 28(2)). [ASSUMPTION: R6-Q25]
+export function claimUseRowProblems(project: ProjectData, rows: RegisterRow[]): string[] {
+  const claims = new Map((project.registers['claimEvidenceTraceability'] ?? []).map((c) => [text(c.claimId), c]));
+  const out: string[] = [];
+  rows.forEach((row, i) => {
+    if (!CLAIM_USE_APPROVING.includes(claimUseDecisionOf(row))) return;
+    const label = useLabel(row, i);
+    const claim = claims.get(text(row.claimId));
+    if (!claim) {
+      out.push(`${label} — link the claim this decision is about`);
+      return;
+    }
+    if (text(row.regulatoryReviewRequired) === 'Y' && text(row.useRegulatoryApprover) === '') {
+      out.push(`${label} — Regulatory approval is needed (Regulatory review required is Y)`);
+    }
+    if (!claimCoveredByLibrary(claim, project.reference?.claimsLibrary ?? []) && text(row.useTechnicalApprover) === '') {
+      out.push(`${label} — Technical approval is needed (the claim is not covered by an Approved Claims Library entry)`);
+    }
   });
-  return covers ? undefined : `claim ${id} is not approved for the "${text(use.channel)}" channel in ${market}`;
+  return out;
+}
+
+// What a decision stands on is written by the server when the decision is recorded or re-recorded (its decision or its date changes), never
+// typed: the claim's revision and wording as they were, and the formula the product was on. Rows are carried over by Claim-use ID; a value the
+// request carries for these is never trusted.
+export function stampClaimUseDecisions(project: ProjectData, committed: RegisterRow[], rows: RegisterRow[]): RegisterRow[] {
+  const before = new Map(committed.filter((r) => text(r.useId) !== '').map((r) => [text(r.useId), r]));
+  const claims = new Map((project.registers['claimEvidenceTraceability'] ?? []).map((c) => [text(c.claimId), c]));
+  return rows.map((row) => {
+    const old = before.get(text(row.useId));
+    const decision = claimUseDecisionOf(row);
+    const recorded = CLAIM_USE_APPROVING.includes(decision);
+    const fresh = recorded && (!old || claimUseDecisionOf(old) !== decision || text(old.useDecisionDate) !== text(row.useDecisionDate) || cell(old.approvedRevision) === '' && text(old.approvedWording) === '');
+    if (!fresh) {
+      return {
+        ...row,
+        approvedRevision: old?.approvedRevision ?? '',
+        approvedWording: old?.approvedWording ?? '',
+        decisionFormulaVersion: old?.decisionFormulaVersion ?? '',
+      };
+    }
+    const claim = claims.get(text(row.claimId));
+    return {
+      ...row,
+      approvedRevision: cell(claim?.revision),
+      approvedWording: text(claim?.approvedWording),
+      decisionFormulaVersion: text(project.formulaVersion),
+    };
+  });
+}
+
+// One row of the Publication / Deployment Record is ONE event of a channel (question 17(a)): print release and market deployment are separate
+// rows; Release to Print belongs to the Packaging/label channel alone; an event that puts something out needs its date and a market and — for a
+// claim — a claim-use decision that covers that market and channel (the publication reads the decision, 17(b)); one that takes it down needs
+// the withdrawal or supersession date. [ASSUMPTION: R6-Q25]
+export function publicationRecordProblems(project: ProjectData, rows: RegisterRow[]): string[] {
+  const claims = new Map((project.registers['claimEvidenceTraceability'] ?? []).map((c) => [text(c.claimId), c]));
+  const sku = project.registers['skuClaimsPifRegister'] ?? [];
+  const out: string[] = [];
+  rows.forEach((row, i) => {
+    const label = [text(row.claimId), text(row.event), text(row.channel)].filter((p) => p !== '').join(' · ') || `row ${i + 1}`;
+    const event = text(row.event);
+    const channel = text(row.channel);
+    if (event === '') out.push(`${label} — choose the event`);
+    if (channel === '') out.push(`${label} — choose the channel`);
+    if (event === PUBLICATION_EVENT_RELEASE_TO_PRINT && channel !== '' && channel !== PACKAGING_LABEL_CHANNEL) {
+      out.push(`${label} — Release to Print is an event of the "${PACKAGING_LABEL_CHANNEL}" channel only`);
+    }
+    if (!PUBLICATION_EVENTS_PUTTING_OUT.includes(event)) return;
+    if (text(row.market) === '') out.push(`${label} — choose the market`);
+    const claim = claims.get(text(row.claimId));
+    if (!claim || text(row.market) === '' || channel === '') return;
+    const blocker = claimUseBlocker(claim, { market: row.market, channel }, sku);
+    if (blocker) out.push(`${label} — ${blocker}`);
+  });
+  return out;
 }
 
 // Round 4 question 30(c). Every claim named on an artwork row, with why it blocks.
@@ -337,7 +446,8 @@ export function artworkClaimBlockers(
         out.push({ row, claimId: id, reason: `claim ${id} is "${status || 'unclassified'}", not Supported` });
         continue;
       }
-      const useBlock = claimUseBlocker(claim, { market: row.market }, skuClaimRows);
+      // Artwork is the Packaging/label channel: the claim-use decision has to cover that channel in the market (question 17).
+      const useBlock = claimUseBlocker(claim, { market: row.market, channel: PACKAGING_LABEL_CHANNEL }, skuClaimRows);
       if (useBlock) out.push({ row, claimId: id, reason: useBlock });
     }
   }

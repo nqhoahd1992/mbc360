@@ -31,7 +31,6 @@ export interface RoleMatrixRow {
   label: string;
   kind: RoleKind;
   parentLabel?: string; // the function a specialist sits inside
-  requiredAtCreation: boolean;
   holder?: string; // the person on this project; undefined reads Unassigned
   sheetsOwned: number;
   sheetsCoReviewed: number;
@@ -98,9 +97,8 @@ export function roleMatrix(project: ProjectData): RoleMatrixRow[] {
     return {
       key: role.key,
       label: reviewRoleFieldLabel(role),
-      kind: role.parent ? 'specialist' : role.optional ? 'function' : 'area',
+      kind: role.parent ? 'specialist' : role.isFunction ? 'function' : 'area',
       parentLabel: role.parent ? labelOf(role.parent) : undefined,
-      requiredAtCreation: !role.optional,
       holder: project.identity.reviewers?.[role.key]?.trim() || undefined,
       sheetsOwned: counts.owned,
       sheetsCoReviewed: counts.coReviewed,

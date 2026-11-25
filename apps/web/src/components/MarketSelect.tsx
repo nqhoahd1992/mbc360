@@ -1,6 +1,7 @@
 import { Input, Select, Tag } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import ReferenceSource from './ReferenceSource';
 
 // Every "which market" field in a project picks from THAT project's own markets
 // (ProjectIdentity.markets, chosen once on the Create New Project form and shown
@@ -24,6 +25,7 @@ function useProjectMarkets(): string[] {
 }
 
 export default function MarketSelect({
+  hideSource,
   value,
   onChange,
   disabled,
@@ -31,6 +33,8 @@ export default function MarketSelect({
   exclude,
   only,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
@@ -74,7 +78,7 @@ export default function MarketSelect({
     ...unknown.map((m) => ({ value: m, label: m, unknown: true })),
   ];
 
-  return (
+  const select = (
     <Select
       allowClear
       showSearch
@@ -94,5 +98,11 @@ export default function MarketSelect({
         </span>
       )}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="market" />}
+    </>
   );
 }

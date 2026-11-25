@@ -1408,8 +1408,8 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q22 · R6-Q20 | **14** (đã trả lời 05/11, xây 13/11/2026; R6-Q20 hỏi lại các chỗ ta đọc) | "N/A kèm lý do" ở Phase 2–4 |
 | ✅ R5-Q23 · R6-Q21 | **15** (và 9(b)) (đã trả lời 05/11, xây 13/11/2026; R6-Q21 hỏi lại các chỗ ta đọc) | Hoãn Should/Could: ai sở hữu, hạn khi nào, có bắt buộc priority không |
 | ✅ R5-Q24 · R6-Q22 | **16** (đã trả lời 05/11, xây 14/11/2026; R6-Q22 hỏi lại các chỗ ta đọc) | Sổ General Restricted & Caution: hình dạng, có thuộc Gate 4 không |
-| R5-Q25 | **17(a)** | Danh sách Channel của bản ghi Publication / Deployment |
-| R5-Q38 | **17(b)** | "Được duyệt cho thị trường / kênh" đọc ở đâu |
+| ✅ R5-Q25 · R6-Q25 | **17(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | Danh sách Channel của bản ghi Publication / Deployment |
+| ✅ R5-Q38 · R6-Q25 | **17(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | "Được duyệt cho thị trường / kênh" đọc ở đâu |
 | R5-Q35 · R5-Q36 · R5-Q37 | **18(a) · (b) · (c)** | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
 | R5-Q28 | **19(a)** | Thị trường đã rút còn cần làn ký Gate 12 không |
 | R5-Q44 | **19(b)** | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q25 · Kênh, sự kiện xuất bản và quyết định dùng claim: các chỗ ta đọc câu trả lời (Vòng 5 câu 17) 🟡
+
+**Lộ ra 25/11/2026, khi xây câu 17.** SME nêu: (a) danh sách kênh của công ty, và "Release to Print" là một sự kiện của kênh Packaging/label cùng Published/Deployed, Updated, Withdrawn, Superseded, ghi in thật tách khỏi đưa ra thị trường thật; (b) "Complete" là trạng thái công việc, không phải phê duyệt, thêm quyết định dùng claim (Pending · Approved · Approved with Conditions · Not Approved · Withdrawn) kèm revision/wording, SKU/công thức, thị trường, kênh, phê duyệt Technical/Regulatory khi cần, ngày quyết định, hạn chế và ngày rà soát; điều kiện phải được đáp ứng cho mục đích dùng; artwork và publication đọc quyết định và revision khớp. Không nói mỗi sự kiện là một dòng hay một cột, ai ghi phê duyệt, "khi cần" là khi nào, quyết định còn hiệu lực đến bao giờ. Cách đọc của ta: (1) **bản ghi Publication / Deployment**: thêm cột `event`, **mỗi dòng là một sự kiện** (in thật và đưa ra thị trường là hai dòng); Release to Print chỉ đi với kênh Packaging/label; sự kiện đưa ra (Release to Print, Published/Deployed, Updated) cần ngày thật và thị trường, Withdrawn/Superseded cần ngày gỡ; một sự kiện đưa ra của một claim cần quyết định dùng claim phủ đúng thị trường và kênh (`publicationRecordProblems`, server và giao diện); (2) **quyết định dùng claim** nằm ở sổ SKU Claims / PIF Register (mỗi dòng: claim × SKU × thị trường × kênh): `claimUseDecision` (trống = Pending), `useDecisionDate`, `useConditions`, `conditionsMet`, `useReviewDate`, `approvedLimitation` làm "restrictions", `intendedChannel` thành dropdown kênh; (3) **các dấu ghi do server viết**, không ai gõ: `approvedRevision`, `approvedWording`, `decisionFormulaVersion`, ghi khi quyết định hoặc ngày quyết định đổi (`stampClaimUseDecisions`); (4) **một dòng cho phép dùng claim** khi quyết định là Approved (hoặc Approved with Conditions và `conditionsMet` = Y) VÀ revision đã ghi bằng revision hiện tại của claim (`claimUseRowRefusal`); Pending/trống, Not Approved, Withdrawn, điều kiện chưa đủ, hoặc claim đã đổi revision thì không; kênh khớp chính xác theo tên, một kênh một dòng; (5) **phê duyệt "khi cần"**: Regulatory khi dòng ghi Regulatory review required = Y, Technical khi claim chưa được phủ bởi một mục Claims Library đã duyệt (cùng điều kiện câu 28(2)); mỗi phê duyệt do người giữ chức năng Regulatory Claims / Technical Claims của dự án ghi, dưới tên mình (**chủ dự án quyết định 25/11/2026: mọi chức năng đều phải khai báo khi tạo dự án, nên luôn có người** — SW-60); (6) **artwork là kênh Packaging/label**: duyệt artwork cần quyết định dùng claim phủ kênh đó ở thị trường của artwork; (7) kênh của Published Information Approval cũng là danh sách này; (8) công thức được ghi nhưng một phiên bản công thức mới không tự làm quyết định hết hiệu lực (chỉ revision của claim làm vậy), và ngày rà soát quá hạn cũng không làm hết hiệu lực. Migration `20261125090000` đổi giá trị kênh cũ sang giá trị mới (giá trị không nhận ra được giữ vào Notes và để trống cho người chọn lại), gán Claim-use ID cho dòng cũ và **không bịa quyết định**: dòng chỉ "Complete" nay đọc là Pending, nên artwork và publication cần người ghi quyết định.
+
+**Câu hỏi** (đã bỏ câu "mỗi sự kiện một dòng": chủ dự án quyết định 25/11/2026 là một dòng một sự kiện, không hỏi SME; "Release to Print thuộc Packaging/label" là chính lời SME; phần "ai ghi phê duyệt" cũng do chủ dự án quyết định, theo người giữ chức năng đã khai báo ở New Project); "khi cần" (Regulatory khi dòng cần Regulatory review, Technical khi claim chưa được phủ bởi mục thư viện đã duyệt) và "artwork là kênh Packaging/label" nay chỉ NÊU trong câu hỏi, không hỏi — chủ dự án 25/11/2026: việc đơn giản thì triển khai và nhắc, SME thấy sai sẽ nói): (a) một quyết định còn hiệu lực khi công thức đổi Major, hoặc khi ngày rà soát qua đi, hay phải quyết lại; (b) điều kiện của Approved with Conditions do ai xác nhận đã đáp ứng.
+
+**Nếu trả lời khác:** `utils/claimEvidence.ts` (`claimUseBlocker`, `claimUseRowRefusal`, `claimUseRowProblems`, `stampClaimUseDecisions`, `publicationRecordProblems`, `artworkClaimBlockers`); các cột của `skuClaimsPifRegister` và `publicationRecord` (`config/registers.ts`, `CLAIM_USE_DECISIONS`, `PUBLICATION_EVENTS`, `PUBLICATION_CHANNELS`); khối `skuClaimsPifRegister` và `publicationRecord` trong `setRegisterRows` (`projects.service.ts`) [ASSUMPTION: R6-Q25].
 
 #### R6-Q24 · Hồ sơ thị trường điền "Required dossier type" của sổ Regulatory Checklist Status 🟡
 
@@ -2177,7 +2185,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`generalRestrictedCaution`, và `WATCHLIST_REGISTERS` trong `utils/watchlistReview.ts` nếu là (c)) · `packages/shared/src/config/phases.ts` (dòng Key Gate Check gate 07) · `packages/shared/src/config/gateReadiness.ts` (`sg07-general-caution`) · migration `20260829...` đã backfill dòng Key Gate Check cho dự án hiện có.
 
-#### R5-Q25 · Bản ghi Publication / Deployment — danh sách "Channel" gồm những gì 🔴
+#### R5-Q25 · Bản ghi Publication / Deployment — danh sách "Channel" gồm những gì ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 17(a)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Danh sách kênh là của công ty: Packaging/label · Website · Social media · Sales/distributor material · HCP/professional material · Retailer/e-commerce listing · Advertising · Other - specify. "Release to Print" KHÔNG phải kênh: là một sự kiện của kênh Packaging/label, cùng với Published/Deployed, Updated, Withdrawn, Superseded; ghi việc in thật tách khỏi việc đưa ra thị trường thật. → **R6-Q25**.
 
 **Lộ ra khi build câu 30(d) (29/08/2026).** Đáp án tách rõ hai sự kiện — *"Approved for Release means AUTHORISED for use"*, còn việc xuất bản thật là một bản ghi riêng — và liệt kê đủ **bảy trường** phải ghi: ngày xuất bản thật · **kênh** · thị trường · URL/file/artwork reference · phiên bản đã xuất bản · người chịu trách nhiệm · ngày rút hoặc thay thế. Sáu trong bảy có kiểu dữ liệu rõ ràng; **"kênh" thì không có danh sách giá trị**.
 
@@ -2293,7 +2303,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/claimEvidence.ts` — `REVISION_APPROVAL_CAPABILITIES`.
 
-#### R5-Q38 · "Được duyệt cho thị trường / kênh" đọc ở đâu 🔴
+#### R5-Q38 · "Được duyệt cho thị trường / kênh" đọc ở đâu ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 17(b)) và đã xây 25/11/2026 — phần dưới là lịch sử.** "Complete" là trạng thái công việc, không phải phê duyệt; thêm quyết định dùng claim rõ ràng (Pending · Approved · Approved with Conditions · Not Approved · Withdrawn) kèm revision/wording, SKU/công thức, thị trường, kênh, phê duyệt Technical/Regulatory khi cần, ngày quyết định, hạn chế, ngày rà soát; artwork và publication đọc quyết định cùng revision khớp, một dòng Complete không đủ. → **R6-Q25**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B22).** Câu 30(c) yêu cầu chặn khi claim chưa được duyệt cho thị trường hoặc kênh. Đang đọc sổ SKU Claims: phải có dòng của claim đó, đúng thị trường, status Completed; nếu cả hai bên ghi kênh thì kênh dự định phải bao gồm kênh dùng.
 

@@ -38,6 +38,7 @@
     "verify:impact-criticality": "tsx packages/shared/scripts/verify-impact-criticality.ts",
     "verify:general-caution": "tsx packages/shared/scripts/verify-general-caution.ts",
     "verify:reference-links": "tsx packages/shared/scripts/verify-reference-links.ts",
+    "verify:claim-use": "tsx packages/shared/scripts/verify-claim-use.ts",
     "verify:requirement-deferral": "tsx packages/shared/scripts/verify-requirement-deferral.ts",
     "verify:requirement-na": "tsx packages/shared/scripts/verify-requirement-na.ts",
     "verify:market-additions": "tsx packages/shared/scripts/verify-market-additions.ts",

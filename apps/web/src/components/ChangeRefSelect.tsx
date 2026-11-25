@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import type { ChangeRecord } from '@mbc360/shared/types';
 import { changeLinkProblem, resolveChangeRef, type ChangeLinkPurpose } from '@mbc360/shared/utils/changeLinks';
 import { useAppStore } from '../store/useAppStore';
+import ReferenceSource from './ReferenceSource';
 
 // Picks a change record of this project from the Change Control log (Round 5 question 11(4)). A register used to hold a typed Change ID, so a typo or
 // another project's number satisfied it and nothing checked that it existed. The value stored is the change's own number; an FC- number an older book
@@ -13,11 +14,14 @@ import { useAppStore } from '../store/useAppStore';
 const NO_CHANGES: ChangeRecord[] = [];
 
 export default function ChangeRefSelect({
+  hideSource,
   value,
   onChange,
   disabled,
   purpose = 'reference',
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
@@ -42,7 +46,7 @@ export default function ChangeRefSelect({
     }),
     ...(current && !resolved ? [{ value: current, label: current, status: 'not in the Change Control log' }] : []),
   ];
-  return (
+  const select = (
     <Select
       allowClear
       showSearch
@@ -61,5 +65,11 @@ export default function ChangeRefSelect({
         </span>
       )}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="change" />}
+    </>
   );
 }

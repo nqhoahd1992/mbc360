@@ -48,12 +48,6 @@ export default function RoleMatrix() {
       ),
     },
     {
-      title: 'Named when the project is created',
-      dataIndex: 'requiredAtCreation',
-      width: 150,
-      render: (required: boolean) => (required ? 'Required' : 'Optional'),
-    },
-    {
       title: 'Held on this project by',
       dataIndex: 'holder',
       render: (holder: string | undefined) =>
@@ -116,7 +110,7 @@ export default function RoleMatrix() {
         />
         <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
           A role nobody holds reads <b>Unassigned</b>. Whatever needs that role waits; nobody is substituted for it, the Lead and
-          administrators included. Only the optional roles can be empty, and they are used to acknowledge "not applicable" reasons.
+          administrators included. Every role is named when a project is created, so only a project that predates that can show one empty.
           Gate, phase and market decisions follow people the Lead nominated or review areas named when the project was created.
         </Typography.Paragraph>
       </section>

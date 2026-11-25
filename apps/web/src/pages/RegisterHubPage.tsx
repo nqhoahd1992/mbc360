@@ -28,6 +28,7 @@ import { VULNERABLE_REGISTER } from '@mbc360/shared/utils/vulnerableUsers';
 import WatchlistRegister from '../components/WatchlistRegister';
 import RegisterSummaryCard from '../components/RegisterSummaryCard';
 import { deriveRegisterRows, registerSummary } from '@mbc360/shared/utils/registerDerived';
+import { claimUseRowProblems, publicationRecordProblems } from '@mbc360/shared/utils/claimEvidence';
 import RegisterPageHeader, { RegisterProgressCard } from '../components/RegisterPageHeader';
 import { WATCHLIST_REGISTERS } from '@mbc360/shared/utils/watchlistReview';
 
@@ -283,6 +284,14 @@ export default function RegisterHubPage() {
             readOnly={locked}
             readOnlyReason={lockedReason}
             embedded
+            // Round 5 question 17: what the API refuses on these two registers is said here before the round trip.
+            saveBlockers={
+              registerKey === 'publicationRecord'
+                ? (draft) => publicationRecordProblems(project, draft)
+                : registerKey === 'skuClaimsPifRegister'
+                  ? (draft) => claimUseRowProblems(project, draft)
+                  : undefined
+            }
           />
         )}
         {summary && <RegisterSummaryCard summary={summary} />}

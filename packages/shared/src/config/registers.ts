@@ -755,20 +755,34 @@ export const EVIDENCE_BASIS_COLUMN = 'evidenceBasisRequired';
 // values are the answer's own two headings; the criteria under each are what the
 // reviewer weighs, and are not conditions software can evaluate ("meaning
 // changes", "scope expands", "evidence burden changes materially").
-// Question 30(d) names no channel list, so this is ours — assembled from the
-// channels the Published Information register already distinguishes plus the one
-// the answer names outright ("for printed packaging the equivalent event may be
-// Release to Print") [ASSUMPTION: R5-Q25].
+// Question 30(d) named no channel list, so the first build used one of our own [ASSUMPTION: R5-Q25]; question 17(a) of Round 5 supplied the real one.
+// Round 5 question 17(a) answered (2026-11-05): the company's own list, worded as the team wrote it. "Release to Print" is NOT a channel: it is an
+// EVENT of the Packaging/label channel (PUBLICATION_EVENTS), recorded separately from the market deployment.
 export const PUBLICATION_CHANNELS = [
-  'Release to Print (packaging / label)',
+  'Packaging/label',
   'Website',
   'Social media',
-  'Sales or distributor material',
-  'HCP or professional material',
-  'Retailer listing',
+  'Sales/distributor material',
+  'HCP/professional material',
+  'Retailer/e-commerce listing',
   'Advertising',
-  'Other — specify in notes',
+  'Other - specify',
 ] as const;
+export const PACKAGING_LABEL_CHANNEL = PUBLICATION_CHANNELS[0];
+
+// Question 17(a): "Treat 'Release to Print' as an event for the Packaging/label channel, alongside Published/Deployed, Updated, Withdrawn and
+// Superseded. Record actual print release separately from actual market deployment."
+export const PUBLICATION_EVENTS = ['Release to Print', 'Published/Deployed', 'Updated', 'Withdrawn', 'Superseded'] as const;
+export const PUBLICATION_EVENT_RELEASE_TO_PRINT = PUBLICATION_EVENTS[0];
+// The events that put something out (they need the claim-use decision to cover it); Withdrawn and Superseded take something down.
+export const PUBLICATION_EVENTS_PUTTING_OUT: readonly string[] = ['Release to Print', 'Published/Deployed', 'Updated'];
+export const PUBLICATION_EVENTS_TAKING_DOWN: readonly string[] = ['Withdrawn', 'Superseded'];
+
+// Question 17(b): "'Complete' is a work status, not approval. Add an explicit claim-use decision: Pending; Approved; Approved with Conditions; Not
+// Approved; Withdrawn." A blank decision reads as Pending.
+export const CLAIM_USE_DECISIONS = ['Pending', 'Approved', 'Approved with Conditions', 'Not Approved', 'Withdrawn'] as const;
+export const CLAIM_USE_DECIDED: readonly string[] = ['Approved', 'Approved with Conditions', 'Not Approved', 'Withdrawn'];
+export const CLAIM_USE_APPROVING: readonly string[] = ['Approved', 'Approved with Conditions'];
 
 export const CLAIM_REVISION_ROUTES = [
   'New revision of the same Claim ID',
@@ -1802,13 +1816,16 @@ const publicationRecord: RegisterConfig = {
   gate: '10/11',
   columns: [
     { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
-    { key: 'publicationDate', label: 'Actual publication / release date', type: 'date', width: 170 },
+    // Question 17(a): one row is ONE event of a channel — print release and market deployment are separate rows. Release to Print belongs to the
+    // Packaging/label channel alone (publicationRecordProblems). [ASSUMPTION: R6-Q25]
+    { key: 'event', label: 'Event', type: 'select', width: 170, options: [...PUBLICATION_EVENTS] },
+    { key: 'publicationDate', label: 'Actual date of the event', type: 'date', width: 170, requiredWhen: { column: 'event', values: PUBLICATION_EVENTS_PUTTING_OUT } },
     { key: 'channel', label: 'Channel', type: 'select', width: 180, options: [...PUBLICATION_CHANNELS] },
     { key: 'market', label: 'Market', type: 'market', width: 140 },
     { key: 'reference', label: 'URL, file or artwork reference', type: 'text', width: 220 },
     { key: 'publishedVersion', label: 'Published version', type: 'text', width: 150 },
     { key: 'responsible', label: 'Person responsible', type: 'user', width: 150 },
-    { key: 'withdrawalDate', label: 'Withdrawal / supersession date', type: 'date', width: 180 },
+    { key: 'withdrawalDate', label: 'Withdrawal / supersession date', type: 'date', width: 180, requiredWhen: { column: 'event', values: PUBLICATION_EVENTS_TAKING_DOWN } },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
 };
@@ -1923,6 +1940,8 @@ const skuClaimsPifRegister: RegisterConfig = {
   mode: 'register',
   gate: '03/10',
   columns: [
+    // Generated (AUTO_ROW_IDS): a decision's stamps (revision, wording, formula) are carried over by this id (Round 5 question 17(b)).
+    { key: 'useId', label: 'Claim-use ID', type: 'text', width: 100 },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'market', label: 'Market', type: 'market', width: 110 },
     // 2026-08-11: this register records where a claim is USED (SKU x market x
@@ -1942,14 +1961,36 @@ const skuClaimsPifRegister: RegisterConfig = {
     // rather than the claim itself: the same wording is held to a different
     // standard on-pack than in a social caption, and review may be required for
     // one market/channel and not another.
-    { key: 'intendedChannel', label: 'Intended channel', type: 'text', width: 150 },
+    // A picked channel since 2026-11-23 (Round 5 question 17(a)): the use is matched to a channel by name, so it cannot be free text. One row
+    // per claim x SKU x market x channel; required once a decision approves the use.
+    { key: 'intendedChannel', label: 'Intended channel', type: 'select', width: 190, options: [...PUBLICATION_CHANNELS], requiredWhen: { column: 'claimUseDecision', values: CLAIM_USE_APPROVING } },
     { key: 'regulatoryReviewRequired', label: 'Regulatory review required', type: 'select', width: 150, options: YNNA },
+    // Round 5 question 17(b): "'Complete' is a work status, not approval." The decision is its own field; artwork and publication read it and the
+    // matching revision, so a Complete row alone authorises nothing (claimUseBlocker). A blank decision is Pending. [ASSUMPTION: R6-Q25]
+    { key: 'claimUseDecision', label: 'Claim-use decision', type: 'select', width: 190, options: [...CLAIM_USE_DECISIONS] },
+    { key: 'useDecisionDate', label: 'Decision date', type: 'date', width: 130, requiredWhen: { column: 'claimUseDecision', values: CLAIM_USE_DECIDED } },
+    // What the decision stands on, written by the server when a decision is recorded and never typed: the claim's revision and wording as they
+    // were, and the formula the product was on.
+    { key: 'approvedRevision', label: 'Approved claim revision', type: 'text', width: 120, editable: false },
+    { key: 'approvedWording', label: 'Approved wording', type: 'textarea', width: 200, editable: false },
+    { key: 'decisionFormulaVersion', label: 'Formula version', type: 'text', width: 110, editable: false },
+    // "Technical/Regulatory approvals as required": only the signed-in person may record themselves, and only the holder of the function on this
+    // project (Regulatory Claims / Technical Claims, named when the project is created) — enforced by the API.
+    { key: 'useRegulatoryApprover', label: 'Regulatory approval by', type: 'user', width: 150, selfAttest: true },
+    { key: 'useTechnicalApprover', label: 'Technical approval by', type: 'user', width: 150, selfAttest: true },
+    // "Conditions must be met for the intended use": an Approved with Conditions decision names its conditions, and authorises the use only once
+    // they are confirmed met.
+    { key: 'useConditions', label: 'Conditions', type: 'textarea', width: 200, requiredWhen: { column: 'claimUseDecision', values: ['Approved with Conditions'] } },
+    { key: 'conditionsMet', label: 'Conditions met', type: 'select', width: 110, options: ['Y', 'N'] },
+    { key: 'useReviewDate', label: 'Review date', type: 'date', width: 120, requiredWhen: { column: 'claimUseDecision', values: CLAIM_USE_APPROVING } },
     { key: 'evidenceType', label: 'Evidence type', type: 'text', width: 130 },
     { key: 'evidenceSource', label: 'Evidence source', type: 'text', width: 140 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
-    { key: 'approvedLimitation', label: 'Approved limitation', type: 'text', width: 160 },
+    // Question 17(b)'s "restrictions".
+    { key: 'approvedLimitation', label: 'Approved limitation / restrictions', type: 'text', width: 160 },
     { key: 'pifLink', label: 'PIF link', type: 'text', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
+    // A WORK status ("Complete" is not approval, question 17(b)); the decision above is what authorises the use.
+    { key: 'status', label: 'Work status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -2031,7 +2072,8 @@ export const publishedInfoApproval: RegisterConfig = {
     { key: 'workflowState', label: 'Workflow state', type: 'select', width: 180, options: PUBLISHED_INFO_STATES },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'materialType', label: 'Material type', type: 'text', width: 130 },
-    { key: 'channel', label: 'Channel', type: 'text', width: 130 },
+    // The company's channel list (Round 5 question 17(a)), so a claim-use decision can be matched to it by name.
+    { key: 'channel', label: 'Channel', type: 'select', width: 190, options: [...PUBLICATION_CHANNELS] },
     { key: 'market', label: 'Market', type: 'market', width: 100 },
     { key: 'publishedItem', label: 'Published information item', type: 'text', width: 180 },
     { key: 'audience', label: 'Audience', type: 'text', width: 120 },
@@ -3739,6 +3781,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   labelShipmentVerification: { column: 'shipmentId', prefix: 'SHP' },
   needsTechnologyTraceability: { column: 'needId', prefix: 'N' },
   claimEvidenceTraceability: { column: 'claimId', prefix: 'CLM' },
+  skuClaimsPifRegister: { column: 'useId', prefix: 'CU' },
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },

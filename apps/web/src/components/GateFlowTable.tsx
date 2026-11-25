@@ -474,6 +474,7 @@ export default function GateFlowTable({
             width: 140,
             render: (_, r) => (
               <UserSelect
+                hideSource
                 value={r.draftRecord.owner}
                 placeholder={r.meta.primaryOwner}
                 disabled={r.locked || r.signedLocked}

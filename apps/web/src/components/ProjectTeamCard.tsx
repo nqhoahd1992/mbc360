@@ -39,7 +39,7 @@ export default function ProjectTeamCard({ project }: { project: ProjectData }) {
   const userIdOf = (name: string) => users.find((u) => u.displayName === name)?.id;
   const userOptions = users.map((u) => ({ value: u.id, label: u.displayName, roleName: u.roleName ?? '—' }));
 
-  const assign = async (roleKey: string, userId: string | null) => {
+  const assign = async (roleKey: string, userId: string) => {
     setSaving(roleKey);
     try {
       await setFunctionAssignees(identity.id, [{ roleKey, userId }]);
@@ -75,7 +75,6 @@ export default function ProjectTeamCard({ project }: { project: ProjectData }) {
                   {r.isFunction && canAssign ? (
                     <Select
                       showSearch
-                      allowClear
                       size="middle"
                       style={{ minWidth: 220 }}
                       placeholder="Unassigned"
@@ -85,7 +84,7 @@ export default function ProjectTeamCard({ project }: { project: ProjectData }) {
                       disabled={saving === r.key}
                       value={r.name ? userIdOf(r.name) ?? r.name : undefined}
                       options={userOptions}
-                      onChange={(value) => void assign(r.key, (value as string | undefined) ?? null)}
+                      onChange={(value) => void assign(r.key, value as string)}
                     />
                   ) : r.name ? (
                     <>

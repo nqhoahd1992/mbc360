@@ -1,5 +1,6 @@
 import { Select, Tag } from 'antd';
 import { useUserOptions } from '../hooks/useUserOptions';
+import ReferenceSource from './ReferenceSource';
 
 // One picker for every "which person" field in the app. Stores the user's
 // displayName, which is what those fields already held as free text, so nothing
@@ -10,6 +11,7 @@ import { useUserOptions } from '../hooks/useUserOptions';
 // a seeded row) is kept and shown as its own option rather than silently
 // cleared — losing a recorded owner would be a worse bug than an untidy list.
 export default function UserSelect({
+  hideSource,
   value,
   onChange,
   disabled,
@@ -17,6 +19,8 @@ export default function UserSelect({
   style,
   status,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
@@ -33,7 +37,7 @@ export default function UserSelect({
     ...(value && !known ? [{ value, label: value, roleName: 'not in the user list' }] : []),
   ];
 
-  return (
+  const select = (
     <Select
       allowClear
       showSearch
@@ -52,5 +56,11 @@ export default function UserSelect({
         </span>
       )}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="user" />}
+    </>
   );
 }

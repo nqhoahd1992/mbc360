@@ -735,3 +735,17 @@ Hồ sơ thị trường đã có dossier type mà Regulatory đặt cho thị t
 **(b)** "Checklist or evidence link" của sổ có nên lấy từ hồ sơ không?
 
 **(c)** Sổ này sinh ra cho các thị trường chưa có hồ sơ dossier trong MBc360. Khi hồ sơ của một thị trường đã nêu dossier type, thị trường đó có còn cần một dòng ở đây không?
+
+## Câu 25 — Kênh, sự kiện xuất bản và quyết định dùng claim: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* sổ **Publication / Deployment Record** và **SKU Claims / PIF Register**; duyệt artwork ở **Packaging Specs & Artwork**; cột **Channel** của **Published Information Approval**.
+
+Các bạn đã cho danh sách kênh của công ty, nói rằng "Release to Print" là một sự kiện của kênh Packaging/label cùng với Published/Deployed, Updated, Withdrawn và Superseded, và việc in thật được ghi riêng với việc đưa ra thị trường. Các bạn cũng nói "Complete" là trạng thái công việc, không phải phê duyệt, và liệt kê quyết định dùng claim (Pending · Approved · Approved with Conditions · Not Approved · Withdrawn) cùng những gì nó ghi; artwork và publication đọc quyết định đó và revision khớp.
+
+Chúng tôi đã xây như sau. **Mỗi dòng của Publication / Deployment Record là một sự kiện của một kênh** — in thật và đưa ra thị trường là hai dòng — và Release to Print chỉ được dùng với kênh Packaging/label. Một sự kiện đưa ra cần ngày thật và thị trường, và với một claim thì cần quyết định dùng claim phủ đúng thị trường và kênh đó; Withdrawn và Superseded cần ngày gỡ hoặc thay thế. **Quyết định dùng claim nằm ở SKU Claims / PIF Register** (một dòng cho mỗi claim, SKU, thị trường và kênh), cùng ngày quyết định, hạn chế, điều kiện, ngày rà soát và phê duyệt Technical, Regulatory. Chính hệ thống ghi những gì quyết định dựa trên — revision và wording của claim và phiên bản công thức — vào lúc quyết định được ghi. **Một dòng chỉ cho phép dùng khi quyết định là Approved** (hoặc Approved with Conditions khi điều kiện đã được xác nhận đáp ứng) **và revision đã ghi là revision hiện tại của claim**; quyết định trống đọc là Pending, nên dòng chỉ Complete không cho phép gì. Phê duyệt Regulatory cần khi dòng ghi cần Regulatory review, phê duyệt Technical cần khi claim chưa được phủ bởi một mục Claims Library đã duyệt; mỗi phê duyệt do người giữ chức năng đó (Regulatory Claims hoặc Technical Claims) ghi, dưới tên mình; người này được khai báo khi tạo dự án. Artwork là kênh Packaging/label. Các dòng có sẵn không được gán quyết định: dòng chỉ Complete nay đọc là Pending.
+
+Chúng tôi đọc "khi cần" là: phê duyệt Regulatory khi cần Regulatory review, phê duyệt Technical khi claim chưa được phủ bởi mục thư viện đã duyệt. Nếu chỗ nào chưa đúng ý các bạn, xin cho chúng tôi biết.
+
+**(a)** Một quyết định dùng claim còn hiệu lực khi công thức đổi (ví dụ phiên bản Major), hoặc khi ngày rà soát qua đi, hay phải quyết định lại? Chúng tôi chỉ cho nó hết hiệu lực khi revision của claim đổi.
+
+**(b)** Ai xác nhận điều kiện của quyết định "Approved with Conditions" đã được đáp ứng?

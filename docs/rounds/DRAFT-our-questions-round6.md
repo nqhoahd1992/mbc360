@@ -735,3 +735,17 @@ A market profile already holds the dossier type Regulatory sets for that market,
 **(b)** Should the register's "Checklist or evidence link" come from the profile as well?
 
 **(c)** The register exists for markets that do not yet have a dossier profile in MBc360. Once a market's profile names a dossier type, does that market still need a row here?
+
+## Question 25 — Channels, publication events and the claim-use decision: have we read your answer correctly?
+
+*Where in the application:* registers **Publication / Deployment Record** and **SKU Claims / PIF Register**; artwork approval on **Packaging Specs & Artwork**; the **Channel** of **Published Information Approval**.
+
+You gave us the company's channel list, said that "Release to Print" is an event of the Packaging/label channel alongside Published/Deployed, Updated, Withdrawn and Superseded, and that print release is recorded separately from market deployment. You also said "Complete" is a work status, not approval, and listed the claim-use decision (Pending · Approved · Approved with Conditions · Not Approved · Withdrawn) and what it records; artwork and publication read that decision and the matching revision.
+
+We built it as follows. **Each row of the Publication / Deployment Record is one event of a channel** — a print release and a market deployment are two rows — and Release to Print is allowed only on the Packaging/label channel. An event that puts something out needs its actual date and a market, and, for a claim, a claim-use decision that covers that market and channel; Withdrawn and Superseded need the withdrawal or supersession date. **The claim-use decision sits on the SKU Claims / PIF Register** (one row per claim, SKU, market and channel), with the decision date, restrictions, conditions, review date and the Technical and Regulatory approvals. The system itself records what the decision stands on — the claim's revision and wording and the formula version — when the decision is recorded. **A row authorises the use only when its decision is Approved** (or Approved with Conditions once the conditions are confirmed met) **and the revision it recorded is the claim's current revision**; a blank decision reads as Pending, so a row that is only Complete authorises nothing. A Regulatory approval is needed when the row says Regulatory review is required, and a Technical approval when the claim is not covered by an approved Claims Library entry; each is recorded by the person who holds that function (Regulatory Claims or Technical Claims), named when the project was created, in their own name. Artwork is the Packaging/label channel. Existing rows were not given a decision: those that were only Complete now read as Pending.
+
+We read "as required" as: a Regulatory approval when Regulatory review is required, a Technical approval when the claim is not covered by an approved library entry. If any of this is not what you meant, please tell us.
+
+**(a)** Does a claim-use decision stay valid when the formula changes (for example a Major version), or when its review date passes, or must it be decided again? We only void it when the claim's revision changes.
+
+**(b)** Who confirms that the conditions of an "Approved with Conditions" decision have been met?

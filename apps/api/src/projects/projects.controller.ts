@@ -11,7 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
-import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
+import { REVIEW_ROLE_KEYS, REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
 import type {
   AngleRow,
   ChangeControlAssessment,
@@ -132,6 +132,11 @@ export class ProjectsController {
       if (!body[field]?.trim()) throw new BadRequestException(`${field} is required`);
     }
     if (!body.targetLaunchDate) throw new BadRequestException('targetLaunchDate is required');
+    // Every review role — the areas and the functions — is named at creation (project owner, 2026-11-25), so every record has a person
+    // responsible.
+    const named = new Set((normaliseReviewers(body.reviewers) ?? []).map((r) => r.roleKey));
+    const missingRoles = REVIEW_ROLES.filter((r) => !named.has(r.key)).map((r) => r.label);
+    if (missingRoles.length > 0) throw new BadRequestException(`These roles need a person: ${missingRoles.join(', ')}`);
     // Countries / Markets is deliberately NOT required here since 2026-08-29.
     // Round 4 question 24: "The Countries / Markets parameter is not mandatory to
     // create the initial project shell, but becomes mandatory before Gate 1

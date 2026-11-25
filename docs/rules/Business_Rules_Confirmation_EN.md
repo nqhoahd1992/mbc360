@@ -1155,6 +1155,14 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **(d)** The five outcomes are usable. Add "Further information required" and "Considered - not selected" for consistency with Question 4. At Gate 7, unresolved review/information requirements block final safety closure unless a qualified reviewer explicitly accepts a non-critical residual action under Question 8. "Restricted, reformulate" and prohibited use block until corrected. "Within limit" needs concentration/exposure, market basis and evidence, not only a status selection.
 
+### Question 17 — Publication channels and claim-use approval
+
+**Verdict:** ✅ built (2026-11-25), replacing our earlier reading (our own channel list including "Release to Print" as a channel; a claim approved when its SKU claim row was Complete). Our readings of the details are asked in Round 6, question 25.
+
+**(a)** Channels: Packaging/label; Website; Social media; Sales/distributor material; HCP/professional material; Retailer/e-commerce listing; Advertising; Other - specify. "Release to Print" is an event for the Packaging/label channel, alongside Published/Deployed, Updated, Withdrawn and Superseded. Actual print release is recorded separately from actual market deployment.
+
+**(b)** "Complete" is a work status, not approval. Add an explicit claim-use decision: Pending; Approved; Approved with Conditions; Not Approved; Withdrawn. Record the approved claim revision/wording, SKU/formula, market, channel, Technical/Regulatory approvals as required, decision date, restrictions and review date. Conditions must be met for the intended use. Artwork/publication reads that decision and the matching revision; a Complete row alone cannot authorise a claim.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

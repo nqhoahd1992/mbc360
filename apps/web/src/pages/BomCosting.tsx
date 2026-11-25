@@ -31,6 +31,7 @@ import DrawerTabs from '../components/DrawerTabs';
 import { TABLE_STICKY } from '../theme/tokens';
 import '../styles/concept.css';
 import './BomCosting.css';
+import ReferenceSource from '../components/ReferenceSource';
 
 // Formula BOM's own review-owner combo (workbook): Formulation owner, Quality
 // co-review (Formula BOM & sensory testing), Project Manager co-sign (appended
@@ -617,6 +618,7 @@ export default function BomCosting() {
                     <div className="rt-grid">
                       <RecordField label="Raw material" wide>
                         {rawMaterialControl(l, i)}
+                        <ReferenceSource text="Taken from the approved rows of Supplier &amp; RM Evidence" />
                       </RecordField>
                       <RecordField label="Ingredient / INCI" wide>
                         <Input

@@ -5,6 +5,7 @@ import type { RestrictedCautionEntry } from '@mbc360/shared/types';
 import { restrictedCautionLinkOf, restrictedCautionMatches } from '@mbc360/shared/utils/restrictedCaution';
 import { useAppStore } from '../store/useAppStore';
 import { useRestrictedCautionEntries } from '../hooks/restrictedCautionEntries';
+import ReferenceSource from './ReferenceSource';
 
 // Picks the entry of the company's restricted and caution list a General Restricted & Caution Assessment row was assessed against (SW-59,
 // 2026-11-23). The stored value is the entry's id. Only approved, current entries are offered; the ones the project's formula actually matches
@@ -14,11 +15,14 @@ import { useRestrictedCautionEntries } from '../hooks/restrictedCautionEntries';
 const KIND_COLOUR: Record<string, string | undefined> = { Prohibited: 'red', Restricted: 'orange', Caution: 'gold' };
 
 export default function RestrictedCautionSelect({
+  hideSource,
   value,
   onChange,
   disabled,
   status,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -39,7 +43,7 @@ export default function RestrictedCautionSelect({
     return current && !base.some((o) => o.value === current) ? [{ value: current, label: `${current} — no longer approved and current` }, ...base] : base;
   }, [entries, inFormula, current]);
 
-  return (
+  const select = (
     <Select
       style={{ width: '100%' }}
       showSearch={{ optionFilterProp: 'label' }}
@@ -72,5 +76,11 @@ export default function RestrictedCautionSelect({
         );
       }}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="restrictedCaution" />}
+    </>
   );
 }

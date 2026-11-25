@@ -926,7 +926,7 @@ export async function run(base: string, db: Client): Promise<number> {
     triageActs++;
     await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'quality-change-control', userId: sessions['admin'].id }], expectedVersion: await version() });
     const res = await api('admin', 'POST', `/projects/${PROJECT}/changes/${changeId}/triage`, { outcome, confirmedGates, reason: 'e2e assessment', expectedVersion: await version() });
-    await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'quality-change-control', userId: null }], expectedVersion: await version() });
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'quality-change-control'`, [PROJECT]); // the API refuses to empty a role, so the test removes the row itself
     return res;
   };
   cr = await putChanges([closable]);
@@ -1049,6 +1049,77 @@ export async function run(base: string, db: Client): Promise<number> {
       await db.query(`DELETE FROM reference_revisions WHERE dataset = 'claims-library' AND "entryId" = $1`, [lib.id]);
       await db.query(`DELETE FROM claim_library_entries WHERE id = $1`, [lib.id]);
     }
+  }
+
+  // ---- Round 5 question 17: the claim-use decision, and a publication that reads it
+  console.log('\n--- Claim-use decision and the publication record (question 17)');
+  {
+    const claimsBefore = ((await project()).project.registers.claimEvidenceTraceability ?? []).map((x: any) => ({ ...x }));
+    const market = (await project()).project.identity.markets[0] as string;
+    const meName = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const putUse = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/skuClaimsPifRegister`, { rows, expectedVersion: await version() });
+    const putPub = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/publicationRecord`, { rows, expectedVersion: await version() });
+    const hold = async (userId: string | null) =>
+      api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'regulatory-claims', userId }, { roleKey: 'technical-claims', userId }], expectedVersion: await version() });
+    let q: any = await putClaims((rows) => [...rows, { approvedWording: 'Q17 claim wording', claimCategory: 'Cosmetic' }]);
+    const claimRows = async () => ((await project()).project.registers.claimEvidenceTraceability ?? []) as any[];
+    const claimId = (await claimRows()).at(-1)?.claimId as string;
+    t('a claim to decide the use of is declared', q.status < 300 && !!claimId, `${q.status} ${short(q.json)}`);
+    const decided = (over: Record<string, unknown> = {}) => ({
+      productSku: 'SKU-Q17', market, claimId, intendedChannel: 'Website', regulatoryReviewRequired: 'N', claimUseDecision: 'Approved', useDecisionDate: '2026-11-25',
+      useReviewDate: '2027-11-25', useTechnicalApprover: meName, approvedRevision: '99', approvedWording: 'forged', ...over,
+    });
+
+    q = await putUse([decided()]);
+    t('an approval needs the person who holds Technical Claims on this project: the administrator is not that person, so it is refused (403)', q.status === 403 && /Technical Claims/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await hold(sessions['admin'].id);
+    t('the administrator is assigned Regulatory Claims and Technical Claims on the project', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await putUse([decided({ useTechnicalApprover: undefined })]);
+    t('an approving decision on a claim outside the library without the Technical approval is refused (400)', q.status === 400 && /Technical approval is needed/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putUse([decided({ intendedChannel: undefined })]);
+    t('...and one with no channel is refused (400): the use is matched to a channel', q.status === 400 && /Intended channel/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putUse([decided({ intendedChannel: 'Smoke signals' })]);
+    t('...a channel that is not on the company\'s list is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await putUse([decided({ claimUseDecision: 'Approved with Conditions' })]);
+    t('Approved with Conditions without its conditions is refused (400)', q.status === 400 && /Conditions/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putUse([decided()]);
+    const useRow = ((await project()).project.registers.skuClaimsPifRegister ?? [])[0];
+    t('an approval by the holder is recorded', q.status < 300 && useRow?.claimUseDecision === 'Approved', `${q.status} ${short(q.json)}`);
+    t('...the claim-use row gets its generated ID', /^CU-\d{3}$/.test(String(useRow?.useId)), short(useRow));
+    t('...and what it stands on is written by the server (the request\'s revision and wording are discarded)', useRow?.approvedWording === 'Q17 claim wording' && useRow?.approvedRevision !== '99', short(useRow));
+
+    // The publication reads the decision.
+    const pub = (over: Record<string, unknown> = {}) => ({ claimId, event: 'Published/Deployed', channel: 'Website', market, publicationDate: '2026-11-25', ...over });
+    q = await putPub([pub()]);
+    t('a publication on the channel the decision covers is saved', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await putPub([pub({ channel: 'Social media' })]);
+    t('...one on a channel with no decision is refused (400)', q.status === 400 && /Social media/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putPub([pub({ event: 'Release to Print' })]);
+    t('Release to Print on a channel other than Packaging/label is refused (400)', q.status === 400 && /Packaging\/label/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putPub([pub({ event: '' })]);
+    t('a publication record with no event is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await putPub([pub({ event: 'Withdrawn', channel: 'Social media', publicationDate: undefined, withdrawalDate: '2026-12-01' })]);
+    t('a withdrawal takes something down and needs no claim-use decision', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await putPub([pub({ event: 'Withdrawn', publicationDate: undefined, withdrawalDate: undefined })]);
+    t('...but needs its withdrawal date (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+
+    // A revised claim voids the decision it was decided on.
+    q = await putClaims((rows) => rows.map((x: any) => (x.claimId === claimId ? { ...x, revision: 2 } : x)));
+    t('the claim moves to a new revision', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await putPub([pub()]);
+    t('a publication now reads the decision against the NEW revision and is refused (400)', q.status === 400 && /revision/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await putUse([{ ...(((await project()).project.registers.skuClaimsPifRegister ?? [])[0]), useDecisionDate: '2026-12-02' }]);
+    t('deciding again (a new decision date) re-stamps the decision', q.status < 300 && ((await project()).project.registers.skuClaimsPifRegister ?? [])[0]?.approvedRevision === '2', `${q.status} ${short(q.json)}`);
+    q = await putPub([pub()]);
+    t('...and the publication is accepted again', q.status < 300, `${q.status} ${short(q.json)}`);
+
+    // Leave the run as it was.
+    await putPub([]);
+    await putUse([]);
+    q = await putClaims(() => claimsBefore);
+    t('the test claim, claim-use row and publication records are removed again', q.status < 300, `${q.status} ${short(q.json)}`);
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'regulatory-claims'`, [PROJECT]);
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'technical-claims'`, [PROJECT]);
   }
 
   // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
@@ -1212,8 +1283,8 @@ export async function run(base: string, db: Client): Promise<number> {
   t('...and the target users did not change', !(((await project()).project.checklists.targetUsers ?? []).find((i: any) => i.label === 'Infant 0+')?.selected));
   r = await api(voidHolderKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements/withdraw`, { gateId: 'SG08', itemId: 'sg08-infant-testing', functionKey: 'safety-study-reviewer', expectedVersion: await version() });
   t('the acknowledgement is withdrawn', r.status < 300, `${r.status} ${short(r.json)}`);
-  r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'safety-study-reviewer', userId: null }], expectedVersion: await version() });
-  t('and the function is left Unassigned again for the later checks', r.status < 300, short(r.json));
+  await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'safety-study-reviewer'`, [PROJECT]);
+  t('and the function is left Unassigned again for the later checks (the row is removed directly: the API refuses to empty a role)', ((await db.query(`SELECT 1 FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'safety-study-reviewer'`, [PROJECT])).rows.length === 0));
 
   console.log('\n--- SG02 (only to move the project to SG03)');
   await nominate('SG02');
@@ -1683,8 +1754,14 @@ export async function run(base: string, db: Client): Promise<number> {
   const ackItem = (p: any) => gp.gateReadinessChecklist(p, 'SG07').find((i: any) => i.id === ACK_ITEM);
   const postAck = async (key: string, gateId: string, itemId: string, functionKey = 'safety-scientific') =>
     api(key, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId, itemId, functionKey, expectedVersion: await version() });
-  const assignFunction = async (roleKey: string, userId: string | null) =>
-    api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
+  const assignFunction = async (roleKey: string, userId: string | null) => {
+    // The API refuses to empty a role (project owner, 2026-11-25), so the test removes the row itself.
+    if (userId === null) {
+      await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, roleKey]);
+      return { status: 200, json: {} } as any;
+    }
+    return api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
+  };
   const ackRows = async () =>
     (
       await db.query(
@@ -1848,9 +1925,10 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('...and the project envelope carries it with the other reviewers', typeof pj.project.identity.reviewers?.['technical-claims'] === 'string' && pj.project.identity.reviewers['technical-claims'] === assignedFn?.name, short(pj.project.identity.reviewers));
   r = await putFn('admin', [{ roleKey: 'technical-claims', userId: null }]);
-  t('assigning nobody leaves the function Unassigned', r.status < 300 && (await fnRow('technical-claims')) === undefined, `${r.status} ${short(r.json)}`);
+  t('a role cannot be emptied: assigning nobody is refused (400) and the person stays', r.status === 400 && /cannot be left empty/.test(String(r.json?.message)) && (await fnRow('technical-claims'))?.userId === someone.id, `${r.status} ${short(r.json)}`);
+  await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'technical-claims'`, [PROJECT]);
   const fnAudit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'project.function_assignees_updated'`, [PROJECT])).rows[0];
-  t('each change left an audit row (two for Safety earlier, two for each triage act, then assigned and cleared here)', fnAudit.n === 6 + 2 * triageActs, short(fnAudit));
+  t('each assignment left an audit row (one for each triage act plus five others; a role can no longer be emptied through the API, so no clearing is audited)', fnAudit.n === 5 + triageActs, short(fnAudit));
   r = await putFn('admin', [{ roleKey: 'project-owner', userId: someone.id }]);
   t('the Project owner can be named after the project exists (a project created before the field has none)', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
@@ -2331,8 +2409,14 @@ export async function run(base: string, db: Client): Promise<number> {
   const changesNow = async () => (await project()).project.changes as any[];
   const addChange = async (c: any) =>
     api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: [...(await changesNow()), c], expectedVersion: await version() });
-  const holdFn = async (roleKey: string, userId: string | null) =>
-    api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
+  const holdFn = async (roleKey: string, userId: string | null) => {
+    // The API refuses to empty a role (project owner, 2026-11-25), so the test removes the row itself.
+    if (userId === null) {
+      await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, roleKey]);
+      return { status: 200, json: {} } as any;
+    }
+    return api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
+  };
   const projMarkets: string[] = [...((await project()).project.identity.markets ?? [])];
 
   // ---- question 7: a recorded triage is revised, never overwritten silently

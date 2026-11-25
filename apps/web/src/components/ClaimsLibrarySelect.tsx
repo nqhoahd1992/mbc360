@@ -3,6 +3,7 @@ import { Select, Tag } from 'antd';
 import { useParams } from 'react-router-dom';
 import type { ClaimLibraryEntry } from '@mbc360/shared/config/referenceData';
 import { useAppStore } from '../store/useAppStore';
+import ReferenceSource from './ReferenceSource';
 
 // Picks an entry of the company Claims Library for a claim row (2026-10-02).
 // The column used to be free text that had to hold an internal entry id — one no
@@ -20,11 +21,14 @@ const NO_ENTRIES: ClaimLibraryEntry[] = [];
 const STATUS_COLOUR: Record<string, string | undefined> = { Approved: 'green', Proposed: 'gold', Withdrawn: 'red' };
 
 export default function ClaimsLibrarySelect({
+  hideSource,
   value,
   onChange,
   disabled,
   status,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -53,7 +57,7 @@ export default function ClaimsLibrarySelect({
       ? [{ value: current, label: `${current} — no matching library entry`, entry: undefined }, ...options]
       : options;
 
-  return (
+  const select = (
     <Select
       style={{ width: '100%' }}
       showSearch={{ optionFilterProp: 'label' }}
@@ -87,5 +91,11 @@ export default function ClaimsLibrarySelect({
         );
       }}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="claimsLibrary" />}
+    </>
   );
 }

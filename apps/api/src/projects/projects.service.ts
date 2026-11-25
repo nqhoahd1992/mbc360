@@ -73,7 +73,7 @@ import {
 } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision, gapResolveMissing } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges, isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
-import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
+import { claimUseRowProblems, contradictoryClaimRows, publicationRecordProblems, publishedInfoViolations, stampClaimUseDecisions } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import { registerAccessReason, registerAccessViolations } from '@mbc360/shared/utils/registerAccess';
 import {
@@ -3040,6 +3040,37 @@ export class ProjectsService {
       if (registerKey === 'claimEvidenceTraceability') {
         rows = applyClaimsLibraryInheritance(config.columns, rows, project.reference?.claimsLibrary, project.registers[registerKey] ?? [], 'changed');
       }
+      // Round 5 question 17(b): a claim-use row carries an explicit decision, and what the decision stands on (the claim's revision and wording,
+      // the formula) is written here, never taken from the request. An approval by a function is recorded by the person who holds that function
+      // on this project (Regulatory Claims / Technical Claims) in their own name; since 2026-11-25 every function is named when the project is
+      // created (project owner), so there is always such a person. [ASSUMPTION: R6-Q25]
+      if (registerKey === 'skuClaimsPifRegister') {
+        const committedUse = project.registers[registerKey] ?? [];
+        rows = stampClaimUseDecisions(project, committedUse, rows);
+        const incomplete = claimUseRowProblems(project, rows);
+        if (incomplete.length > 0) throw new BadRequestException(listMessage('These claim-use decisions are incomplete:', incomplete));
+        const before = new Map(committedUse.filter((r) => String(r.useId ?? '').trim() !== '').map((r) => [String(r.useId).trim(), r]));
+        const notHolders: string[] = [];
+        for (const row of rows) {
+          const old = before.get(String(row.useId ?? '').trim());
+          for (const [column, functionKey, label] of [
+            ['useRegulatoryApprover', 'regulatory-claims', 'Regulatory Claims'],
+            ['useTechnicalApprover', 'technical-claims', 'Technical Claims'],
+          ] as const) {
+            const named = String(row[column] ?? '').trim();
+            if (named === '' || named === String(old?.[column] ?? '').trim()) continue;
+            const holder = (project.identity.reviewers[functionKey] ?? '').trim();
+            if (holder === '') notHolders.push(`${label}: nobody is assigned on this project yet (the project's Lead assigns one in Project team)`);
+            else if (holder.toLowerCase() !== user.displayName.trim().toLowerCase()) notHolders.push(`${label}: only ${holder}, who holds it on this project, records this approval`);
+          }
+        }
+        if (notHolders.length > 0) throw new ForbiddenException(listMessage('Recording an approval needs the person who holds that function on this project:', notHolders));
+      }
+      // Question 17(a): one row is one event of a channel, and a publication reads the claim-use decision for its market and channel.
+      if (registerKey === 'publicationRecord') {
+        const bad = publicationRecordProblems(project, rows);
+        if (bad.length > 0) throw new BadRequestException(listMessage('These publication records cannot be saved:', bad));
+      }
       // SW-59: a register row that uses the company's restricted and caution list names the entry it was assessed against. A NEW link must name an
       // approved, current entry, and the cells derived from the entry come from the entry, not from the request.
       if (registerKey === GENERAL_CAUTION_REGISTER) {
@@ -4821,8 +4852,9 @@ export class ProjectsService {
 
   // Who holds each FUNCTION on the project (Safety / Scientific Review, Technical Claims, Quality, …), assigned or changed
   // after creation by the project's Lead or an administrator (2026-11-05, Round 5 questions 1(b) and 37(b)). Only function
-  // roles: the thirteen area roles are write-once at creation and stay so. A function with nobody in it reads Unassigned
-  // and whatever needs that authority waits; nobody is substituted for it, the Lead included.
+  // roles: the thirteen area roles are write-once at creation and stay so. A project created before every function was
+  // required may still show one as Unassigned, and whatever needs that authority waits; nobody is substituted for it, the Lead included.
+  // A function can be handed to another person here but never emptied.
   async setFunctionAssignees(
     user: SessionUser,
     id: string,
@@ -4844,12 +4876,9 @@ export class ProjectsService {
         }
         const key = { projectId_roleKey: { projectId: id, roleKey: a.roleKey } };
         const before = await tx.projectReviewer.findUnique({ where: key });
-        if (a.userId === null) {
-          if (before) {
-            await tx.projectReviewer.delete({ where: key });
-            changes.push({ roleKey: a.roleKey, before: before.name, after: null });
-          }
-          continue;
+        // A role always has a person (project owner, 2026-11-25): it can be handed to someone else but not emptied.
+        if (a.userId === null || a.userId === undefined) {
+          throw new BadRequestException('A role cannot be left empty — choose the person who holds it instead');
         }
         const person = await tx.user.findUnique({ where: { id: a.userId } });
         // Any active user may hold a function: the SME's "company role matrix" (question 37(b)) may mean a limit to people holding

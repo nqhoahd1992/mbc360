@@ -22,12 +22,13 @@ export interface ReviewRole {
   // Absent on the FUNCTION roles below: they are not people the workbook names, so there is no account to seed for them.
   workbookName?: string;
   // True on a FUNCTION role (added 2026-11-05): who holds a professional function on this project — Safety / Scientific
-  // Review, Technical Claims, Quality, … — as opposed to who owns a workbook area. Never required to create a project: a
-  // project may have nobody in the function, and then it reads "Unassigned" and whatever needs that authority waits
-  // (Round 5 question 37(b): "show Unassigned and block decisions that need that authority; do not silently substitute the
-  // Lead"). The project's Lead assigns or changes them at any time (PUT …/function-assignees); the thirteen area roles
-  // stay write-once at creation.
-  optional?: boolean;
+  // Review, Technical Claims, Quality, … — as opposed to who owns a workbook area. Required to create a project, like every
+  // other role (project owner, 2026-11-25: every role is named at creation, so every record has a person responsible; it was
+  // optional from 2026-11-05 to then). A project that predates this still reads "Unassigned" for a function nobody holds, and
+  // whatever needs that authority waits (Round 5 question 37(b): "show Unassigned and block decisions that need that authority;
+  // do not silently substitute the Lead"). The project's Lead may CHANGE who holds a function at any time (PUT
+  // …/function-assignees) but may not leave it empty; the area roles stay write-once at creation.
+  isFunction?: boolean;
   // Set on a SUB-ROLE: a specialist who sits INSIDE the function named by this key — "Quality / microbiology reviewer" is a
   // specialism within Quality, "Safety / study reviewer" within Safety (2026-11-06, project owner's reading of how the review
   // team writes these names in Round 5 question 1(a): a lower-case word after the slash is a specialism inside the function
@@ -41,7 +42,7 @@ export interface ReviewRole {
   area?: string;
 }
 
-// The full set collected at project creation (all required).
+// The full set collected at project creation (all required, area roles and functions alike).
 //
 // Labels re-derived from the company's real job titles (2026-08-27,
 // user-supplied), replacing the earlier dev-invented functional-area names —
@@ -112,38 +113,38 @@ export const REVIEW_ROLES: ReviewRole[] = [
   // ---- FUNCTION roles (2026-11-05). Round 5 questions 1(b) and 37(b): the review team names the FUNCTION that has to
   // acknowledge a "not applicable" reason (Safety, Regulatory, Quality, Technical claims, …) and says a function is a named
   // person on the project, never derived from a job title that merely looks similar. Quality and Packaging / Artwork are NOT
-  // repeated here: they are the 'quality' and 'packaging' area roles above (see the note there). Everything below is optional;
-  // nothing seeds an account.
-  { key: 'safety-scientific', label: 'Safety / Scientific Review', optional: true },
-  { key: 'clinical-study', label: 'Clinical / Study Coordinator', optional: true },
-  { key: 'technical-claims', label: 'Technical Claims', optional: true },
+  // repeated here: they are the 'quality' and 'packaging' area roles above (see the note there). Everything below is required at
+  // creation like the rest; nothing seeds an account.
+  { key: 'safety-scientific', label: 'Safety / Scientific Review', isFunction: true },
+  { key: 'clinical-study', label: 'Clinical / Study Coordinator', isFunction: true },
+  { key: 'technical-claims', label: 'Technical Claims', isFunction: true },
   // "Technical claims reviewer" and "Authorised human-study reviewer" are worded exactly as the review team wrote them in the
   // acknowledgement table of Round 5 question 1(a) and have no parent function the team names, so each stays its OWN function:
   // nothing says "Technical claims reviewer" is the "Technical Claims" function above or "Authorised human-study reviewer" the
   // "Clinical / Study Coordinator" (2026-11-06, project owner: no inference). If the team later says they are, merge them.
   // [ASSUMPTION: R5-Q6]
-  { key: 'technical-claims-reviewer', label: 'Technical claims reviewer', optional: true },
-  { key: 'human-study-reviewer', label: 'Authorised human-study reviewer', optional: true },
+  { key: 'technical-claims-reviewer', label: 'Technical claims reviewer', isFunction: true },
+  { key: 'human-study-reviewer', label: 'Authorised human-study reviewer', isFunction: true },
   // A specialism inside Safety (see `parent`), worded as the team wrote it.
-  { key: 'safety-study-reviewer', label: 'Safety / study reviewer', optional: true, parent: 'safety-scientific' },
-  { key: 'regulatory-claims', label: 'Regulatory Claims', optional: true },
+  { key: 'safety-study-reviewer', label: 'Safety / study reviewer', isFunction: true, parent: 'safety-scientific' },
+  { key: 'regulatory-claims', label: 'Regulatory Claims', isFunction: true },
   // Three specialisms INSIDE Quality (see `parent`), each named exactly as the review team wrote it in Round 5 question 1(a).
   // "Quality / microbiology reviewer" acknowledges Preservative strategy (Gate 5) and Preservative efficacy status (Gate 9);
   // "Quality / post-market reviewer" the Gate 12 feedback and surveillance reviews; "Quality / change-control reviewer" the
   // Gate 12 change-control links. The Quality holder does not stand in for them.
-  { key: 'quality-microbiology', label: 'Quality / microbiology reviewer', optional: true, parent: 'quality' },
-  { key: 'quality-post-market', label: 'Quality / post-market reviewer', optional: true, parent: 'quality' },
-  { key: 'quality-change-control', label: 'Quality / change-control reviewer', optional: true, parent: 'quality' },
-  { key: 'manufacturing', label: 'Manufacturing', optional: true },
-  { key: 'finance', label: 'Finance', optional: true },
-  { key: 'legal-ip', label: 'Legal / IP', optional: true },
-  { key: 'commercial-approver', label: 'Commercial Approver', optional: true },
+  { key: 'quality-microbiology', label: 'Quality / microbiology reviewer', isFunction: true, parent: 'quality' },
+  { key: 'quality-post-market', label: 'Quality / post-market reviewer', isFunction: true, parent: 'quality' },
+  { key: 'quality-change-control', label: 'Quality / change-control reviewer', isFunction: true, parent: 'quality' },
+  { key: 'manufacturing', label: 'Manufacturing', isFunction: true },
+  { key: 'finance', label: 'Finance', isFunction: true },
+  { key: 'legal-ip', label: 'Legal / IP', isFunction: true },
+  { key: 'commercial-approver', label: 'Commercial Approver', isFunction: true },
 ];
 
-// The two halves of REVIEW_ROLES: the thirteen workbook AREA roles every project must name at creation, and the FUNCTION
-// roles a project may leave unassigned.
-export const AREA_ROLES = REVIEW_ROLES.filter((r) => !r.optional);
-export const FUNCTION_ROLES = REVIEW_ROLES.filter((r) => r.optional);
+// The two halves of REVIEW_ROLES: the workbook AREA roles and the FUNCTION roles. A project must name a person for every one of
+// them at creation.
+export const AREA_ROLES = REVIEW_ROLES.filter((r) => !r.isFunction);
+export const FUNCTION_ROLES = REVIEW_ROLES.filter((r) => r.isFunction);
 
 // Roles the project's Lead (or an administrator) may assign or change AFTER the project is created: every function, plus the
 // Project owner, which a project created before the field existed has to be able to get. The other review areas are named once,

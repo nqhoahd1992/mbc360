@@ -14,6 +14,8 @@ import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/regis
 import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
 import { ASEAN_MARKETS, duplicateValueProblems, isColumnRequiredFor, marketScopeProblems, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
+import { referenceSourceOf } from '../utils/referenceSource';
+import ReferenceSource from './ReferenceSource';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -743,6 +745,12 @@ export default function DynamicTable({
     renderCell?.(col, row, index, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
     (col.gateLink ? <GateLink value={text(row[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (row[col.key] ? 'Yes' : 'No') : isWebAddress(text(row[col.key])) ? <LinkValue value={text(row[col.key])} /> : shownText(col, row[col.key]) || '—');
 
+  // Under a column that points into another register: where its values come from (project owner, 2026-11-25). The shared pickers draw their own line.
+  const sourceLine = (col: RegisterColumn) => {
+    const source = referenceSourceOf(col);
+    return source ? <ReferenceSource text={source} /> : null;
+  };
+
   const drawerSection = (section: DrawerSection, row: RegisterRow, index: number) => {
     const inputs = section.cols.filter((c) => editable.includes(c));
     const full = fullWidthOf(section.cols);
@@ -760,6 +768,7 @@ export default function DynamicTable({
                   {columnGate(col) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(col)}`}>G{columnGate(col)}</span>}
                 </span>
                 {renderEditor(col, row, index)}
+                {sourceLine(col)}
               </label>
             ) : (
               <div key={col.key} className={full.has(ci) ? 'rt-span-2' : undefined}>
@@ -1000,6 +1009,7 @@ export default function DynamicTable({
                       <label key={col.key}>
                         <span className="rt-label">{col.label}</span>
                         {renderEditor(col, row, index)}
+                        {sourceLine(col)}
                       </label>
                     ))}
                   </div>
@@ -1143,6 +1153,7 @@ export default function DynamicTable({
                         {columnGate(col) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(col)}`}>G{columnGate(col)}</span>}
                       </span>
                       {renderEditor(col, openRow, openIndex)}
+                      {sourceLine(col)}
                     </label>
                   ))}
                 </div>

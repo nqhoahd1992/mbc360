@@ -1,5 +1,6 @@
 import { Select, Tag } from 'antd';
 import { useClaimRows } from '../hooks/claimRows';
+import ReferenceSource from './ReferenceSource';
 
 // Picks a Claim ID from this project's Claim -> Evidence Traceability ledger,
 // which as of 2026-08-11 is the ONE place a claim is declared. Before that a
@@ -10,10 +11,13 @@ import { useClaimRows } from '../hooks/claimRows';
 // ledger belongs to the project in the URL, and these tables render from many
 // call sites.
 export default function ClaimSelect({
+  hideSource,
   value,
   onChange,
   disabled,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
@@ -40,7 +44,7 @@ export default function ClaimSelect({
     ...(current && !known ? [{ value: current, label: current, status: 'not in the claim ledger' }] : []),
   ];
 
-  return (
+  const select = (
     <Select
       allowClear
       showSearch
@@ -62,5 +66,11 @@ export default function ClaimSelect({
         </span>
       )}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="claim" />}
+    </>
   );
 }

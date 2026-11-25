@@ -142,6 +142,7 @@ export default function PostLaunchReviewCard({
                 width: 180,
                 render: (_, r) => (
                   <UserSelect
+                    hideSource
                     value={r.reviewer}
                     // Required to complete — flagged here, refused by the API.
                     style={{ width: '100%' }}

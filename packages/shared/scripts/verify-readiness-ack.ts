@@ -4,7 +4,7 @@
 // the endpoint's own guards are exercised by `npm run verify:e2e`. Run: npm run verify:ack
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { GATE_READINESS } from '../src/config/gateReadiness';
-import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerFunctionWithPeople } from '../src/config/reviewers';
+import { AREA_ROLES, FUNCTION_ROLES, LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerFunctionWithPeople } from '../src/config/reviewers';
 import { PROJECT_WIDE_AUTHORITY, independentFunctionsByGate, roleMatrix } from '../src/utils/roleMatrix';
 import { CRITICAL_GATES } from '../src/config/gateSignOff';
 import { acknowledgementsVoidedByTargetUsers, evaluateTrigger, gateCheckExemption, foreseeableContactAskedFor, foreseeableContactExcluded, voidedAcknowledgementsMessage } from '../src/utils/gateProgress';
@@ -330,7 +330,7 @@ const NON_CRIT = 'sg05-product-form';
   t('every item names exactly the functions the team answered', wrongFn.length === 0, wrongFn.join(', '));
   const knownKeys = new Set(REVIEW_ROLES.map((r) => r.key));
   t('every function named is a role a project can assign', Object.values(ACKNOWLEDGEMENT_FUNCTIONS).flat(2).every((k) => knownKeys.has(k)));
-  t('...and none is required at creation except the area roles R&I, Quality and Regulatory (a project may leave the other functions Unassigned)', Object.values(ACKNOWLEDGEMENT_FUNCTIONS).flat(2).filter((k) => !REVIEW_ROLES.find((r) => r.key === k)?.optional).every((k) => ['ri', 'quality', 'regulatory'].includes(k)));
+  t('...and every role is required at creation, functions included (project owner, 2026-11-25): none carries an optional flag', REVIEW_ROLES.every((r) => !('optional' in r)) && FUNCTION_ROLES.length > 0 && AREA_ROLES.length + FUNCTION_ROLES.length === REVIEW_ROLES.length);
 
   // A qualified name is its own function, worded exactly as the team wrote it (not plain Quality).
   // (the slots depend only on the item, so they are read directly: a fresh project may not generate these items' N/A)
@@ -417,7 +417,7 @@ const NON_CRIT = 'sg05-product-form';
   t('Sales & Marketing is a role of its own, not the project Lead', REVIEW_ROLES.find((r) => r.key === 'sales-marketing')?.label === 'Sales & Marketing' && !REVIEW_ROLES.some((r) => r.label === 'Project Lead'));
   // Project owner is its own role, named by the Lead — not the Project Manager and not the project Lead.
   const po = REVIEW_ROLES.find((r) => r.key === 'project-owner');
-  t('Project owner is a required review-area role with no seeded account', !!po && !po.optional && !po.workbookName && po.label === 'Project owner');
+  t('Project owner is a required review-area role with no seeded account', !!po && !po.isFunction && !po.workbookName && po.label === 'Project owner');
   t('the Owner cell reads the Project owner', ownerFunctionWithPeople('Project owner', { 'project-owner': 'Olga' }) === 'Project owner — Olga');
   t('...and is Unassigned, never the Project Manager, when nobody is named (a project from before the field)', ownerFunctionWithPeople('Project owner', { 'project-manager': 'Chris' }) === 'Project owner — Unassigned');
   t('the Lead may assign the functions and the Project owner after creation, not the other areas', LEAD_ASSIGNABLE_ROLE_KEYS.includes('project-owner') && LEAD_ASSIGNABLE_ROLE_KEYS.includes('safety-scientific') && !LEAD_ASSIGNABLE_ROLE_KEYS.includes('quality') && !LEAD_ASSIGNABLE_ROLE_KEYS.includes('regulatory'));
@@ -438,7 +438,6 @@ const NON_CRIT = 'sg05-product-form';
   const row = (key: string) => rows.find((r) => r.key === key)!;
   t('one row per role a project can name, in the form\'s order', rows.length === REVIEW_ROLES.length && rows.every((r, i) => r.key === REVIEW_ROLES[i].key));
   t('the people on the project show beside their role; a role nobody holds has none (Unassigned)', row('regulatory').holder === 'Reggie' && row('safety-scientific').holder === 'Sekar' && row('finance').holder === undefined);
-  t('required-at-creation is exactly the area roles', rows.every((r) => r.requiredAtCreation === !REVIEW_ROLES.find((x) => x.key === r.key)?.optional));
   t('a specialist names the function it sits inside', row('quality-microbiology').kind === 'specialist' && row('quality-microbiology').parentLabel === 'Quality' && row('safety-study-reviewer').parentLabel === 'Safety / Scientific Review');
   const listed = new Set(rows.flatMap((r) => r.acknowledges.map((a) => a.gateId + '|' + a.itemId)));
   t('every one of the 27 critical items is listed under at least one role', listed.size === 27, String(listed.size));

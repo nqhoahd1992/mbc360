@@ -395,6 +395,14 @@ Nửa sau của Round 5 câu 1(d), sau bản chụp danh sách của SW-52. SME 
 - **Nơi thực thi:** `utils/impactAssessments.ts` (luật dùng chung), `ProjectsService.raiseReferenceSignal` và `concludeImpactAssessment`, ba controller trong `apps/api/src/reference/`, `ImpactAssessmentCard` trên Project Overview, ô "Effect on projects that already use this" (`ListChangeSignal`) trên ba trang danh sách. Kiểm thử: `npm run verify:impact-assessments` và cuối `gate-signing.e2e.ts`.
 - **Chưa làm / ngoài phạm vi:** sản phẩm đã bán không bị chặn bán (app không điều khiển việc bán); chỉ ngăn bước tiếp theo. Việc kết luận không tự Backtrack. Thay đổi trước khi có bảng không sinh đánh giá nào (migration `20261106180000` không backfill).
 
+### SW-60. Mọi vai trò — khu vực lẫn chức năng — đều phải có người khi tạo dự án, và một vai không bao giờ bị để trống — *Đã xây* (2026-11-25, chủ dự án)
+Trước đây 13 vai khu vực bắt buộc còn các chức năng (Safety / Scientific Review, Technical Claims, Regulatory Claims, Manufacturing, Finance, …) tuỳ chọn, nên một bản ghi cần người giữ chức năng có thể không có ai. Nay:
+- **Form New Project và `POST /projects` yêu cầu đủ mọi vai** (server trả 400 liệt kê vai còn thiếu); `ReviewRole.optional` được đổi thành `isFunction` và chỉ còn phân loại, không còn nghĩa là bỏ qua được.
+- **Lead hoặc admin chỉ được đổi người giữ một chức năng sang người khác, không được để trống** (`PUT …/function-assignees` với `userId` rỗng → 400); ô chọn trên Project team không còn nút xoá.
+- **Dự án tạo trước quy tắc này** giữ nguyên chức năng còn "Unassigned" và việc cần chức năng đó vẫn chờ (không thay người, không điền hộ); Lead gán dần. Không có migration điền người vì không thể bịa người.
+- Phê duyệt Regulatory / Technical của một lần dùng claim (câu 17) dùng chức năng Regulatory Claims / Technical Claims, nay luôn có người ở dự án mới.
+- **Kiểm tra:** `npm run verify:ack` và các đoạn `Functions` của `gate-signing.e2e.ts`.
+
 ### SW-59. Sổ dùng dữ liệu tham chiếu của công ty thì liên kết bằng một dropdown, các ô lấy từ bản ghi đó tự điền và chỉ đọc — *Đã xây cho General Restricted & Caution Assessment, sổ claim (Claims Library) và Regulatory Checklist Status (23/11/2026); các sổ khác đã tuân theo từ trước* (2026-11-23, chủ dự án)
 Khi một sổ (register) dùng dữ liệu tham chiếu của công ty (Claims Library, Raw Material Risk Overlay, hồ sơ thị trường, danh sách Restricted & caution, danh mục nguyên liệu Cosmetri, …), mối quan hệ phải được nêu rõ trong sổ, không để người dùng gõ lại tên:
 - **Một ô dropdown để chọn và liên kết** với bản ghi tương ứng của nguồn tham chiếu. Giá trị lưu là **mã định danh của bản ghi**, không phải chữ gõ tay; kiểm tra "dòng này đã nhận bản ghi kia chưa" so theo mã đó, không so tên.

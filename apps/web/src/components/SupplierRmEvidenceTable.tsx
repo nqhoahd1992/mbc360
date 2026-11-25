@@ -5,6 +5,7 @@ import type { BomLine, RegisterRow } from '@mbc360/shared/types';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
 import DynamicTable, { type CellApi } from './DynamicTable';
+import ReferenceSource from './ReferenceSource';
 
 // Supplier_RM_Evidence: the generic register table (DynamicTable, 2026-10-02
 // concept) plus this register's own cell rules. `rmCode` is picked from
@@ -84,7 +85,7 @@ export default function SupplierRmEvidenceTable({
       case 'rmCode': {
         const code = String(row.rmCode ?? '');
         const duplicates = duplicateCodes(api.draft);
-        return (
+        const picker = (
           <Select
             style={{ width: '100%' }}
             showSearch
@@ -114,6 +115,12 @@ export default function SupplierRmEvidenceTable({
               });
             }}
           />
+        );
+        return (
+          <>
+            {picker}
+            <ReferenceSource text="Taken from the live Cosmetri raw-material catalogue (connected in Integrations)" />
+          </>
         );
       }
       case 'grade':

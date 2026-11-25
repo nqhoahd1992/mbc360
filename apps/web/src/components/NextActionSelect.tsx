@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import type { NextAction } from '@mbc360/shared/types';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
+import ReferenceSource from './ReferenceSource';
 
 // Rule D3: "A genuine controlled Next Action must be used. A note alone is not
 // sufficient." So a flagged watch-list row points at a real Next Action record
@@ -22,10 +23,13 @@ import { useAppStore } from '../store/useAppStore';
 const NO_ACTIONS: NextAction[] = [];
 
 export default function NextActionSelect({
+  hideSource,
   value,
   onChange,
   disabled,
 }: {
+  // Leave out the "taken from" line under the picker where space is tight (a table cell).
+  hideSource?: boolean;
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -55,7 +59,7 @@ export default function NextActionSelect({
       ? [{ value, label: `${value} — no matching Next Action`, action: undefined }, ...options]
       : options;
 
-  return (
+  const select = (
     <Select
       style={{ width: '100%' }}
       showSearch
@@ -86,5 +90,11 @@ export default function NextActionSelect({
         );
       }}
     />
+  );
+  return (
+    <>
+      {select}
+      {!hideSource && <ReferenceSource kind="nextAction" />}
+    </>
   );
 }

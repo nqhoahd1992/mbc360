@@ -1155,6 +1155,14 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **(d)** Năm outcome dùng được. Thêm "Further information required" và "Considered - not selected" cho nhất quán với Câu 4. Ở Gate 7, yêu cầu rà soát/thông tin chưa giải quyết chặn việc đóng an toàn cuối, trừ khi người rà soát đủ năng lực chấp nhận rõ ràng một hành động tồn dư không critical theo Câu 8. "Restricted, reformulate" và việc dùng bị cấm chặn cho tới khi sửa. "Within limit" cần nồng độ/mức phơi nhiễm, cơ sở thị trường và bằng chứng, không chỉ một lựa chọn trạng thái.
 
+### Câu 17 — Kênh xuất bản và phê duyệt dùng claim
+
+**Kết luận:** ✅ đã xây (25/11/2026), thay cách đọc trước của chúng tôi (danh sách kênh tự lập có "Release to Print" như một kênh; claim được coi là duyệt khi dòng SKU claim ở trạng thái Complete). Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 25.
+
+**(a)** Kênh: Packaging/label; Website; Social media; Sales/distributor material; HCP/professional material; Retailer/e-commerce listing; Advertising; Other - specify. "Release to Print" là một sự kiện của kênh Packaging/label, cùng với Published/Deployed, Updated, Withdrawn và Superseded. Việc in thật được ghi riêng với việc đưa ra thị trường thật.
+
+**(b)** "Complete" là trạng thái công việc, không phải phê duyệt. Thêm một quyết định dùng claim rõ ràng: Pending; Approved; Approved with Conditions; Not Approved; Withdrawn. Ghi revision/wording claim được duyệt, SKU/công thức, thị trường, kênh, phê duyệt Technical/Regulatory khi cần, ngày quyết định, hạn chế và ngày rà soát. Điều kiện phải được đáp ứng cho mục đích dùng. Artwork/publication đọc quyết định đó và revision khớp; một dòng Complete không thể tự cho phép một claim.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

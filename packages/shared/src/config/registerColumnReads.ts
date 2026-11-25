@@ -55,7 +55,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
     regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
-    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink', 'status'],
+    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'intendedChannel', 'market', 'pifLink'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {

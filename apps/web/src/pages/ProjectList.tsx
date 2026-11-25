@@ -545,8 +545,7 @@ export default function ProjectList() {
 
           {/* Functions (2026-11-05, Round 5 questions 1(b) and 37(b)). Who holds each professional function on THIS project:
               the person who acknowledges a "not applicable" reason for it, and whose authority the decisions that need it
-              wait for. None is required — a project may have nobody in a function, and then it reads Unassigned and the
-              Lead assigns one later. A job title is never taken for a function. Quality and Packaging / Artwork are not here: they are
+              wait for. Every function is required, like the review areas above: a record always has a person responsible. A job title is never taken for a function. Quality and Packaging / Artwork are not here: they are
               the Quality and Packaging / Artwork fields in the required list above. A name like "Quality / microbiology reviewer" is a
               specialist inside Quality. */}
           <div className="pl-form-section">
@@ -554,11 +553,15 @@ export default function ProjectList() {
           </div>
           <div className="pl-form-grid">
             {FUNCTION_ROLES.map((role) => (
-              <Form.Item key={role.key} name={['reviewers', role.key]} label={reviewRoleFieldLabel(role)}>
+              <Form.Item
+                key={role.key}
+                name={['reviewers', role.key]}
+                label={reviewRoleFieldLabel(role)}
+                rules={[{ required: true, message: `${reviewRoleFieldLabel(role)} is required` }]}
+              >
                 <Select
                   showSearch
-                  allowClear
-                  placeholder="Unassigned"
+                  placeholder="Select a user"
                   optionFilterProp="label"
                   popupMatchSelectWidth={false}
                   notFoundContent={users.length === 0 ? 'No users found' : 'No match'}

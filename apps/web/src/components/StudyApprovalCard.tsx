@@ -100,6 +100,7 @@ export default function StudyApprovalCard({
             width: 170,
             render: (_, a, i) => (
               <UserSelect
+                hideSource
                 value={a.name}
                 onChange={(v) =>
                   patch(i, { name: v ?? '', department: users.find((u) => u.displayName === v)?.department ?? undefined })
