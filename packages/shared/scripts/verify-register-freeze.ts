@@ -25,7 +25,7 @@ const upTo = (n: number): ReadonlySet<string> => new Set(Array.from({ length: n 
 const claims = getRegisterConfig('claimEvidenceTraceability')!; // enters at 03 / 05 / 08 / 10, read by 12
 const supplier = getRegisterConfig('supplierRmEvidence')!; // enters at 04 / 07, only re-checked at 10 / 11
 const watch = getRegisterConfig('prohibitedIngredients')!; // fixed register, 04 / 07
-const stability = getRegisterConfig('stabilityRelease')!; // 09 / 11
+const stability = getRegisterConfig('stabilityRelease')!; // 09
 const claim: RegisterRow = { claimId: 'C-1', approvedWording: 'wording', claimCategory: 'Cosmetic', mechanism: 'm', evidenceGrade: 'A', revisionRoute: 'r' };
 
 // --- who owns a column ----------------------------------------------------------------------
@@ -38,8 +38,8 @@ t('supplier: the conclusion columns are Gate 7\'s, the screening columns Gate 4\
     columnOwnerGateIds('supplierRmEvidence', 'allergenStatement').join() === 'SG04');
 t('a gate that only reads a register owns none of its columns (supplier is read at 10 and 11)',
   supplier.columns.every((c) => !columnOwnerGateIds('supplierRmEvidence', c.key).some((g) => g === 'SG10' || g === 'SG11')));
-t('stability: releaseDecision is Gate 11\'s, the results Gate 9\'s',
-  columnOwnerGateIds('stabilityRelease', 'releaseDecision').join() === 'SG11' && columnOwnerGateIds('stabilityRelease', 'result').join() === 'SG09');
+t('stability: the conclusion and the results are Gate 9\'s (the release authorisation is its own register at Gate 11)',
+  columnOwnerGateIds('stabilityRelease', 'stabilityConclusion').join() === 'SG09' && columnOwnerGateIds('stabilityRelease', 'result').join() === 'SG09');
 t('watch-list: review columns Gate 4, productStatus Gate 7',
   columnOwnerGateIds('prohibitedIngredients', 'reviewerAssessment').join() === 'SG04' && columnOwnerGateIds('prohibitedIngredients', 'productStatus').join() === 'SG07');
 

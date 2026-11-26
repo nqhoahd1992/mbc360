@@ -209,6 +209,8 @@ import {
   CLAIM_EXEMPTION_CAPABILITY,
   REVISION_APPROVAL_FUNCTIONS,
   frozenRevisionEdits,
+  evidenceBasisContradictions,
+  clearConfirmedPlansOnNewRevision,
   newLinksToWithdrawnWording,
   newRevisionApprovals,
   revisionApprovalForgeries,
@@ -3383,6 +3385,10 @@ export class ProjectsService {
           const entry = linked === '' ? undefined : (project.reference?.claimsLibrary ?? []).find((e) => e.id === linked);
           return { ...row, libraryRevision: entry ? String(entry.revision) : '' };
         });
+        // Round 5 question 28(a): a finished-product effect cannot be exempted by an ingredient-level evidence basis; a new revision withdraws the plan
+        // confirmation of that claim only. [ASSUMPTION: R6-Q36]
+        const contradictions = evidenceBasisContradictions(rows);
+        if (contradictions.length > 0) throw new BadRequestException(listMessage('An evidence basis contradicts the claim:', contradictions));
         const frozen = frozenRevisionEdits(project.registers[registerKey] ?? [], rows);
         if (frozen.length > 0) {
           throw new BadRequestException(
@@ -3393,6 +3399,7 @@ export class ProjectsService {
             ),
           );
         }
+        rows = clearConfirmedPlansOnNewRevision(project.registers[registerKey] ?? [], rows);
         // Round 5 question 6(c): further use of withdrawn wording is suspended — no claim can be newly linked to it.
         const toWithdrawn = newLinksToWithdrawnWording(project.registers[registerKey] ?? [], rows, project.reference.claimsLibrary);
         if (toWithdrawn.length > 0) {

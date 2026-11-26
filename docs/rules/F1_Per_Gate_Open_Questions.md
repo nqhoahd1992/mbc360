@@ -1422,7 +1422,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q41 · R6-Q34 | **26** (đã trả lời 05/11, xây 26/11/2026; R6-Q34 hỏi lại các chỗ ta đọc) | Bản ghi deviation khi phát hành chưa được duyệt |
 | ✅ R5-Q43 · R6-Q35 | **27** (đã trả lời 05/11, xây 26/11/2026; R6-Q35 hỏi lại các chỗ ta đọc) | Ai chấp nhận pre-work của một phase |
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
-| R5-Q47 · R5-Q62 | **28(a) · (b)** | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
+| ✅ R5-Q47 · R5-Q62 · R6-Q36 | **28(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q36 hỏi lại các chỗ ta đọc) | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
 | R5-Q50 | **29** | "Approved artwork version" ở Gate 11 đọc gì |
 | R5-Q51 | **30** | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
 | R5-Q65 | **31** | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q36 · Cơ sở bằng chứng qua các gate và việc cho phép phát hành: các chỗ ta đọc câu trả lời (Vòng 5 câu 28) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 28.** SME: (a) cơ sở bằng chứng đề xuất ở Gate 3, xác nhận kế hoạch trước Gate 5 (quyết định lập kế hoạch có phiên bản), Gate 8 ghi điều thực sự đã chứng minh, Gate 10 xác nhận cơ sở hỗ trợ wording cuối, thay đổi trọng yếu cần revision có kiểm soát + rà soát lại có mục tiêu (không backtrack tự động), tác dụng thành phẩm không được miễn chỉ bằng cách chọn "ingredient-level"; (b) kết luận ổn định/tương thích ở Gate 9, cho phép phát hành theo thị trường/phiên bản ở Gate 11 liên kết bằng chứng Gate 9 đã duyệt và quy trình phát hành Quality, trường riêng, xuất lô thực tế liên kết hồ sơ GMP ngoài. Cách đọc của ta: (1) sổ claim thêm cột `claimsProductEffect` (Yes/No, Gate 3, bắt buộc cùng cơ sở bằng chứng), `evidencePlanConfirmedBy/Date` (Gate 5, selfAttest), `evidenceDemonstrated` (Gate 8), `basisSupportsWording` + `basisConfirmedBy` (Gate 10); các mục `sg05-evidence-plan-confirmed`, `sg08-evidence-demonstrated`, `sg10-basis-supports-wording` (chỉ "Yes" qua; Partly/No giữ tới khi sửa wording); claim ngoài phạm vi hoặc sản phẩm khai không có claim thì không cần; (2) kế hoạch đã xác nhận làm đóng băng cơ sở bằng chứng (`frozenRevisionEdits`: chỉ đổi qua revision mới), revision mới rút xác nhận của riêng claim đó (`clearConfirmedPlansOnNewRevision`); (3) ngoại lệ miễn (`claimNeedsPerformanceEvidence`) cần cả cơ sở "Ingredient-level"/"No performance claim" lẫn `claimsProductEffect = No`; để trống hay Yes thì không miễn; lưu claim vừa Yes vừa cơ sở miễn bị từ chối (`evidenceBasisContradictions`); (4) sổ ổn định: cột `releaseDecision` thay bằng `stabilityConclusion` (Gate 9, mục `sg09-stability-conclusion`: Not Started/Does not meet criteria chưa qua); (5) sổ mới `releaseAuthorisation` (gate 11, một dòng một thị trường × phiên bản công thức: Authorised/Pending/Not authorised, bằng chứng Gate 9, quy trình Quality, người cho phép selfAttest, ngày, link hồ sơ xuất lô ngoài), mục `sg11-release-pathway` per-market giữ làn chưa có cho phép đang hiệu lực cho phiên bản hiện tại (`marketsWithoutReleaseAuthorisation`); dữ liệu cột `releaseDecision` cũ không được chuyển (không còn cột).
+
+**Câu hỏi:** (a) ai xác nhận kế hoạch bằng chứng (hiện: bất kỳ ai trong nhóm rà soát của sổ), có cần chức năng cụ thể không; (b) "Yes" có đúng là phép thử Gate 10 và giữ claim khi Partly/No có đúng không; (c) cho phép phát hành có cần bị giữ tới khi kết luận Gate 9 là "Meets criteria" không.
+
+**Nếu trả lời khác:** `config/registers.ts` (`claimEvidenceTraceability`, `stabilityRelease`, `releaseAuthorisation`); `config/releaseAuthorisation.ts`; `utils/releaseAuthorisation.ts`; `utils/claimEvidence.ts`; `utils/gateProgress.ts` (`claimNeedsPerformanceEvidence`, `marketReleaseAuthorised`); `config/gateReadiness.ts`; `projects.service.ts` (`setRegisterRows`) [ASSUMPTION: R6-Q36].
 
 #### R6-Q35 · Pre-work: các chỗ ta đọc câu trả lời (Vòng 5 câu 27) 🟡
 
@@ -2493,7 +2501,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg02-product-form-action` (bỏ mục này nếu trường là đủ), `sg05-product-form`. Nếu vẫn cần action, cân nhắc form tạo action ngay ở Gate 2 và tự đóng khi trường Confirmed product form được điền (chưa xây, chờ trả lời).
 
-#### R5-Q47 · "Evidence basis required" bắt buộc ở gate nào 🔴
+#### R5-Q47 · "Evidence basis required" bắt buộc ở gate nào ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 28(a)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Đề xuất ở Gate 3, xác nhận kế hoạch trước Gate 5 (quyết định lập kế hoạch có phiên bản), Gate 8 ghi điều đã chứng minh, Gate 10 xác nhận hỗ trợ wording cuối; tác dụng thành phẩm không được miễn chỉ bằng "ingredient-level". → **R6-Q36** [ASSUMPTION: R5-Q47].
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục Q36(a)).** Q36(a) thêm trường 'Evidence basis required' nhưng không nói bắt buộc ở gate nào. Đang bắt buộc ở Gate 3, cạnh 'preliminary evidence requirement', và vẫn cho qua khi đã ghi nhận "không có claim".
 
@@ -2658,7 +2668,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — mục `critical-next-actions` trong `gateReadinessChecklist` (thêm một mục mềm đọc các action Critical đã đóng hoặc huỷ, được Proceed with Conditions xoá).
 
-#### R5-Q62 · Cột "Release decision" của sổ Stability & Release được nhập ở Gate 9 hay Gate 11 🔴
+#### R5-Q62 · Cột "Release decision" của sổ Stability & Release được nhập ở Gate 9 hay Gate 11 ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 28(b)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Kết luận ổn định/tương thích ở Gate 9; cho phép phát hành theo thị trường/phiên bản ở Gate 11, trường riêng, liên kết bằng chứng Gate 9 và quy trình Quality. → **R6-Q36** [ASSUMPTION: R5-Q62].
 
 **Lộ ra 09/10/2026, khi gắn gate nhập cho từng cột của sổ dùng chung.** Sổ `stabilityRelease` được Gate 9 (kết quả ổn định, tương thích) và Gate 11 (mục "Quality release pathway") đọc. F1 liệt kê ở Gate 9 *"Release-readiness conclusion"* và ở Gate 11 *"Quality release pathway"*, nhưng không nói thẳng cột "Release decision" của sổ do gate nào nhập.
 

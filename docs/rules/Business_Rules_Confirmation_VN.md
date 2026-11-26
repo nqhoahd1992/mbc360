@@ -1251,6 +1251,14 @@ Không ép rút phiên bản đã duyệt hiện có chỉ vì một bản cập
 
 Chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liên quan khi phase/gate đó mở. Chủ rà soát phase điều phối việc chấp nhận. Project Lead chỉ được chấp nhận ở những lĩnh vực mà người đó cũng có thẩm quyền cần thiết; riêng ban lãnh đạo dự án không được chấp nhận các kết luận Safety/Regulatory. Đánh dấu từng mục với tác giả/ngày và trạng thái pre-work, rồi accepted/updated/rejected, người rà soát và ngày. Chấp nhận hàng loạt chỉ được khi có danh sách tường minh các mục và người rà soát đủ thẩm quyền bao phủ.
 
+### Câu 28 — Khi nào ghi cơ sở bằng chứng và quyết định phát hành
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 36.
+
+**(a)** Ghi cơ sở bằng chứng đề xuất ở Gate 3 và xác nhận kế hoạch trước Gate 5. Đây là một quyết định lập kế hoạch có phiên bản, không phải khẳng định bất biến về bằng chứng. Gate 8 ghi điều thực sự đã chứng minh; Gate 10 xác nhận cơ sở đó hỗ trợ wording cuối. Thay đổi trọng yếu về chủ đích claim/cơ sở bằng chứng cần revision có kiểm soát và rà soát lại có mục tiêu, không sửa âm thầm hay tự động backtrack mọi quyết định sau đó không bị ảnh hưởng. Một tác dụng thành phẩm được claim không thể được miễn chỉ bằng cách chọn "ingredient-level evidence".
+
+**(b)** Ghi kết luận kỹ thuật về ổn định/tương thích ở Gate 9. Ghi việc cho phép phát hành theo thị trường/phiên bản ở Gate 11, liên kết với bằng chứng Gate 9 đã duyệt và quy trình phát hành của Quality. Các trường riêng tránh nhầm kết luận kiểm nghiệm thành công với phép ra mắt. Việc xuất lô thực tế vẫn liên kết với hồ sơ GMP/Quality bên ngoài.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

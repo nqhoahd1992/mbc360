@@ -882,3 +882,19 @@ Các bạn nói chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận
 **(b)** Regulatory, Quality & GMP và Safety có đúng là các lĩnh vực lãnh đạo không được chấp nhận kết luận, và chủ rà soát phase có được điều phối bằng cách quyết định phần còn lại không?
 
 **(c)** Mục bị rejected nên chặn phase tới khi làm lại (như đã xây), hay tới khi bản thay thế được chấp nhận?
+
+## Câu 36 — Cơ sở bằng chứng qua các gate và việc cho phép phát hành: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* (a) **Claim → Evidence Traceability** (các tab Evidence plan và Evidence and release của một claim) và danh sách readiness của Gate 3, 5, 8, 10; (b) **Stability, Compatibility & Release Evidence** và sổ mới **Release Authorisation (per market)**, cùng danh sách readiness của Gate 9 và Gate 11.
+
+Các bạn nói cơ sở bằng chứng cần có được đề xuất ở Gate 3 và kế hoạch được xác nhận trước Gate 5 — một quyết định lập kế hoạch có phiên bản, không phải bằng chứng đã chứng minh; Gate 8 ghi điều thực sự đã chứng minh và Gate 10 xác nhận cơ sở đó hỗ trợ wording cuối; thay đổi trọng yếu cần bản sửa đổi có kiểm soát và rà soát lại có mục tiêu, không sửa âm thầm hay tự động backtrack các quyết định không bị ảnh hưởng; claim về tác dụng của thành phẩm không thể được miễn chỉ bằng cách chọn bằng chứng cấp thành phần; và kết luận ổn định/tương thích ghi ở Gate 9 trong khi việc cho phép phát hành theo từng thị trường và phiên bản là một bản ghi riêng ở Gate 11, liên kết với bằng chứng Gate 9 đã duyệt và quy trình phát hành của Quality, còn việc xuất lô thực tế vẫn liên kết với hồ sơ GMP / Quality bên ngoài. Chúng tôi đã xây như sau:
+
+- **(a) Cơ sở bằng chứng của claim.** Gate 3 hỏi thêm, bên cạnh cơ sở đề xuất, claim có nêu tác dụng của thành phẩm không (Yes hay No). **Gate 5** cần kế hoạch bằng chứng được xác nhận cho mọi claim trong phạm vi, bởi một người bằng tên mình. Khi đã xác nhận, cơ sở chỉ đổi được qua một revision mới của claim đó, revision này rút xác nhận của riêng claim đó và đòi xác nhận lại — không chạm gì sau đó và không chạm claim khác. **Gate 8** cần "điều thực sự đã chứng minh" cho mọi claim trong phạm vi. **Gate 10** cần, với mọi claim trong phạm vi, câu trả lời Yes cho "cơ sở đã chứng minh hỗ trợ wording cuối" (Partly hoặc No giữ claim tới khi wording được sửa).
+- **Ngoại lệ miễn.** Claim Cosmetic được khai là bằng chứng cấp thành phần, hoặc không có claim hiệu năng, chỉ được miễn bằng chứng cấp sản phẩm khi claim cũng nói nó không nêu tác dụng của thành phẩm. Claim nói có, hoặc không nói gì, thì không được miễn; lưu một claim vừa nói có tác dụng thành phẩm vừa có cơ sở miễn sẽ bị từ chối.
+- **(b) Ổn định và phát hành.** Sổ ổn định mang kết luận Gate 9 (Meets criteria, Meets criteria with conditions, Does not meet criteria, hoặc Not Started); cột "Release decision" cũ không còn. Việc cho phép phát hành là một bản ghi riêng, mỗi thị trường và phiên bản công thức một dòng: Authorised / Pending / Not authorised, bằng chứng Gate 9 đã duyệt nó dựa vào, quy trình phát hành của Quality, ai cho phép (bằng tên mình) và khi nào, và liên kết tới hồ sơ xuất lô bên ngoài. Gate 11 giữ làn của một thị trường tới khi thị trường đó có cho phép đang hiệu lực cho phiên bản công thức hiện tại; kết quả ổn định đạt một mình không phát hành gì cả.
+
+**(a)** Ai nên xác nhận kế hoạch bằng chứng trước Gate 5 (chúng tôi nhận bất kỳ ai trong nhóm rà soát của sổ, ghi bằng tên họ), và có nên là một chức năng cụ thể như Technical không?
+
+**(b)** "Yes cho cơ sở đã chứng minh hỗ trợ wording cuối" có đúng là phép thử Gate 10 không, và giữ claim tới khi wording được sửa có đúng là hậu quả của Partly hoặc No không?
+
+**(c)** Việc cho phép phát hành có nên bị giữ cho tới khi chính kết luận Gate 9 là "Meets criteria" không (hiện do mục Gate 9 giữ, và bản cho phép nêu bằng chứng bằng văn bản)?

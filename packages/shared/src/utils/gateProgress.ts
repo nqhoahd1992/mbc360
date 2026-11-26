@@ -82,6 +82,7 @@ import {
 } from './postMarketReview';
 import { impactHolds } from './impactAssessments';
 import { pendingPreWork } from './preWork';
+import { RELEASE_AUTHORISATION_REGISTER, marketsWithoutReleaseAuthorisation } from './releaseAuthorisation';
 import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
@@ -471,7 +472,10 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
           if (!CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim())) {
             return false;
           }
-          return !EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.includes(String(c[EVIDENCE_BASIS_COLUMN] ?? '').trim());
+          // Round 5 question 28(a): "A claimed finished-product effect cannot be exempted merely by selecting ingredient-level evidence" — the exemption also
+          // needs the claim's own statement that it claims no effect of the finished product. [ASSUMPTION: R6-Q36]
+          const exempt = EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.includes(String(c[EVIDENCE_BASIS_COLUMN] ?? '').trim()) && String(c.claimsProductEffect ?? '').trim() === 'No';
+          return !exempt;
         }),
       );
 
@@ -1394,6 +1398,8 @@ export function evaluateReadinessCheck(
     // "A Critical unresolved issue blocks closure."
     case 'noOpenCriticalCapa':
       return { evaluable: true, satisfied: openCriticalCapa(project).length === 0 };
+    case 'marketReleaseAuthorised':
+      return { evaluable: true, satisfied: marketsWithoutReleaseAuthorisation(project, market).length === 0 };
     // Round 5 question 26: deviations, judged on the market's lane.
     case 'noUnresolvedDeviation':
       return { evaluable: true, satisfied: unresolvedBlockingDeviations(project, market).length === 0 };
@@ -2081,6 +2087,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'postMarketFindingsDealtWith':
     case 'noOpenCriticalCapa':
       return { href: '/post-market' };
+    case 'marketReleaseAuthorised':
+      return { href: `/registers/reg/${RELEASE_AUTHORISATION_REGISTER}` };
     case 'noUnresolvedDeviation':
     case 'deviationsReviewed':
     case 'noCriticalDeviation':

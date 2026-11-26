@@ -49,6 +49,7 @@
     "verify:pif-revisions": "tsx packages/shared/scripts/verify-pif-revisions.ts",
     "verify:deviations": "tsx packages/shared/scripts/verify-deviations.ts",
     "verify:pre-work": "tsx packages/shared/scripts/verify-pre-work.ts",
+    "verify:evidence-basis": "tsx packages/shared/scripts/verify-evidence-basis.ts",
     "verify:requirement-deferral": "tsx packages/shared/scripts/verify-requirement-deferral.ts",
     "verify:requirement-na": "tsx packages/shared/scripts/verify-requirement-na.ts",
     "verify:market-additions": "tsx packages/shared/scripts/verify-market-additions.ts",

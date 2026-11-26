@@ -1609,6 +1609,9 @@ export async function run(base: string, db: Client): Promise<number> {
   t('the representative is stored on the Approved by slot with its function', repRows.length === 1 && repRows[0].role === 'Approved by', short(repRows));
   r = await putClaims(() => [{ approvedWording: 'Hydrates skin', claimCategory: 'Cosmetic' }]);
   t('a claim row is saved while SG03 is the open gate', r.status < 300, short(r.json));
+  // Round 5 question 28(a): a claimed finished-product effect cannot be exempted by an ingredient-level evidence basis.
+  r = await putClaims((rows) => [...rows, { approvedWording: 'Smooths skin', claimCategory: 'Cosmetic', evidenceBasisRequired: 'Ingredient-level evidence', claimsProductEffect: 'Yes' }]);
+  t('a claim that states a finished-product effect cannot rest on an ingredient-level evidence basis (400)', r.status === 400 && /finished product/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;
   t('the server assigns the claim its ID (CLM-001): row IDs are generated, not typed', rows0[0].claimId === 'CLM-001', short(rows0[0]));
   t('the server no longer stamps rows (SW-4 was replaced by the row rule)', rows0[0].__rowId === undefined && rows0[0].__bornAtGate === undefined, short(rows0[0]));

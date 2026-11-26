@@ -404,6 +404,8 @@ export type ReadinessCheck =
   | { kind: 'postMarketRecordsTriaged' }
   | { kind: 'postMarketFindingsDealtWith' }
   | { kind: 'noOpenCriticalCapa' }
+  // Round 5 question 28(b): every active market (or the one lane asked about) has a standing authorisation to release the current formula version.
+  | { kind: 'marketReleaseAuthorised' }
   // Round 5 question 26: no deviation of the market leaves a safety, compliance, claims or version mismatch unresolved; every deviation is reviewed and
   // dispositioned; no Critical deviation is left unresolved.
   | { kind: 'noUnresolvedDeviation' }
@@ -562,6 +564,7 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg11-changes-admin',
   'sg11-launch',
   'sg11-reg-conditions',
+  'sg11-release-pathway',
   'sg11-deviations',
   'sg11-signoff',
   // Gate 12
@@ -1188,7 +1191,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'anyOf',
         checks: [
           { kind: 'noClaimsDeclared' },
-          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceBasisRequired'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] } },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceBasisRequired', 'claimsProductEffect'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] } },
         ],
       },
     },
@@ -1863,6 +1866,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'evidencePlanProspective' },
+    },
+    {
+      // Round 5 question 28(a): "Record the proposed evidence basis required at Gate 3 and confirm the plan before Gate 5." A planning decision, so a person
+      // confirms it per claim; a claim-free product has nothing to confirm. [ASSUMPTION: R6-Q36]
+      id: 'sg05-evidence-plan-confirmed',
+      label: 'Evidence plan confirmed for every proposed claim',
+      tier: 'Mandatory',
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidencePlanConfirmedBy'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] } },
+        ],
+      },
+      nonVacuousBecause: 'A product that declares it proposes no claims has no plan to confirm; otherwise every in-scope claim row needs its confirmation.',
+      assumption: 'R6-Q36',
     },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).
@@ -2580,6 +2599,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'evidenceTestProtocol' },
     },
     {
+      // Round 5 question 28(a): "Gate 8 records what was actually demonstrated." Per claim; may differ from the plan. [ASSUMPTION: R6-Q36]
+      id: 'sg08-evidence-demonstrated',
+      label: 'What was actually demonstrated is recorded for every proposed claim',
+      tier: 'Mandatory',
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceDemonstrated'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] } },
+        ],
+      },
+      nonVacuousBecause: 'A product that declares it proposes no claims has nothing demonstrated to record; otherwise every in-scope claim row needs it.',
+      assumption: 'R6-Q36',
+    },
+    {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg08-signoff',
       label: 'Prepared, reviewed and approved sign-off',
@@ -2607,6 +2641,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           { kind: 'registerHasRows', register: 'stabilityRelease' },
         ],
       },
+    },
+    {
+      // Round 5 question 28(b): the technical stability and compatibility CONCLUSION is Gate 9's, apart from the release authorisation of Gate 11.
+      // [ASSUMPTION: R6-Q36]
+      id: 'sg09-stability-conclusion',
+      label: 'Stability and compatibility conclusion recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['stabilityConclusion'], blankValues: ['Not Started', 'Does not meet criteria'] },
     },
     {
       id: 'sg09-pack-compat',
@@ -2887,6 +2929,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Efficacy evidence summary' },
     },
     {
+      // Round 5 question 28(a): "Gate 10 confirms the basis supports the final wording." Only a Yes passes; a claim whose wording must change is revised and
+      // reviewed again, never edited silently. [ASSUMPTION: R6-Q36]
+      id: 'sg10-basis-supports-wording',
+      label: 'The demonstrated evidence basis supports the final wording of every approved claim',
+      tier: 'Mandatory',
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['basisSupportsWording'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] }, blankValues: ['Partly — the wording must change', 'No'] },
+        ],
+      },
+      nonVacuousBecause: 'A product that declares it proposes no claims has no wording to confirm; otherwise every in-scope claim row needs a Yes.',
+      assumption: 'R6-Q36',
+    },
+    {
       id: 'sg10-artwork',
       label: 'Label and artwork review',
       tier: 'Mandatory',
@@ -3073,10 +3131,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Quality release pathway',
       tier: 'Mandatory',
       // registerRowsComplete, not registerColumnFilled: the only registerHasRows
-      // on this register is sg09-stability at an EARLIER gate, so this item's
-      // own satisfied flag was vacuously true if viewed before Gate 09 is
-      // actually passed (found 2026-07-28 — same class as the Gate 06 fix).
-      check: { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['releaseDecision'], blankValues: ['Not Started'] },
+      // Round 5 question 28(b): the authorisation to release is its own record per market and formula version, linked to the approved Gate 9 evidence and
+      // the Quality release pathway — not a column of the stability results. Judged on the market's lane. [ASSUMPTION: R6-Q36]
+      check: { kind: 'marketReleaseAuthorised' },
+      nonVacuousBecause: 'A project with no active market has nothing to release; otherwise every active market needs its own standing authorisation, which this reads directly.',
+      assumption: 'R6-Q36',
     },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints:

@@ -16,7 +16,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     vulnerableUserAssessment: ['additionalAssessments', 'responsibleReviewer', 'safetyPathway', 'vulnerableGroup'],
   },
   SG03: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimScope', 'claimSubjects', 'evidenceBasisRequired', 'libraryEntryId', 'preliminaryEvidenceRequirement', 'regulatoryReviewDate', 'regulatoryReviewEvidence', 'regulatoryReviewOutcome', 'regulatoryReviewRationale', 'regulatoryReviewer', 'reviewConditions', 'reviewConditionsAcceptedBy', 'reviewedWording', 'technicalReviewDate', 'technicalReviewEvidence', 'technicalReviewOutcome', 'technicalReviewRationale', 'technicalReviewer'],
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimScope', 'claimSubjects', 'claimsProductEffect', 'evidenceBasisRequired', 'libraryEntryId', 'preliminaryEvidenceRequirement', 'regulatoryReviewDate', 'regulatoryReviewEvidence', 'regulatoryReviewOutcome', 'regulatoryReviewRationale', 'regulatoryReviewer', 'reviewConditions', 'reviewConditionsAcceptedBy', 'reviewedWording', 'technicalReviewDate', 'technicalReviewEvidence', 'technicalReviewOutcome', 'technicalReviewRationale', 'technicalReviewer'],
     competitorLandscape: [],
     skuClaimsPifRegister: ['claimId', 'regulatoryReviewRequired'],
     targetProductProfile: ['target'],
@@ -28,6 +28,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['allergenStatement', 'approvedForUse', 'evidenceStatus', 'impurities', 'inciName'],
   },
   SG05: {
+    claimEvidenceTraceability: ['claimScope', 'evidencePlanConfirmedBy'],
     evidencePlanProspective: [],
     targetProductProfile: ['target'],
   },
@@ -44,13 +45,14 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG08: {
+    claimEvidenceTraceability: ['claimScope', 'evidenceDemonstrated'],
     evidenceTestProtocol: ['acceptanceLimit', 'reportLink', 'testMethod'],
   },
   SG09: {
-    stabilityRelease: ['acceptanceCriteria'],
+    stabilityRelease: ['acceptanceCriteria', 'stabilityConclusion'],
   },
   SG10: {
-    claimEvidenceTraceability: ['claimId', 'regulatoryReviewOutcome', 'status'],
+    claimEvidenceTraceability: ['basisSupportsWording', 'claimId', 'claimScope', 'regulatoryReviewOutcome', 'status'],
     packagingSpecsArtwork: ['approval', 'claimIds', 'market'],
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
@@ -63,12 +65,11 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     gmpLinks: ['link'],
     publishedInfoApproval: ['workflowState'],
     regulatoryChecklistStatus: ['component', 'componentId', 'conditionActionId', 'conditionTiming', 'externalAuthorisation', 'market', 'regulatoryApproval'],
+    releaseAuthorisation: ['authorisation', 'authorisedBy', 'formulaVersion', 'market', 'qualityPathway', 'stabilityEvidence'],
     releasedLabelRegister: ['newArtworkFile', 'newLabelVersion'],
-    stabilityRelease: ['releaseDecision'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects'],
     deviationRecords: ['acceptedActionId', 'acceptedBy', 'approvalActual', 'approvalExpected', 'channel', 'closureDate', 'closureDecision', 'contentDescription', 'discoveryDate', 'disposition', 'dueDate', 'evidenceLink', 'impactAssessment', 'issueType', 'market', 'owner', 'reporter', 'reviewer', 'rootCause', 'scopeOfUse', 'severity', 'source', 'verification'],
     postMarketTrends: ['action', 'actionId', 'comparisonPeriod', 'conclusion', 'interpretation', 'market', 'periodEnd', 'periodStart', 'productVersionBatches', 'reportCount', 'reviewDate', 'reviewer', 'sourceRecords'],
     vulnerableUserAssessment: ['vulnerableGroup'],
@@ -87,10 +88,9 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     studyProtocolSetup: ['plannedValue'],
   },
   SG10: {
-    claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
+    claimEvidenceTraceability: ['claimCategory', 'claimsProductEffect', 'evidenceBasisRequired'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

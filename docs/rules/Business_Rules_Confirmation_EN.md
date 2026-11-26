@@ -1251,6 +1251,14 @@ Do not force withdrawal of the approved existing version merely because a draft 
 
 The accountable subject-area owner accepts the relevant entries when that phase/gate opens. The phase review owner coordinates acceptance. A Project Lead may accept only for areas where that person also has the required authority; project leadership alone cannot accept Safety/Regulatory conclusions. Mark individual entries with author/date and pre-work status, then accepted/updated/rejected, reviewer and date. A batch acceptance is acceptable only with an explicit list of the entries and authorised reviewer coverage.
 
+### Question 28 — When evidence basis and release decisions are recorded
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 36.
+
+**(a)** Record the proposed evidence basis required at Gate 3 and confirm the plan before Gate 5. It is a versioned planning decision, not an immutable assertion of proof. Gate 8 records what was actually demonstrated; Gate 10 confirms the basis supports the final wording. Material changes to claim intent/evidence basis require a controlled revision and targeted re-review, not silent editing or automatic backtracking of every later unaffected decision. A claimed finished-product effect cannot be exempted merely by selecting "ingredient-level evidence".
+
+**(b)** Record the technical stability/compatibility conclusion at Gate 9. Record the market/version-specific authorisation to release at Gate 11, linked to the approved Gate 9 evidence and Quality release pathway. Separate fields avoid confusing a successful test conclusion with launch permission. Actual batch release remains linked to the external GMP/Quality record.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

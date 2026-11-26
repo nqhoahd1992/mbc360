@@ -2,6 +2,7 @@ import { RISK_LEVELS, type RegisterRow } from '../types';
 import { FORMULATION_CHANGE_VIEW, type ChangeViewConfig } from '../utils/changeViews';
 import { CLAIM_REVIEW_OUTCOMES, CLAIM_SCOPE_EXCLUDED, CLAIM_SCOPE_OPTIONS, CLAIM_SUBJECT_FLAGS } from './claimReview';
 import { TREND_CONCLUSIONS } from './postMarketReview';
+import { BASIS_SUPPORT_OPTIONS, FINISHED_PRODUCT_EFFECT_OPTIONS, RELEASE_AUTHORISATIONS, STABILITY_CONCLUSIONS } from './releaseAuthorisation';
 import { DEVIATION_DISPOSITIONS, DEVIATION_ISSUE_TYPES, DEVIATION_SEVERITIES, DEVIATION_SOURCES, VALIDITY_DISPOSITIONS } from './deviations';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
@@ -1358,8 +1359,9 @@ const stabilityRelease: RegisterConfig = {
   sheetName: 'Stability_Release',
   description: 'Use for accelerated/real-time stability, package compatibility and final release evidence. Do not duplicate raw reports; link them.',
   mode: 'register',
-  // Gate 9 records stability and compatibility results; Gate 11 (Quality release pathway) records the final release decision. [ASSUMPTION: R5-Q62] The SME lists "Quality release pathway" at Gate 11 and a release-readiness conclusion at Gate 9 but does not say where this column is entered.
-  gate: '09/11',
+  // Round 5 question 28(b): Gate 9 records the technical stability and compatibility CONCLUSION; the authorisation to release is a separate, market- and
+  // version-specific record at Gate 11 (the Release Authorisation register), so a successful test is never mistaken for launch permission.
+  gate: '09',
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 150, gate: '09' },
     { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110, gate: '09' },
@@ -1371,10 +1373,35 @@ const stabilityRelease: RegisterConfig = {
     { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150, gate: '09' },
     { key: 'result', label: 'Result', type: 'text', width: 120, gate: '09' },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130, gate: '09' },
-    { key: 'releaseDecision', label: 'Release decision', type: 'select', options: DECISION_OPTIONS, width: 140, gate: '11' },
+    { key: 'stabilityConclusion', label: 'Stability / compatibility conclusion', type: 'select', options: [...STABILITY_CONCLUSIONS], width: 210, gate: '09' },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+  ],
+};
+
+// Round 5 question 28(b): the authorisation to RELEASE, recorded at Gate 11 per market and formula version, linked to the approved Gate 9 evidence and the Quality
+// release pathway. A passing stability conclusion is not launch permission; actual batch release stays in the external GMP / Quality record, which this
+// row only links. [ASSUMPTION: R6-Q36]
+const releaseAuthorisation: RegisterConfig = {
+  key: 'releaseAuthorisation',
+  title: 'Release Authorisation (per market)',
+  sheetName: 'Stability_Release',
+  description:
+    'One row per market and formula version: the authorisation to release, linked to the approved Gate 9 stability and compatibility evidence and to the Quality release pathway. Separate from the Gate 9 conclusion — a passing test is not launch permission. Actual batch release stays in the external GMP / Quality record, linked here.',
+  mode: 'register',
+  gate: '11',
+  columns: [
+    { key: 'authorisationId', label: 'Authorisation ID', type: 'text', width: 120 },
+    { key: 'market', label: 'Market', type: 'market', width: 140 },
+    { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 120 },
+    { key: 'authorisation', label: 'Authorisation to release', type: 'select', width: 170, options: [...RELEASE_AUTHORISATIONS] },
+    { key: 'stabilityEvidence', label: 'Approved Gate 9 evidence it rests on', type: 'textarea', width: 260 },
+    { key: 'qualityPathway', label: 'Quality release pathway', type: 'textarea', width: 240 },
+    { key: 'authorisedBy', label: 'Release authorised by', type: 'user', width: 170, selfAttest: true, sensitive: true },
+    { key: 'authorisedDate', label: 'Authorised on', type: 'date', width: 130 },
+    { key: 'batchReleaseRecord', label: 'External GMP / Quality batch release record', type: 'text', width: 260 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
 };
 
@@ -3519,7 +3546,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
   // review, library and approval fields joined an already long list).
   drawerTabs: true,
   drawerSections: [
-    { title: 'Claim', columns: ['claimId', 'claimScope', 'scopeExclusionReason', 'approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'evidenceBasisRequired', 'preliminaryMechanism', 'preliminaryEvidenceRequirement'] },
+    { title: 'Claim', columns: ['claimId', 'claimScope', 'scopeExclusionReason', 'approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'evidenceBasisRequired', 'claimsProductEffect', 'preliminaryMechanism', 'preliminaryEvidenceRequirement'] },
     { title: 'Library', columns: ['libraryEntryId', 'libraryStatus', 'libraryRevision', 'libraryFitVerification', 'libraryFitVerifiedBy'] },
     {
       title: 'Review',
@@ -3530,7 +3557,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
       ],
     },
     { title: 'Revision', columns: ['revision', 'revisionRoute', 'revisionApprovedBy', 'revisionApprovedDate', 'revisionTechnicalApprovedBy', 'revisionTechnicalApprovedDate'] },
-    { title: 'Evidence and release', columns: ['mechanism', 'evidenceGrade', 'supportingEvidence', 'status', 'approvedByDate'] },
+    { title: 'Evidence and release', columns: ['mechanism', 'evidencePlanConfirmedBy', 'evidencePlanConfirmedDate', 'evidenceGrade', 'supportingEvidence', 'evidenceDemonstrated', 'basisSupportsWording', 'basisConfirmedBy', 'status', 'approvedByDate'] },
   ],
   columns: [
     // Per-column gates (2026-08-11). A claim row is filled in over three gates, so
@@ -3596,6 +3623,9 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // the exemption the answer attaches to Cosmetic claims — see
     // EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.
     { key: 'evidenceBasisRequired', label: 'Evidence basis required', type: 'select', width: 220, options: EVIDENCE_BASIS_OPTIONS, gate: '03' },
+    // Round 5 question 28(a): "A claimed finished-product effect cannot be exempted merely by selecting ingredient-level evidence." So the exemption needs the
+    // claim's own statement that it claims no effect of the finished product; blank is not an answer. [ASSUMPTION: R6-Q36]
+    { key: 'claimsProductEffect', label: 'Claims an effect of the finished product', type: 'select', width: 190, options: [...FINISHED_PRODUCT_EFFECT_OPTIONS], gate: '03' },
     // Questions 26 and 30(b): the revision model. A claim is refined in place
     // until a revision is approved; from then the wording is controlled, and a
     // change either bumps this or mints a new Claim ID — the reviewer decides
@@ -3608,14 +3638,23 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'revisionTechnicalApprovedBy', label: 'Revision approved by (Technical)', type: 'user', width: 170, gate: '10', selfAttest: true },
     { key: 'revisionTechnicalApprovedDate', label: 'Technical approval date', type: 'date', width: 140, gate: '10' },
     { key: 'revisionRoute', label: 'Change route (reviewer decision)', type: 'select', width: 220, options: CLAIM_REVISION_ROUTES, gate: '10' },
+    // Round 5 question 28(a): Gate 10 confirms the demonstrated basis supports the FINAL wording.
+    { key: 'basisSupportsWording', label: 'Demonstrated basis supports the final wording', type: 'select', width: 230, options: [...BASIS_SUPPORT_OPTIONS], gate: '10' },
+    { key: 'basisConfirmedBy', label: 'Basis confirmed by', type: 'user', width: 150, gate: '10', selfAttest: true, sensitive: true },
     // The mechanism comes from the Target Product & Technology work (sheet 3),
     // which the NPD roadmap places at Gate 3 heading into formula lock at Gate 5.
     // Question 19(h) calls this the technically confirmed one.
     { key: 'mechanism', label: 'Confirmed mechanism (formula-specific)', type: 'text', width: 200, gate: '05' },
+    // Round 5 question 28(a): the evidence basis is a PLAN proposed at Gate 3 and confirmed before Gate 5 — a versioned planning decision, not a proof.
+    // Once confirmed it changes only through a new revision, which asks for the confirmation again for that claim alone. [ASSUMPTION: R6-Q36]
+    { key: 'evidencePlanConfirmedBy', label: 'Evidence plan confirmed by', type: 'user', width: 170, gate: '05', selfAttest: true, sensitive: true },
+    { key: 'evidencePlanConfirmedDate', label: 'Evidence plan confirmed on', type: 'date', width: 150, gate: '05' },
     // Gate 08 — the evidence itself exists: a grade can be assigned and a report
     // linked only once testing has produced one.
     { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'], gate: '08' },
     { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200, gate: '08' },
+    // Round 5 question 28(a): Gate 8 records what was ACTUALLY demonstrated, which may differ from the plan.
+    { key: 'evidenceDemonstrated', label: 'What was actually demonstrated', type: 'textarea', width: 240, gate: '08' },
     // Gate 03 — the Regulatory review C1 makes mandatory for a borderline,
     // therapeutic-adjacent or high-risk claim. The shape is borrowed from D3, the
     // one the team specified themselves for the same situation at Gate 4
@@ -3867,6 +3906,7 @@ const deviationRecords: RegisterConfig = {
 
 export const REGISTER_CONFIGS: RegisterConfig[] = [
   deviationRecords,
+  releaseAuthorisation,
   formulationSafetyProfile,
   formulationSafetyMatrix,
   criticalSafetyFindings,
@@ -3970,6 +4010,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   regulatoryChecklistStatus: { column: 'componentId', prefix: 'RC' },
   postMarketTrends: { column: 'trendId', prefix: 'MT' },
   deviationRecords: { column: 'deviationId', prefix: 'DEV' },
+  releaseAuthorisation: { column: 'authorisationId', prefix: 'RA' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };
@@ -4573,7 +4614,7 @@ const DEPARTMENTS: RawDept[] = [
     title: 'Quality',
     description: 'Stability & release evidence.',
     reviewOwner: REVIEW_SPECS.quality,
-    items: ['stabilityRelease'],
+    items: ['stabilityRelease', 'releaseAuthorisation'],
   },
   {
     // Renamed from dept-quality (2026-08-27): every real-tab item below is

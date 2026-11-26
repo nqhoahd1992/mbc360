@@ -198,6 +198,8 @@ export default function CommandPalette({
           for (const key of item.contains ?? []) {
             const cfg = getRegisterConfig(key);
             if (!cfg) continue;
+            // A page that is named after the one register it renders is already listed above; a second row with the same title is the same destination.
+            if (cfg.title === item.title) continue;
             list.push({
               id: `reg-${grp.key}-${itemKey}-${key}-${id}`,
               title: cfg.title,
@@ -233,7 +235,7 @@ export default function CommandPalette({
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
     // Letters and digits only, so '&', ',', '_' and '-' never stand between a person and a match.
-    const plain = (text: string) => text.toLowerCase().replace(/[^p{L}p{N}]+/gu, ' ');
+    const plain = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
     const words = plain(q).split(' ').filter(Boolean);
     let ranked: Command[];
     if (!q) {

@@ -48,6 +48,7 @@ import { claimIsExcluded, claimLibraryReuseHolds } from '../config/claimReview';
 import {
   CLAIM_STATUSES_BLOCKING_ARTWORK,
   CLAIM_USE_APPROVING,
+  EVIDENCE_BASIS_NOT_PRODUCT_LEVEL,
   PACKAGING_LABEL_CHANNEL,
   PUBLICATION_EVENTS_PUTTING_OUT,
   PUBLICATION_EVENT_RELEASE_TO_PRINT,
@@ -245,6 +246,27 @@ export function isRevisionApproved(row: RegisterRow): boolean {
   );
 }
 
+// The columns a confirmed evidence plan freezes.
+const PLAN_COLUMNS = ['evidenceBasisRequired'];
+
+// Round 5 question 28(a): "A claimed finished-product effect cannot be exempted merely by selecting ingredient-level evidence." A claim that says it claims an
+// effect of the finished product cannot also rest on an evidence basis that exempts it from product-level evidence. [ASSUMPTION: R6-Q36]
+export function evidenceBasisContradictions(rows: RegisterRow[]): string[] {
+  return rows
+    .filter((r) => text(r.claimsProductEffect) === 'Yes' && EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.includes(text(r.evidenceBasisRequired)))
+    .map((r) => `${text(r.claimId) || '(new claim)'}: it claims an effect of the finished product, so its evidence basis cannot be "${text(r.evidenceBasisRequired)}"`);
+}
+
+// A revision bump withdraws the confirmation of the evidence plan of THAT claim alone (a targeted re-review), nothing later and nothing elsewhere.
+export function clearConfirmedPlansOnNewRevision(before: RegisterRow[], after: RegisterRow[]): RegisterRow[] {
+  const previous = new Map(before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]));
+  return after.map((row) => {
+    const old = previous.get(text(row.claimId));
+    if (!old || text(old.evidencePlanConfirmedBy) === '' || cell(row.revision) === cell(old.revision)) return row;
+    return { ...row, evidencePlanConfirmedBy: '', evidencePlanConfirmedDate: '' };
+  });
+}
+
 // Changes made to an approved revision without bumping it. Empty when every edit
 // is legitimate — either the revision moved on, or nothing controlled changed.
 export function frozenRevisionEdits(
@@ -258,7 +280,10 @@ export function frozenRevisionEdits(
   for (const row of after) {
     const id = text(row.claimId);
     const old = id === '' ? undefined : previous.get(id);
-    if (!old || !isRevisionApproved(old)) continue;
+    // Round 5 question 28(a): once the evidence PLAN is confirmed (before Gate 5), the evidence basis and the finished-product-effect statement change only
+    // through a new revision, even before the revision is approved. [ASSUMPTION: R6-Q36]
+    const planConfirmed = !!old && text(old.evidencePlanConfirmedBy) !== '';
+    if (!old || (!isRevisionApproved(old) && !planConfirmed)) continue;
     // Bumping the revision is the sanctioned route, so an edit that comes with a
     // new revision number is not a frozen edit at all — it is question 30(b)'s
     // "new revision of the same Claim ID".
@@ -268,16 +293,17 @@ export function frozenRevisionEdits(
     // so every revision compared equal to every other and the bump was never
     // detected. Found by an end-to-end test, not by reading the code.
     if (cell(row.revision) !== cell(old.revision)) continue;
-    const changed: string[] = REVISION_CONTROLLED_COLUMNS.filter(
-      (c) => cell(row[c.key]) !== cell(old[c.key]),
-    ).map((c) => c.label);
+    const changed: string[] = (isRevisionApproved(old) ? REVISION_CONTROLLED_COLUMNS : REVISION_CONTROLLED_COLUMNS.filter((c) => PLAN_COLUMNS.includes(c.key)))
+      .filter((c) => cell(row[c.key]) !== cell(old[c.key]))
+      .map((c) => c.label);
+    if (!isRevisionApproved(old) && cell(row.claimsProductEffect) !== cell(old.claimsProductEffect)) changed.push('Claims an effect of the finished product');
     // The approval itself is frozen too (SME rule audit B21, 2026-10-04). It was
     // not, so two saves walked straight round the rule: the first cleared
     // "Revision approved by", which made the revision unapproved, and the second
     // re-worded it freely. An approval is withdrawn by moving to a new revision.
     // Question 18(c): the Regulatory and the Technical approval are two acts, so the second may be ADDED to an approved revision; what is
     // already recorded cannot be changed or cleared.
-    if (REVISION_APPROVAL_COLUMNS.some((k) => cell(old[k]) !== '' && cell(row[k]) !== cell(old[k]))) changed.push('Revision approval');
+    if (isRevisionApproved(old) && REVISION_APPROVAL_COLUMNS.some((k) => cell(old[k]) !== '' && cell(row[k]) !== cell(old[k]))) changed.push('Revision approval');
     if (changed.length > 0) out.push({ claimId: id, changed });
   }
   return out;
