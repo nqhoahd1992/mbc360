@@ -454,14 +454,15 @@ export class ProjectsController {
     );
   }
 
-  @Post(':id/phases/:phase/accept-pre-work')
-  acceptPreWork(
+  // Round 5 question 27: decide marked pre-work entries, from an explicit list.
+  @Post(':id/phases/:phase/pre-work/review')
+  reviewPreWork(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
-    @Body() body: { expectedVersion: number },
+    @Body() body: { entries?: { id: string; decision: string; note?: string }[]; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
-    return this.projects.acceptPreWork(user, id, Number(phase), body.expectedVersion);
+    return this.projects.reviewPreWork(user, id, Number(phase), body, body.expectedVersion);
   }
 
   @Put(':id/registers/:registerKey')

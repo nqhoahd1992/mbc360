@@ -866,3 +866,20 @@ You told us that blocking release inside the workflow is right and that content 
 **(b)** Are Safety, Compliance, Claims and Version mismatch the right kinds to hold Gate 11, and is "Other" correctly left as record-and-review only?
 
 **(c)** Is recording the decision on the published-information row (a disposition, a date and any use restriction) the right way to "track the disposition" of a content warning?
+
+## Question 35 — Pre-work: have we read your answer correctly?
+
+*Where in the application:* the phase strip at the top of **Phase 2, 3 and 4** (the "Pre-work: N to review" tag and **Review pre-work**), the new **Pre-work entries** drawer, and a **Pre-work** line above each checklist, requirement table, Key Gate Checks table and register that was saved before its phase opened.
+
+You told us that the accountable subject-area owner accepts the relevant entries when the phase opens, that the phase review owner coordinates, that the Project Lead accepts only for areas where they also have the authority and never a Safety or Regulatory conclusion, that individual entries are marked with author, date and status and then accepted, updated or rejected with reviewer and date, and that a batch needs an explicit list and authorised reviewer coverage. We built it as follows:
+
+- **An entry** is one saved table of the phase — a checklist section, a requirement section, a gate's Key Gate Checks, or a register — recorded when it is saved while its phase is not open yet. It is marked with who saved it and when, and stays marked until decided; saving it again before the decision refreshes the mark.
+- **Who decides.** The person assigned to the area that owns the table on this project always may. The phase's review owner and the project's Lead (and an administrator) may decide an area that is not Safety or Regulatory. For Regulatory, Quality & GMP (which owns the formulation safety sheets) and Safety areas only the accountable owner may — leadership alone cannot.
+- **A decision** is Accepted, Updated (accepted after the reviewer corrected it, with what was corrected) or Rejected (to be redone, with what is wrong), recorded with reviewer and date. Decisions are made from an explicit list of ticked entries; if the person may not decide any one of them, nothing in the batch is recorded.
+- **Closing.** A phase can close once no entry is waiting; a rejected entry waits until it is saved again. A phase with no marked entry has no pre-work to review, so the old single "Accept pre-work" button is gone. Tables saved before this existed are not marked.
+
+**(a)** Is "one saved table" the right size of an entry, or do you need each row or tick marked separately?
+
+**(b)** Are Regulatory, Quality & GMP and Safety the areas whose conclusions leadership cannot accept, and may the phase review owner coordinate by deciding the rest?
+
+**(c)** Should a rejected entry block the phase until it is redone (as built), or until a replacement is accepted?

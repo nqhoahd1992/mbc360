@@ -484,6 +484,11 @@ async function main() {
   }
 
   if (runs('finish')) {
+  // Round 5 question 27: this tool fills the later phases' tables before those phases open, which marks every one as pre-work. It acts as one administrator,
+  // so — a dev-tool bypass, like the others here — it records the owners' acceptance straight in the database instead of going through each area's owner.
+  await step('accept the pre-work this seeding marked', async () => {
+    await prisma.preWorkEntry.updateMany({ where: { projectId: id, status: 'Pre-work' }, data: { status: 'Accepted', reviewedBy: adminName, reviewedAt: new Date() } });
+  });
   // ---- gate flow records: straight to the database (only the current gate accepts edits through the API)
   console.log('Gate records');
   await step('12 gate records (owner, due date, evidence link, notes)', async () => {

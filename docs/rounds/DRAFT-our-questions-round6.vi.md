@@ -865,3 +865,20 @@ Các bạn nói chặn phát hành trong workflow là đúng và nội dung phá
 **(b)** Safety, Compliance, Claims và Version mismatch có đúng là các loại giữ Gate 11 không, và "Other" chỉ ghi-và-rà-soát có đúng không?
 
 **(c)** Ghi quyết định ngay trên dòng thông tin công bố (disposition, ngày và hạn chế sử dụng nếu có) có đúng là cách "theo dõi xử lý" một cảnh báo nội dung không?
+
+## Câu 35 — Pre-work: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* thanh trạng thái phase ở đầu **Phase 2, 3 và 4** (thẻ "Pre-work: N to review" và **Review pre-work**), ngăn kéo mới **Pre-work entries**, và dòng **Pre-work** phía trên mỗi checklist, bảng yêu cầu, bảng Key Gate Checks và sổ đã được lưu trước khi phase mở.
+
+Các bạn nói chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liên quan khi phase mở, chủ rà soát phase điều phối, Project Lead chỉ chấp nhận ở những lĩnh vực họ cũng có thẩm quyền và không bao giờ chấp nhận kết luận Safety hay Regulatory, từng mục được đánh dấu tác giả, ngày và trạng thái rồi accepted, updated hoặc rejected kèm người rà soát và ngày, và duyệt hàng loạt cần danh sách tường minh và người rà soát đủ thẩm quyền. Chúng tôi đã xây như sau:
+
+- **Một mục** là một bảng đã lưu của phase — một mục checklist, một mục yêu cầu, Key Gate Checks của một gate, hoặc một sổ — được ghi lại khi lưu lúc phase chưa mở. Nó được đánh dấu ai lưu và khi nào, và giữ dấu cho tới khi được quyết định; lưu lại trước khi có quyết định thì làm mới dấu.
+- **Ai quyết định.** Người được giao lĩnh vực sở hữu bảng đó trên dự án này luôn được. Chủ rà soát phase và Lead của dự án (và quản trị viên) được quyết định lĩnh vực không phải Safety hay Regulatory. Với lĩnh vực Regulatory, Quality & GMP (sở hữu các sheet an toàn công thức) và Safety chỉ chủ sở hữu chịu trách nhiệm được — lãnh đạo thì không.
+- **Một quyết định** là Accepted, Updated (chấp nhận sau khi người rà soát đã sửa, kèm điều đã sửa) hoặc Rejected (phải làm lại, kèm điều sai), ghi người rà soát và ngày. Quyết định theo danh sách tường minh các mục được tick; nếu người đó không được quyết định một mục nào trong số đó thì không ghi gì cả.
+- **Đóng phase.** Phase đóng được khi không còn mục nào chờ; mục bị rejected chờ tới khi được lưu lại. Phase không có mục nào được đánh dấu thì không có pre-work để rà soát, nên nút "Accept pre-work" duy nhất cũ không còn. Các bảng lưu trước khi có tính năng này không được đánh dấu.
+
+**(a)** "Một bảng đã lưu" có đúng là cỡ của một mục không, hay các bạn cần đánh dấu riêng từng dòng hay từng ô tick?
+
+**(b)** Regulatory, Quality & GMP và Safety có đúng là các lĩnh vực lãnh đạo không được chấp nhận kết luận, và chủ rà soát phase có được điều phối bằng cách quyết định phần còn lại không?
+
+**(c)** Mục bị rejected nên chặn phase tới khi làm lại (như đã xây), hay tới khi bản thay thế được chấp nhận?

@@ -1245,6 +1245,12 @@ Do not force withdrawal of the approved existing version merely because a draft 
 
 **(d)** Yes. Show expiry/review-due and withdrawn/superseded content warnings to accountable owners and track the disposition. A review date becoming due triggers re-review and any defined use restriction; it does not by itself prove unlawful prior publication. A known unsupported or prohibited claim needs prompt containment. Actual withdrawal/publication events remain separately recorded.
 
+### Question 27 — Accepting pre-work
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 35.
+
+The accountable subject-area owner accepts the relevant entries when that phase/gate opens. The phase review owner coordinates acceptance. A Project Lead may accept only for areas where that person also has the required authority; project leadership alone cannot accept Safety/Regulatory conclusions. Mark individual entries with author/date and pre-work status, then accepted/updated/rejected, reviewer and date. A batch acceptance is acceptable only with an explicit list of the entries and authorised reviewer coverage.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

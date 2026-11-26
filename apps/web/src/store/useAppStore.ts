@@ -222,7 +222,7 @@ interface AppState {
   ) => Promise<void>;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
   // Who accepted is the signed-in user, recorded by the server.
-  acceptPhasePreWork: (id: string, phase: number) => void;
+  reviewPreWork: (id: string, phase: number, entries: { id: string; decision: string; note?: string }[]) => Promise<boolean>;
   // Round 4 question 8, one entry per post-market finding; the list is replaced.
   setChangeControlAssessments: (id: string, entries: ChangeControlAssessment[]) => Promise<void>;
   // Round 5 question 7: the scale-up / pilot assessment, one entry per affected area.
@@ -689,8 +689,7 @@ export const useAppStore = create<AppState>()(
           tryWriteSection(id, (v) => projectsApi.setPhaseKeyLinks(id, phase, links, v)),
         // F13: the acceptor is taken from the session server-side, so the
         // `acceptedBy` argument is no longer trusted (kept for signature parity).
-        acceptPhasePreWork: (id, phase) =>
-          writeSection(id, (v) => projectsApi.acceptPreWork(id, phase, v)),
+        reviewPreWork: (id, phase, entries) => tryWriteSection(id, (v) => projectsApi.reviewPreWork(id, phase, entries, v)),
 
         setChangeControlAssessments: (id, entries) =>
           writeSection(id, (v) => projectsApi.setChangeControlAssessments(id, entries, v)),

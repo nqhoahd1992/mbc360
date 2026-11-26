@@ -516,10 +516,11 @@ export const setEvidenceSummary = (id: string, phase: number, value: string, v: 
 export const setPhaseKeyLinks = (id: string, phase: number, links: Record<string, string>, v: number) =>
   put(id, `phases/${phase}/key-links`, { links }, v);
 
-export const acceptPreWork = (id: string, phase: number, expectedVersion: number) =>
+// Round 5 question 27: decide marked pre-work entries, from an explicit list.
+export const reviewPreWork = (id: string, phase: number, entries: { id: string; decision: string; note?: string }[], expectedVersion: number) =>
   request<ProjectEnvelope>(
-    `/projects/${encodeURIComponent(id)}/phases/${phase}/accept-pre-work`,
-    { method: 'POST', body: JSON.stringify({ expectedVersion }) },
+    `/projects/${encodeURIComponent(id)}/phases/${phase}/pre-work/review`,
+    { method: 'POST', body: JSON.stringify({ entries, expectedVersion }) },
   );
 
 export const setFunctionAssignees = (id: string, assignments: { roleKey: string; userId: string | null }[], v: number) =>

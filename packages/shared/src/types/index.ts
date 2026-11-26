@@ -1502,6 +1502,25 @@ export interface MarketTrack {
   approvalSuspendedReason?: string;
 }
 
+// Round 5 question 27: data saved in a phase before it opened is PRE-WORK. Each saved table of the phase (a checklist section, a requirement section, a gate's
+// Key Gate Checks, a register) is one marked entry — who entered it and when — until the accountable owner decides it: Accepted, Updated (accepted after
+// the reviewer corrected it) or Rejected (to be redone). [ASSUMPTION: R6-Q35]
+export const PRE_WORK_STATUSES = ['Pre-work', 'Accepted', 'Updated', 'Rejected'] as const;
+export type PreWorkStatus = (typeof PRE_WORK_STATUSES)[number];
+export interface PreWorkEntry {
+  id: string;
+  phase: number;
+  kind: 'checklist' | 'requirement' | 'gateChecks' | 'register';
+  key: string;
+  label: string;
+  enteredBy?: string;
+  enteredAt?: string;
+  status: PreWorkStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  note?: string;
+}
+
 // Round 5 question 25: updating the PIF of a market already on sale does not withdraw what is approved. The approved PIF and the market's launch decision
 // stay as they are; the update is a SEPARATE draft revision, raised under a Change Control record, and it takes effect only once it is approved.
 export const PIF_REVISION_STATUSES = ['Draft', 'Under Review', 'Approved', 'Withdrawn'] as const;
@@ -1876,6 +1895,8 @@ export interface ProjectData {
   formulaVersionProposal?: FormulaVersionProposal;
   // Round 5 question 25: the draft and approved revisions of a market's PIF.
   pifRevisions: PifRevision[];
+  // Round 5 question 27: the marked pre-work entries of every phase.
+  preWorkEntries: PreWorkEntry[];
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
   phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals

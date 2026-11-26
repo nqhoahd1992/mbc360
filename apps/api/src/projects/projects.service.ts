@@ -34,7 +34,7 @@ import {
   isChangeOpen,
   openChangesAffectingGate,
 } from '@mbc360/shared/config/changeTriggers';
-import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
+import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { acknowledgementBasis, holdsRole } from '@mbc360/shared/utils/readinessAck';
 import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
 import {
@@ -109,6 +109,16 @@ import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safety
 import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import { bypassable } from './dev-flags';
+import {
+  PRE_WORK_DECISIONS,
+  PRE_WORK_DECISIONS_NEEDING_NOTE,
+  pendingPreWork,
+  phaseOfChecklistSection,
+  phaseOfRequirementSection,
+  phasesOfGateRef,
+  preWorkDecisionProblem,
+  type PreWorkDecision,
+} from '@mbc360/shared/utils/preWork';
 import { DEVIATION_REGISTER, deviationAcceptanceGaps, deviationRecordViolations } from '@mbc360/shared/utils/deviations';
 import { pifRevisionNextStatuses, pifRevisionOpenProblems } from '@mbc360/shared/utils/pifRevisions';
 import {
@@ -242,7 +252,7 @@ import {
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
 } from '@mbc360/shared/types';
-import type { PifRevisionStatus, GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
+import type { PifRevisionStatus, PreWorkEntry, GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeControlAssessment,
@@ -1140,6 +1150,7 @@ export class ProjectsService {
         .flatMap((c) => c.checklistSections)
         .find((sec) => sec.key === section);
       if (!cfg) throw new BadRequestException(`Unknown checklist section "${section}"`);
+      await this.notePreWork(tx, project, [phaseOfChecklistSection(section)], 'checklist', section, cfg.title, user);
       if (isGateRefLocked(project, cfg.gate)) {
         throw new ForbiddenException(
           `Checklist "${section}" belongs to gate ${cfg.gate}, which has passed — it is read-only (use Backtrack)`,
@@ -1216,6 +1227,7 @@ export class ProjectsService {
         .filter((i) => i.sectionKey === section)
         .sort((a, b) => a.itemOrder - b.itemOrder);
       if (existing.length === 0) throw new BadRequestException(`Unknown requirement section "${section}"`);
+      await this.notePreWork(tx, project, [phaseOfRequirementSection(section)], 'requirement', section, Object.values(PHASE_CONFIGS).flatMap((c) => c.requirementSections).find((r) => r.key === section)?.title ?? section, user);
       // A table that exists only for a trigger is read-only while that trigger does not apply (SW-56). The data is cleared by
       // acknowledging the not-applicable reason, never edited around it.
       if (requirementSectionLockedAsNotApplicable(project, section)) {
@@ -1401,6 +1413,9 @@ export class ProjectsService {
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'gate_checks.updated', async (tx, row, project) => {
       let skipped = 0;
+      for (const gateId of new Set(updates.map((u) => u.gate))) {
+        await this.notePreWork(tx, project, [GATES.find((g) => g.id === gateId)?.phase], 'gateChecks', gateId, `Key Gate Checks — Gate ${GATES.find((g) => g.id === gateId)?.number ?? gateId}`, user);
+      }
       for (const update of updates) {
         const target = row.gateChecks.find(
           (c) => c.gate === update.gate && c.check === update.check && (c.market ?? '') === (update.market ?? ''),
@@ -2754,40 +2769,89 @@ export class ProjectsService {
     });
   }
 
-  // F13: the responsible owner accepts a phase's pre-work. The acceptor is the
-  // session user, not a client-supplied name.
-  async acceptPreWork(
+  // Round 5 question 27: data saved in a phase before it opened is pre-work. The table saved is marked (who entered it, when) and stays marked until its
+  // accountable owner decides it. Called inside the write's own transaction, so a refused write leaves no mark. [ASSUMPTION: R6-Q35]
+  private async notePreWork(
+    tx: Prisma.TransactionClient,
+    project: ProjectData,
+    phases: (number | undefined)[],
+    kind: PreWorkEntry['kind'],
+    key: string,
+    label: string,
+    user: SessionUser,
+  ): Promise<void> {
+    for (const phase of new Set(phases.filter((x): x is number => typeof x === 'number'))) {
+      if (phase <= 1 || phaseProgress(project, phase).state !== 'locked') continue;
+      const mark = { enteredBy: user.displayName, enteredAt: new Date(), status: 'Pre-work', reviewedBy: null, reviewedAt: null, note: null, label };
+      await tx.preWorkEntry.upsert({
+        where: { projectId_phase_kind_key: { projectId: project.identity.id, phase, kind, key } },
+        create: { projectId: project.identity.id, phase, kind, key, ...mark },
+        update: mark,
+      });
+    }
+  }
+
+  // The accountable owner (or, for an area that is not Safety or Regulatory, the phase's review owner or the Lead) decides the marked entries of a phase that
+  // has opened — from an EXPLICIT list; a batch is accepted only when the person may decide every entry in it. The acceptor is the session, never the client.
+  async reviewPreWork(
     user: SessionUser,
     id: string,
     phase: number,
+    body: { entries?: { id: string; decision: string; note?: string }[] },
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'pre_work.accepted', async (tx, _row, project) => {
-      // C4 (SME rule audit, 2026-10-04). F13: pre-work is reviewed and accepted
-      // "by the responsible owner once the phase opens". Both halves were missing:
-      // anyone could accept, and could do it while the phase was still locked —
-      // i.e. before there was anything for an owner to review.
+    return this.mutate(user, id, expectedVersion, 'pre_work.reviewed', async (tx, _row, project) => {
       this.assertPhaseDataOpen(project, phase);
       if (phaseProgress(project, phase).state === 'locked') {
-        throw new BadRequestException(`Phase ${phase} is not open yet (the phase before it is still in progress) — its pre-work can be accepted once it opens (F13)`);
+        throw new BadRequestException(`Phase ${phase} is not open yet (the phase before it is still in progress) — its pre-work can be decided once it opens (F13)`);
       }
-      // Who the "responsible owner" is: the phase's review owner on this project,
-      // or the project's Lead [ASSUMPTION: R5-Q43].
-      const phaseOwner = ownerName(PHASE_CONFIGS[phase]?.reviewOwner, project.identity.reviewers);
-      if (
-        user.displayName !== phaseOwner &&
-        user.displayName !== project.identity.projectLead &&
-        !this.permissions.isAdmin(user)
-      ) {
-        throw new ForbiddenException(
-          `Only the phase's review owner (${phaseOwner ?? 'not assigned'}) or the project's Lead may accept its pre-work (F13)`,
-        );
+      const list = body.entries ?? [];
+      if (list.length === 0) throw new BadRequestException('Name the entries to decide: a batch is an explicit list, never "everything"');
+      const actor = { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) };
+      const problems: string[] = [];
+      const resolved: { entry: PreWorkEntry; decision: PreWorkDecision; note?: string }[] = [];
+      for (const item of list) {
+        const entry = project.preWorkEntries.find((e) => e.id === item.id && e.phase === phase);
+        if (!entry) {
+          problems.push(`${item.id}: not a pre-work entry of phase ${phase}`);
+          continue;
+        }
+        if (entry.status !== 'Pre-work') {
+          problems.push(`${entry.label}: it is ${entry.status}, not waiting for a decision`);
+          continue;
+        }
+        if (!(PRE_WORK_DECISIONS as readonly string[]).includes(item.decision)) {
+          problems.push(`${entry.label}: "${item.decision}" is not Accepted, Updated or Rejected`);
+          continue;
+        }
+        if (PRE_WORK_DECISIONS_NEEDING_NOTE.includes(item.decision) && (item.note ?? '').trim() === '') {
+          problems.push(`${entry.label}: say what was ${item.decision === 'Updated' ? 'corrected' : 'wrong'}`);
+          continue;
+        }
+        const refusal = preWorkDecisionProblem(project, entry, actor);
+        if (refusal) {
+          problems.push(refusal);
+          continue;
+        }
+        resolved.push({ entry, decision: item.decision as PreWorkDecision, note: item.note?.trim() || undefined });
       }
+      if (problems.length > 0) {
+        throw new ForbiddenException(listMessage('These entries cannot be decided as listed — nothing was recorded:', problems));
+      }
+      for (const r of resolved) {
+        await tx.preWorkEntry.update({
+          where: { id: r.entry.id },
+          data: { status: r.decision, reviewedBy: user.displayName, reviewedAt: new Date(), note: r.note ?? null },
+        });
+      }
+      // The phase-level stamp the sign-off content and older readers use: written when the last waiting entry is decided, cleared otherwise.
+      const decided = new Set(resolved.map((r) => r.entry.id));
+      const stillWaiting = pendingPreWork(project, phase).filter((e) => !decided.has(e.id) || resolved.find((r) => r.entry.id === e.id)?.decision === 'Rejected');
       await tx.phaseClosure.update({
         where: { projectId_phase: { projectId: id, phase } },
-        data: { preWorkAcceptedBy: user.displayName, preWorkAcceptedDate: new Date() },
+        data: stillWaiting.length === 0 ? { preWorkAcceptedBy: user.displayName, preWorkAcceptedDate: new Date() } : { preWorkAcceptedBy: null, preWorkAcceptedDate: null },
       });
-      return { phase, acceptedBy: user.displayName };
+      return { phase, decided: resolved.length };
     });
   }
 
@@ -3006,6 +3070,7 @@ export class ProjectsService {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     return this.mutate(user, id, expectedVersion, 'register.updated', async (tx, _row, project) => {
+      await this.notePreWork(tx, project, phasesOfGateRef(config.gate), 'register', registerKey, config.title, user);
       if (isGateRefLocked(project, config.gate)) {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,

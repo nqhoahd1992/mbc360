@@ -97,6 +97,7 @@ export const PROJECT_INCLUDE = {
   marketAdditionAssessments: { orderBy: { addedAt: 'asc' } },
   formulaVersionProposal: true,
   pifRevisions: { orderBy: { openedAt: 'asc' } },
+  preWorkEntries: { orderBy: [{ phase: 'asc' }, { enteredAt: 'asc' }] },
   gateSignOffs: {
     orderBy: [{ gateId: 'asc' }, { market: 'asc' }, { role: 'asc' }],
     include: { assignedTo: { select: { displayName: true } } },
@@ -1015,6 +1016,19 @@ function toProjectDataRaw(
       ...(v.linkedChangeId ? { linkedChangeId: v.linkedChangeId } : {}),
       ...(v.documentationOnly ? { documentationOnly: true } : {}),
       ...(v.noReleaseConfirmedBy ? { noReleaseConfirmedBy: v.noReleaseConfirmedBy } : {}),
+    })),
+    preWorkEntries: p.preWorkEntries.map((e) => ({
+      id: e.id,
+      phase: e.phase,
+      kind: e.kind as ProjectData['preWorkEntries'][number]['kind'],
+      key: e.key,
+      label: e.label,
+      ...(e.enteredBy ? { enteredBy: e.enteredBy } : {}),
+      enteredAt: e.enteredAt.toISOString(),
+      status: e.status as ProjectData['preWorkEntries'][number]['status'],
+      ...(e.reviewedBy ? { reviewedBy: e.reviewedBy } : {}),
+      ...(e.reviewedAt ? { reviewedAt: e.reviewedAt.toISOString() } : {}),
+      ...(e.note ? { note: e.note } : {}),
     })),
     pifRevisions: p.pifRevisions.map((r) => ({
       id: r.id,

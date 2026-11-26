@@ -240,6 +240,7 @@ model Project {
   marketAdditionAssessments MarketAdditionAssessment[]
   formulaVersionProposal    FormulaVersionProposal?
   pifRevisions              PifRevision[]
+  preWorkEntries            PreWorkEntry[]
   reviewers       ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -358,6 +359,27 @@ model FormulaVersionProposal {
   proposedAt       DateTime @default(now())
 
   @@map("formula_version_proposals")
+}
+
+// Round 5 question 27: one marked pre-work entry — a table of a phase saved before the phase opened — and what its reviewer decided.
+model PreWorkEntry {
+  id         String    @id @default(cuid())
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  phase      Int
+  kind       String
+  key        String
+  label      String
+  enteredBy  String?
+  enteredAt  DateTime  @default(now())
+  status     String    @default("Pre-work")
+  reviewedBy String?
+  reviewedAt DateTime?
+  note       String?
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([projectId, phase, kind, key])
+  @@map("pre_work_entries")
 }
 
 // Round 5 question 25: a draft revision of a market's PIF, raised under a Change Control record while the approved PIF stays in force.

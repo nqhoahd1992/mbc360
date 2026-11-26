@@ -16,6 +16,7 @@ import { ASEAN_MARKETS, duplicateValueProblems, isColumnRequiredFor, marketScope
 import RequiredMark from './RequiredMark';
 import DrawerTabs from './DrawerTabs';
 import { referenceSourceOf } from '../utils/referenceSource';
+import PreWorkMark from './PreWorkMark';
 import ReferenceSource from './ReferenceSource';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -827,6 +828,7 @@ export default function DynamicTable({
           <span>{readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}</span>
         </div>
       )}
+      <PreWorkMark kind="register" entryKey={config.key} />
       <GeneratedNaAcks home={`register:${config.key}`} />
       {saveProblems.length > 0 && (
         <Alert

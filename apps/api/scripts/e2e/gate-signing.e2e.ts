@@ -1802,8 +1802,8 @@ export async function run(base: string, db: Client): Promise<number> {
   t('with a phase signature standing, the 8 Angles are read-only (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/evidence-summary`, { value: 'changed', expectedVersion: await version() });
   t('...and so is the evidence summary (403)', r.status === 403, `${r.status} ${short(r.json)}`);
-  r = await api('admin', 'POST', `/projects/${PROJECT}/phases/1/accept-pre-work`, { expectedVersion: await version() });
-  t('...and so is accepting pre-work (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'POST', `/projects/${PROJECT}/phases/1/pre-work/review`, { entries: [{ id: 'x', decision: 'Accepted' }], expectedVersion: await version() });
+  t('...and so is deciding pre-work (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/sign-off-assignees`, {
     assignments: [{ role: 'Prepared by', userId: sessions[phaseKey(1, 'Reviewed by')].id }],
     expectedVersion: await version(),
@@ -1982,6 +1982,24 @@ export async function run(base: string, db: Client): Promise<number> {
     gp.isGatePassed(pj.project, 'SG04') && gp.isGatePassed(pj.project, 'SG03') &&
       (await stale('SG04', 'Approved by')).length === 0 && (await stale('SG03', 'Approved by')).length === 0);
 
+  // ============================================================ Round 5 question 27 (1/2): a table saved before its phase opens is marked as pre-work
+  console.log('\n--- pre-work: a table of Phase 3 saved while Phase 3 is not open is marked, and nobody can decide it before the phase opens (question 27)');
+  {
+    const meNameW = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const putW = async (key: string, rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/${key}`, { rows, expectedVersion: await version() });
+    let w: any = await putW('eyeSafetyEvidence', [{ productSku: 'e2e SKU', useScenario: 'e2e: pre-work' }]);
+    t('a Phase 3 register is saved while Phase 3 is not open', w.status < 300, `${w.status} ${short(w.json)}`);
+    w = await putW('microPetEvidence', [{ productSku: 'e2e SKU' }]);
+    t('...and a second one', w.status < 300, `${w.status} ${short(w.json)}`);
+    const entries = (await project()).project.preWorkEntries as any[];
+    const eye = entries.find((x) => x.kind === 'register' && x.key === 'eyeSafetyEvidence');
+    const mic = entries.find((x) => x.kind === 'register' && x.key === 'microPetEvidence');
+    t('each is marked as pre-work with who entered it and when', !!eye && !!mic && eye.status === 'Pre-work' && eye.phase === 3 && eye.enteredBy === meNameW && !!eye.enteredAt, short(entries));
+    t('...and Phase 3 cannot close while they wait', gp.phaseCompletionChecklist((await project()).project, 3).preWorkAccepted === false);
+    w = await api('admin', 'POST', `/projects/${PROJECT}/phases/3/pre-work/review`, { entries: [{ id: eye.id, decision: 'Accepted' }], expectedVersion: await version() });
+    t('nobody can decide pre-work before the phase opens (400)', w.status === 400, `${w.status} ${short(w.json)}`);
+  }
+
   // ============================================================ SG06
   console.log('\n--- SG06 (packaging & artwork: Gate 6 columns versus Gate 10 columns of the same row)');
   const putArt = async (mutate: (rows: any[]) => any[]) => {
@@ -2018,6 +2036,8 @@ export async function run(base: string, db: Client): Promise<number> {
     `UPDATE phase_closures SET "preWorkAcceptedBy" = 'x', "preWorkAcceptedDate" = now() WHERE "projectId" = $1 AND phase = 2`,
     [PROJECT],
   );
+  await db.query(`UPDATE pre_work_entries SET status = 'Accepted' WHERE "projectId" = $1 AND phase = 2`, [PROJECT]);
+
   await db.query(
     `UPDATE angle_rows SET covered = true, ynna = 'Y'
       WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 2)`,
@@ -2243,10 +2263,50 @@ export async function run(base: string, db: Client): Promise<number> {
   const putAssess = async (patch: Record<string, string>) =>
     api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch, expectedVersion: await version() });
   const lanesPass = (project: any, gate: string) => gp.isGatePassed(project, gate);
+  // ============================================================ Round 5 question 27 (2/2): the accountable owner decides, from an explicit list
+  console.log('\n--- pre-work: decided by the accountable owner from an explicit list; leadership alone cannot decide a Safety or Regulatory area (question 27)');
+  {
+    const meNameW = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const entriesNow = async () => (await project()).project.preWorkEntries as any[];
+    const eye = (await entriesNow()).find((x) => x.key === 'eyeSafetyEvidence');
+    const mic = (await entriesNow()).find((x) => x.key === 'microPetEvidence');
+    const decide = async (list: any[]) => api('admin', 'POST', `/projects/${PROJECT}/phases/3/pre-work/review`, { entries: list, expectedVersion: await version() });
+    const savedOwner = (await db.query(`SELECT name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'quality-gmp'`, [PROJECT])).rows[0];
+    await db.query(`UPDATE project_reviewers SET name = 'Somebody Else', "userId" = NULL WHERE "projectId" = $1 AND "roleKey" = 'quality-gmp'`, [PROJECT]);
+
+    let w: any = await decide([]);
+    t('an empty list is refused: a batch is an explicit list (400)', w.status === 400, `${w.status} ${short(w.json)}`);
+    w = await decide([{ id: eye.id, decision: 'Accepted' }, { id: mic.id, decision: 'Accepted' }]);
+    t('a batch that includes a Safety or Regulatory area the person does not own is refused whole (403)', w.status === 403 && /Safety or Regulatory/.test(JSON.stringify(w.json)), `${w.status} ${short(w.json)}`);
+    t('...and nothing in it was recorded', ((await entriesNow()).find((x) => x.id === eye.id)?.status) === 'Pre-work');
+    w = await decide([{ id: eye.id, decision: 'Rejected' }]);
+    t('a rejection must say what is wrong (403)', w.status === 403 && /what was wrong/.test(JSON.stringify(w.json)), `${w.status} ${short(w.json)}`);
+    w = await decide([{ id: eye.id, decision: 'Accepted' }]);
+    t('the Lead may accept an area that is not Safety or Regulatory', w.status < 300 && (await entriesNow()).find((x) => x.id === eye.id)?.status === 'Accepted' && (await entriesNow()).find((x) => x.id === eye.id)?.reviewedBy === meNameW, `${w.status} ${short(w.json)}`);
+    t('...and Phase 3 still waits for the one it could not decide', gp.phaseCompletionChecklist((await project()).project, 3).preWorkAccepted === false);
+    w = await decide([{ id: eye.id, decision: 'Accepted' }]);
+    t('an entry already decided is not decided again (403)', w.status === 403, `${w.status} ${short(w.json)}`);
+
+    await db.query(`UPDATE project_reviewers SET name = $2 WHERE "projectId" = $1 AND "roleKey" = 'quality-gmp'`, [PROJECT, meNameW]);
+    w = await decide([{ id: mic.id, decision: 'Updated', note: 'e2e: sample size corrected' }]);
+    t('its accountable owner decides it, as Updated with what was corrected', w.status < 300 && (await entriesNow()).find((x) => x.id === mic.id)?.status === 'Updated', `${w.status} ${short(w.json)}`);
+    {
+      // Other tables of this run were saved before Phase 3 opened too, so the phase as a whole may still have entries waiting; what is checked is that these two are settled.
+      const left = (await entriesNow()).filter((x) => x.phase === 3 && (x.status === 'Pre-work' || x.status === 'Rejected'));
+      t('with these two decided, none of them is waiting any more', !left.some((x) => ['eyeSafetyEvidence', 'microPetEvidence'].includes(x.key)), JSON.stringify(left.map((x) => x.key)));
+      t('...and the phase is settled exactly when no entry at all is waiting', (gp.phaseCompletionChecklist((await project()).project, 3).preWorkAccepted === true) === (left.length === 0));
+    }
+
+    // Leave the run as it was.
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'quality-gmp'`, [PROJECT, savedOwner.name, savedOwner.userId]);
+    for (const key of ['eyeSafetyEvidence', 'microPetEvidence']) await api('admin', 'PUT', `/projects/${PROJECT}/registers/${key}`, { rows: [], expectedVersion: await version() });
+  }
+
   await db.query(
     `UPDATE phase_closures SET "preWorkAcceptedBy" = 'x', "preWorkAcceptedDate" = now() WHERE "projectId" = $1 AND phase IN (3, 4)`,
     [PROJECT],
   );
+  await db.query(`UPDATE pre_work_entries SET status = 'Accepted' WHERE "projectId" = $1 AND phase IN (3, 4)`, [PROJECT]);
   await nominate('SG08');
   r = await putAssess({ humanStudyPlanned: 'No' });
   t('the human-study assessment is answered while SG08 is open', r.status < 300, `${r.status} ${short(r.json)}`);

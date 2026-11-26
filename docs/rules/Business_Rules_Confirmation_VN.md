@@ -1245,6 +1245,12 @@ Không ép rút phiên bản đã duyệt hiện có chỉ vì một bản cập
 
 **(d)** Có. Hiện cảnh báo hết hạn/đến hạn rà soát và nội dung bị rút/thay thế cho chủ sở hữu chịu trách nhiệm và theo dõi disposition. Ngày rà soát đến hạn kích hoạt rà soát lại và mọi hạn chế sử dụng đã định; bản thân nó không chứng minh việc đăng trước đó là bất hợp pháp. Claim không được hỗ trợ hoặc bị cấm đã biết cần ngăn chặn ngay. Sự kiện rút/đăng thực tế vẫn ghi riêng.
 
+### Câu 27 — Chấp nhận pre-work
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 35.
+
+Chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liên quan khi phase/gate đó mở. Chủ rà soát phase điều phối việc chấp nhận. Project Lead chỉ được chấp nhận ở những lĩnh vực mà người đó cũng có thẩm quyền cần thiết; riêng ban lãnh đạo dự án không được chấp nhận các kết luận Safety/Regulatory. Đánh dấu từng mục với tác giả/ngày và trạng thái pre-work, rồi accepted/updated/rejected, người rà soát và ngày. Chấp nhận hàng loạt chỉ được khi có danh sách tường minh các mục và người rà soát đủ thẩm quyền bao phủ.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

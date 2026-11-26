@@ -25,6 +25,9 @@ import {
   gateCheckExemption,
   type GateReadinessItem,
 } from '@mbc360/shared/utils/gateProgress';
+import { pendingPreWork, preWorkEntries } from '@mbc360/shared/utils/preWork';
+import PreWorkMark from '../components/PreWorkMark';
+import PreWorkReviewDrawer from '../components/PreWorkReviewDrawer';
 import { gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
@@ -99,7 +102,7 @@ export default function PhasePage() {
   const { projectId, phaseNo } = useParams();
   const phase = Number(phaseNo);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
+  const [preWorkOpen, setPreWorkOpen] = useState(false);
   const { user: sessionUser } = useSession();
   const location = useLocation();
   const [showSatisfied, setShowSatisfied] = useState(false);
@@ -253,8 +256,10 @@ export default function PhasePage() {
   // F13 / B5: pre-work review. A not-yet-first phase that has opened prompts the
   // responsible owner to review and accept any pre-work entered before it opened.
   const closure = project.phaseClosures[phase];
-  const preWorkAccepted = !!closure?.preWork?.acceptedBy;
-  const showPreWorkReview = progress.state !== 'locked' && phase > 1 && !preWorkAccepted;
+  // Round 5 question 27: pre-work is marked entry by entry; the phase has some left to decide while any entry is waiting or was rejected.
+  const preWorkWaiting = pendingPreWork(project, phase);
+  const preWorkMarked = preWorkEntries(project, phase);
+  const showPreWorkReview = progress.state !== 'locked' && phase > 1 && preWorkWaiting.length > 0;
   const checklist = phaseCompletionChecklist(project, phase);
   const s42Triggers = skincareForTwoTriggers(project);
   const s42Incomplete = skincareForTwoIncompleteSections(project);
@@ -366,24 +371,31 @@ export default function PhasePage() {
     stripItems.push(
       <Tooltip
         key="prework"
-        title="If any data in this phase was entered before the phase opened (pre-work), the phase's review owner or the project's Lead must review and formally accept it before it contributes to completion."
+        title="Tables of this phase were saved before it opened (pre-work). The owner of each area must accept, update or reject them before the phase can close; Safety and Regulatory areas are decided only by their accountable owner."
       >
-        <span className="c-tag c-tag-warn c-tag-dot">Pre-work not reviewed</span>
+        <span className="c-tag c-tag-warn c-tag-dot">{`Pre-work: ${preWorkWaiting.length} to review`}</span>
       </Tooltip>,
-      <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} disabled={isPhaseDataLocked(project, phase)} onClick={() => acceptPreWork(project.identity.id, phase)}>
-        Accept pre-work
+      <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} disabled={isPhaseDataLocked(project, phase)} onClick={() => setPreWorkOpen(true)}>
+        Review pre-work
       </Button>,
     );
   }
   // Accepted: said once, up here with the other phase states, instead of as a loose line above the sign-off.
-  if (phase > 1 && closure?.preWork?.acceptedBy) {
+  if (phase > 1 && preWorkMarked.length > 0 && preWorkWaiting.length === 0) {
     stripItems.push(
       <Tooltip
         key="prework-done"
-        title={`Data entered in this phase before it opened was reviewed and accepted by ${closure.preWork.acceptedBy}${closure.preWork.acceptedDate ? ` on ${closure.preWork.acceptedDate}` : ''}.`}
+        title={`${preWorkMarked.length} table${preWorkMarked.length > 1 ? 's' : ''} saved before this phase opened ${preWorkMarked.length > 1 ? 'were' : 'was'} decided by their owners${closure?.preWork?.acceptedDate ? `; the last decision was on ${closure.preWork.acceptedDate}` : ''}.`}
       >
-        <span className="c-tag c-tag-ok c-tag-dot">Pre-work accepted</span>
+        <span className="c-tag c-tag-ok c-tag-dot">Pre-work reviewed</span>
       </Tooltip>,
+    );
+  }
+  if (phase > 1 && preWorkMarked.length > 0) {
+    stripItems.push(
+      <Button key="prework-list" type="link" size="small" onClick={() => setPreWorkOpen(true)}>
+        Pre-work entries
+      </Button>,
     );
   }
   // Round 4 question 16 / Round 5 question 1: an auto-generated "not applicable" on a critical item has to be
@@ -581,6 +593,7 @@ export default function PhasePage() {
   return (
     <div className="concept ph">
       {switching && <SwitchOverlay label="Switching gate…" />}
+      <PreWorkReviewDrawer project={project} phase={phase} open={preWorkOpen} onClose={() => setPreWorkOpen(false)} />
       <SectionJumpButton sections={jumpSections} />
 
       <div className="ph-header">
@@ -655,6 +668,7 @@ export default function PhasePage() {
           {statusStrip}
           {keyChecks.length > 0 && (
             <div id="sec-gate-checks">
+              <PreWorkMark kind="gateChecks" entryKey={tab ?? ''} />
               <GeneratedNaAcks homePrefix="gatecheck:" caption={keyGateCheckCaption} />
               <GateChecksTable
                 projectId={project.identity.id}
@@ -669,6 +683,7 @@ export default function PhasePage() {
           )}
           {requirementSections.map((section) => (
             <div key={section.key} id={`sec-requirement-${section.key}`}>
+              <PreWorkMark kind="requirement" entryKey={section.key} />
               <GeneratedNaAcks home={`requirement:${section.key}`} />
               <RequirementTable
                 projectId={project.identity.id}
@@ -747,6 +762,7 @@ export default function PhasePage() {
 
             {checklistSections.map((section) => (
               <div key={section.key} id={`sec-checklist-${section.key}`}>
+                <PreWorkMark kind="checklist" entryKey={section.key} />
                 <ChecklistSection
                   tickBlockedReason={
                     section.key === 'targetUsers'
@@ -789,6 +805,7 @@ export default function PhasePage() {
 
             {requirementSections.map((section) => (
               <div key={section.key} id={`sec-requirement-${section.key}`}>
+                <PreWorkMark kind="requirement" entryKey={section.key} />
                 <GeneratedNaAcks home={`requirement:${section.key}`} gateId={tab} />
                 <RequirementTable
                   projectId={project.identity.id}
@@ -812,6 +829,7 @@ export default function PhasePage() {
 
             {keyChecks.length > 0 && (
               <div id="sec-gate-checks">
+                <PreWorkMark kind="gateChecks" entryKey={tab ?? ''} />
                 <GeneratedNaAcks homePrefix="gatecheck:" gateId={tab} caption={keyGateCheckCaption} />
                 <GateChecksTable
                   projectId={project.identity.id}

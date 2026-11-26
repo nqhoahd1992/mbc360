@@ -1420,7 +1420,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q60 · R5-Q61 · R6-Q32 | **24(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q32 hỏi lại các chỗ ta đọc) | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
 | ✅ R5-Q40 · R6-Q33 | **25** (đã trả lời 05/11, xây 26/11/2026; R6-Q33 hỏi lại các chỗ ta đọc) | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
 | ✅ R5-Q41 · R6-Q34 | **26** (đã trả lời 05/11, xây 26/11/2026; R6-Q34 hỏi lại các chỗ ta đọc) | Bản ghi deviation khi phát hành chưa được duyệt |
-| R5-Q43 | **27** | Ai chấp nhận pre-work của một phase |
+| ✅ R5-Q43 · R6-Q35 | **27** (đã trả lời 05/11, xây 26/11/2026; R6-Q35 hỏi lại các chỗ ta đọc) | Ai chấp nhận pre-work của một phase |
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
 | R5-Q47 · R5-Q62 | **28(a) · (b)** | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
 | R5-Q50 | **29** | "Approved artwork version" ở Gate 11 đọc gì |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q35 · Pre-work: các chỗ ta đọc câu trả lời (Vòng 5 câu 27) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 27.** SME: chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liên quan khi phase/gate mở; chủ rà soát phase điều phối; Project Lead chỉ chấp nhận ở lĩnh vực họ cũng có thẩm quyền, lãnh đạo một mình không chấp nhận kết luận Safety/Regulatory; đánh dấu từng mục (tác giả/ngày/trạng thái pre-work → accepted/updated/rejected, người rà soát, ngày); duyệt hàng loạt chỉ với danh sách tường minh và người rà soát đủ thẩm quyền. Cách đọc của ta (`utils/preWork.ts`): (1) **mục** = một bảng đã lưu của phase (checklist, requirement, Key Gate Checks của một gate, register) ghi vào `pre_work_entries` (migration `20261126240000`) khi lưu lúc phase chưa mở (`notePreWork` trong `setChecklistSection`, `setRequirementSection`, `setGateChecks`, `setRegisterRows`); lưu lại trước khi quyết định làm mới dấu (và đưa Rejected/Accepted về Pre-work); BOM/costing/packaging chưa đánh dấu; (2) **ai quyết định** (`preWorkDecisionProblem`): người được giao vai sở hữu lĩnh vực của bảng luôn được; chủ rà soát phase, Lead, quản trị viên được quyết định lĩnh vực không phải Safety/Regulatory; Safety/Regulatory = vai sở hữu `regulatory`, `quality-gmp` (sheet an toàn công thức), `safety-scientific`, `safety-study-reviewer` (`SAFETY_REGULATORY_OWNER_ROLES`) — chỉ chủ sở hữu, kể cả quản trị viên cũng không thay; (3) **quyết định** Accepted/Updated/Rejected từ danh sách tường minh (`POST …/phases/:phase/pre-work/review`), Updated/Rejected bắt buộc ghi chú, cả lô bị từ chối nếu một mục không đủ thẩm quyền; (4) **đóng phase**: `pendingPreWork` rỗng (Pre-work hoặc Rejected còn lại thì chưa), phase không có mục đánh dấu thì không có gì để rà soát nên nút "Accept pre-work" cũ bỏ; dữ liệu lưu trước khi có tính năng này không được đánh dấu.
+
+**Câu hỏi:** (a) "một bảng đã lưu" có đúng cỡ một mục không, hay cần đánh dấu từng dòng/ô; (b) các lĩnh vực lãnh đạo không được chấp nhận và việc chủ rà soát phase điều phối phần còn lại có đúng không; (c) mục Rejected chặn phase tới khi làm lại hay tới khi bản thay thế được chấp nhận.
+
+**Nếu trả lời khác:** `utils/preWork.ts`; `utils/gateProgress.ts` (`phaseCompletionChecklist.preWorkAccepted`); `projects.service.ts` (`notePreWork`, `reviewPreWork`); `PreWorkReviewDrawer.tsx`, `PreWorkMark.tsx`, `PhasePage.tsx` [ASSUMPTION: R6-Q35].
 
 #### R6-Q34 · Bản ghi deviation: các chỗ ta đọc câu trả lời (Vòng 5 câu 26) 🟡
 
@@ -2445,7 +2453,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion` (`FORMULA_CLASSIFICATION_CAPABILITIES`).
 
-#### R5-Q43 · "Chủ phụ trách" chấp nhận pre-work là ai 🔴
+#### R5-Q43 · "Chủ phụ trách" chấp nhận pre-work là ai ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 27) và đã xây 26/11/2026 — phần dưới là lịch sử.** Chủ sở hữu lĩnh vực chấp nhận các mục liên quan khi phase mở, chủ rà soát phase điều phối, Lead chỉ chấp nhận ở lĩnh vực có thẩm quyền và không bao giờ kết luận Safety/Regulatory, đánh dấu từng mục, duyệt hàng loạt chỉ với danh sách tường minh. → **R6-Q35** [ASSUMPTION: R5-Q43].
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục C4).** F13: pre-work phải được *"the responsible owner"* duyệt và chấp nhận khi phase mở. Không nói là ai. Đang chọn: review owner của phase đó theo phân công dự án, hoặc Project Lead.
 

@@ -81,6 +81,7 @@ import {
   trendRowGaps,
 } from './postMarketReview';
 import { impactHolds } from './impactAssessments';
+import { pendingPreWork } from './preWork';
 import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
@@ -3189,7 +3190,8 @@ export function phaseCompletionChecklist(project: ProjectData, phase: number): P
   const signOffsComplete =
     (closure?.signOffs ?? []).length > 0 && (closure?.signOffs ?? []).every(isSignedOff);
 
-  const preWorkAccepted = phase === 1 || !!closure?.preWork?.acceptedBy;
+  // Round 5 question 27: pre-work is settled when no marked entry of the phase is still waiting for its owner's decision (or was rejected and not redone).
+  const preWorkAccepted = phase === 1 || pendingPreWork(project, phase).length === 0;
 
   const canSignOff = gatesPassed && keyChecksDone && anglesCovered && actionsClosed && preWorkAccepted;
 
