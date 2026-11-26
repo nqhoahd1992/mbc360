@@ -57,7 +57,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
     regulatoryChecklistStatus: ['approvalConditions', 'checklistLink', 'component', 'componentId', 'componentVersion', 'conditionActionId', 'conditionTiming', 'dossierType', 'externalAuthorisation', 'externalEvidenceLink', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
-    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink'],
+    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'intendedChannel', 'market', 'pifLink'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {
@@ -103,7 +103,7 @@ export const PROJECT_SLICE_READS_BY_GATE: Record<string, string[]> = {
   SG03: ['assessments'],
   SG04: ['assessments', 'bom', 'identity'],
   SG05: ['assessments', 'bom', 'costing', 'formulaProperties'],
-  SG06: ['assessments', 'marketTracks'],
+  SG06: ['assessments', 'identity', 'marketTracks'],
   SG07: ['assessments', 'bom', 'identity'],
   SG08: ['assessments', 'studyApprovals'],
   SG09: ['assessments', 'formulaProperties', 'formulaVersionHistory'],

@@ -110,6 +110,7 @@ import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import { bypassable } from './dev-flags';
 import { stampArtworkClaimRevisions } from '@mbc360/shared/utils/artworkApproval';
+import { stampMarketPackRevisions } from '@mbc360/shared/utils/marketPack';
 import {
   PRE_WORK_DECISIONS,
   PRE_WORK_DECISIONS_NEEDING_NOTE,
@@ -798,6 +799,11 @@ export class ProjectsService {
         dossierType: p.dossierType ?? undefined,
         claimRestrictions: p.claimRestrictions ?? undefined,
         packRequirements: p.packRequirements ?? undefined,
+        packRequirementsNa: p.packRequirementsNa,
+        packRequirementsRationale: p.packRequirementsRationale ?? undefined,
+        packRequirementsReviewedBy: p.packRequirementsReviewedBy ?? undefined,
+        packRequirementsReviewedAt: p.packRequirementsReviewedAt?.toISOString(),
+        effectiveFrom: p.effectiveFrom ?? undefined,
         evidenceLink: p.evidenceLink ?? undefined,
         reviewDate: p.reviewDate ?? undefined,
         notes: p.notes ?? undefined,
@@ -3167,6 +3173,10 @@ export class ProjectsService {
       // Round 5 question 29: the claim revisions an artwork approval stands on are written here when it is approved, never taken from the request. [ASSUMPTION: R6-Q37]
       if (registerKey === 'packagingSpecsArtwork') {
         rows = stampArtworkClaimRevisions(project, project.registers[registerKey] ?? [], rows);
+      }
+      // Round 5 question 30: the market profile revision an identification or a verification stood on is written here, never taken from the request. [ASSUMPTION: R6-Q38]
+      if (registerKey === 'marketPackChecklist') {
+        rows = stampMarketPackRevisions(project, project.registers[registerKey] ?? [], rows);
       }
       if (registerKey === 'skuClaimsPifRegister') {
         const committedUse = project.registers[registerKey] ?? [];

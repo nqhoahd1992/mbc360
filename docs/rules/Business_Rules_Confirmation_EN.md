@@ -1265,6 +1265,12 @@ The accountable subject-area owner accepts the relevant entries when that phase/
 
 Read both. Packaging Specs & Artwork Evidence holds the approved artwork revision, file and linked Claim IDs/approved claim revisions. Released Label Control records which approved label/artwork/formula version is authorised and actually used in each market, plus transition and reconciliation. Gate 11 confirms that the proposed release matches the approved record; a filename alone is not approval. A Yes and actual market-release date are recorded after deployment, not required before first-launch authorisation. Do not force a false "already released" answer to pass Gate 11.
 
+### Question 30 — Market-specific pack requirements
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 38.
+
+Regulatory maintains versioned market profiles with source, effective date and reviewer. The applicable profile requirements are linked to the project's packaging / artwork checklist. Gate 6 closes identification and assignment of those requirements; Gate 10 verifies compliant final artwork or dossier; Gate 11 verifies the approved version for release. A filled market-profile field is not proof of product compliance. Blank is unassessed; N/A needs a reviewed rationale. A relevant profile change triggers the impact assessment described in Question 1(d).
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -485,6 +485,8 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
       project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
     }
   }
+  // Round 5 question 30: a market with pack requirements is OFFERED a checklist row, so this register is derived even when nothing has been stored yet.
+  project.registers['marketPackChecklist'] = deriveRegisterRows('marketPackChecklist', project.registers['marketPackChecklist'] ?? [], project);
   // Round 5 question 20: a market's regulatory status is ONE summary derived from its dossier components, never a second value typed beside
   // them ("do not maintain contradictory approval fields"): whatever the track holds, every reader sees the derived one.
   project.marketTracks = project.marketTracks.map((t) => ({ ...t, regulatoryStatus: marketRegulatorySummary(project, t.market) }));

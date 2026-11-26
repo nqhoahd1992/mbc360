@@ -43,6 +43,11 @@ export class MarketProfilesController {
       dossierType: r.dossierType ?? undefined,
       claimRestrictions: r.claimRestrictions ?? undefined,
       packRequirements: r.packRequirements ?? undefined,
+      packRequirementsNa: r.packRequirementsNa,
+      packRequirementsRationale: r.packRequirementsRationale ?? undefined,
+      packRequirementsReviewedBy: r.packRequirementsReviewedBy ?? undefined,
+      packRequirementsReviewedAt: r.packRequirementsReviewedAt?.toISOString(),
+      effectiveFrom: r.effectiveFrom ?? undefined,
       evidenceLink: r.evidenceLink ?? undefined,
       reviewDate: r.reviewDate ?? undefined,
       notes: r.notes ?? undefined,
@@ -85,6 +90,17 @@ export class MarketProfilesController {
 
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.marketProfile.findUnique({ where: { market: key } });
+      const packText = ((patch.packRequirements ?? existing?.packRequirements ?? '') as string).trim();
+      const packNa = patch.packRequirementsNa ?? existing?.packRequirementsNa ?? false;
+      const packWhy = ((patch.packRequirementsRationale ?? existing?.packRequirementsRationale ?? '') as string).trim();
+      // Round 5 question 30: a market either has pack requirements or has a reviewed "not applicable" (with its rationale) — never both, and N/A never without a reason.
+      if (packNa && packText !== '') throw new BadRequestException('Pack requirements are filled in, so the market cannot also be marked not applicable');
+      if (packNa && packWhy === '') throw new BadRequestException('Not applicable needs its rationale');
+      const packChanged =
+        !existing ||
+        packText !== (existing.packRequirements ?? '').trim() ||
+        packNa !== existing.packRequirementsNa ||
+        packWhy !== (existing.packRequirementsRationale ?? '').trim();
       const data = {
         adverseEventReporting: patch.adverseEventReporting ?? existing?.adverseEventReporting ?? false,
         pmsRecordsRequired: patch.pmsRecordsRequired ?? existing?.pmsRecordsRequired ?? false,
@@ -97,6 +113,12 @@ export class MarketProfilesController {
         dossierType: (patch.dossierType ?? existing?.dossierType ?? '') || null,
         claimRestrictions: (patch.claimRestrictions ?? existing?.claimRestrictions ?? '') || null,
         packRequirements: (patch.packRequirements ?? existing?.packRequirements ?? '') || null,
+        packRequirementsNa: packNa,
+        packRequirementsRationale: packWhy || null,
+        effectiveFrom: (patch.effectiveFrom ?? existing?.effectiveFrom ?? '') || null,
+        // Server-written: who recorded the pack answer and when. Re-stamped only when that answer changes.
+        packRequirementsReviewedBy: packChanged && (packText !== '' || packNa) ? user.displayName : (existing?.packRequirementsReviewedBy ?? null),
+        packRequirementsReviewedAt: packChanged && (packText !== '' || packNa) ? new Date() : (existing?.packRequirementsReviewedAt ?? null),
         evidenceLink: (patch.evidenceLink ?? existing?.evidenceLink ?? '') || null,
         reviewDate: (patch.reviewDate ?? existing?.reviewDate ?? '') || null,
         notes: (patch.notes ?? existing?.notes ?? '') || null,
@@ -113,7 +135,7 @@ export class MarketProfilesController {
       await this.reference.recordRevision(tx, user, 'market-profile', row.id, revision, { market: key, ...data }, body.reason);
       const CONTENT = [
         'adverseEventReporting', 'pmsRecordsRequired', 'reviewIntervalMonths', 'enhancedSurveillance',
-        'dossierType', 'claimRestrictions', 'packRequirements',
+        'dossierType', 'claimRestrictions', 'packRequirements', 'packRequirementsNa',
       ] as const;
       const changedFields = existing ? CONTENT.filter((k) => (existing[k] ?? null) !== (data[k] ?? null)) : [...CONTENT];
       if (changedFields.length > 0) {

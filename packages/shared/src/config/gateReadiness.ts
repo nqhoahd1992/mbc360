@@ -167,9 +167,6 @@ export const TRIGGERS_WITHOUT_UNASSESSED_STATE: readonly ReadinessTrigger[] = [
   'claimNeedsPerformanceEvidence',
   // A checklist tick: present or absent, and Gate 2 already requires a selection.
   'productFormUnderEvaluation',
-  // Reads Regulatory's profiles: a market with nothing recorded is Regulatory
-  // saying there is nothing — the same reading as claimRestrictions.
-  'marketPackRequirements',
 ];
 
 export type ReadinessCheck =
@@ -408,6 +405,10 @@ export type ReadinessCheck =
   | { kind: 'marketReleaseAuthorised' }
   // Round 5 question 29: every released-label row of the market names an approved artwork record and matches it (version, file, market, formula).
   | { kind: 'releasedLabelMatchesApproval' }
+  // Round 5 question 30: every market with pack requirements on its Regulatory profile has them identified and assigned in the project's checklist (Gate 6).
+  | { kind: 'marketPackIdentified' }
+  // ...and verified compliant on the final artwork / dossier ('final', Gate 10) and for release ('release', Gate 11); stale once the profile changes.
+  | { kind: 'marketPackVerified'; stage: 'final' | 'release' }
   // Round 5 question 26: no deviation of the market leaves a safety, compliance, claims or version mismatch unresolved; every deviation is reviewed and
   // dispositioned; no Critical deviation is left unresolved.
   | { kind: 'noUnresolvedDeviation' }
@@ -553,6 +554,7 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg10-claim-evidence',
   'sg10-artwork',
   'sg10-artwork-claims',
+  'sg10-market-pack',
   'sg10-reg-approval',
   'sg10-market-additions',
   'sg10-signoff',
@@ -561,6 +563,7 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg11-market-additions',
   'sg11-gmp',
   'sg11-artwork',
+  'sg11-market-pack',
   'sg11-published-approved',
   'sg11-changes-blocking',
   'sg11-changes-admin',
@@ -1990,11 +1993,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // than the packaging-format checklist this read before — both choices ours
       // [ASSUMPTION: R5-Q51].
       trigger: 'marketPackRequirements',
+      // Round 5 question 30: Gate 6 closes the IDENTIFICATION and assignment of each market's pack requirements on the project checklist (not compliance).
       check: {
-        kind: 'gateCheckDone',
-        gate: '06',
-        check: 'Artwork/label needs and pack compatibility triggers identified',
+        kind: 'allOf',
+        // The Key Gate Check row goes LAST: it is where Regulatory acknowledges a generated "not applicable" (acknowledgementHome follows the last part).
+        checks: [
+          { kind: 'marketPackIdentified' },
+          { kind: 'gateCheckDone', gate: '06', check: 'Artwork/label needs and pack compatibility triggers identified' },
+        ],
       },
+      assumption: 'R6-Q38',
     },
     {
       id: 'sg06-evidence-link',
@@ -2761,6 +2769,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'marketChecklistRecorded' },
     },
     {
+      id: 'sg10-market-pack',
+      label: 'Market pack requirements verified on the final artwork / dossier',
+      tier: 'Mandatory',
+      // See sg11-market-pack: question 30 says "Gate 10 verifies compliant final artwork/dossier"; the SME's Gate 10 list does not name it.
+      source: 'dev-decision',
+      check: { kind: 'marketPackVerified', stage: 'final' },
+      assumption: 'R6-Q38',
+    },
+    {
       // The other half of E2, split out because it is Conditional and the half above
       // is not — a project selling only outside ASEAN must not be asked for this,
       // and a project selling only inside it needs no per-market rows.
@@ -3097,6 +3114,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       // F14: Gates 10/11 must use the controlled Cosmetri formula and version.
       check: { kind: 'bomReconciled' },
+    },
+    {
+      id: 'sg11-market-pack',
+      label: 'Market pack requirements verified for the approved release version',
+      tier: 'Mandatory',
+      // Not in the SME's Gate 11 list, which Round 5 question 30 extends ("Gate 11 verifies the approved version for release"). Satisfied only by a verified
+      // checklist row for every market that has requirements; a market with none has nothing to verify (Gate 6 holds one nobody has assessed).
+      source: 'dev-decision',
+      check: { kind: 'marketPackVerified', stage: 'release' },
+      assumption: 'R6-Q38',
     },
     {
       id: 'sg11-artwork',

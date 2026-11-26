@@ -1424,7 +1424,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
 | ✅ R5-Q47 · R5-Q62 · R6-Q36 | **28(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q36 hỏi lại các chỗ ta đọc) | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
 | ✅ R5-Q50 · R6-Q37 | **29** (đã trả lời 05/11, xây 26/11/2026; R6-Q37 hỏi lại các chỗ ta đọc) | "Approved artwork version" ở Gate 11 đọc gì |
-| R5-Q51 | **30** | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
+| ✅ R5-Q51 · R6-Q38 | **30** (đã trả lời 05/11, xây 26/11/2026; R6-Q38 hỏi lại các chỗ ta đọc) | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
 | R5-Q65 | **31** | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
 | R5-Q66 | **32(a)(b)** (phần (a)(c) cũ đã quyết SW-44) | Change Control mở trước hay sau khi thay đổi xảy ra |
 | R5-Q68 | **33** | Dòng watch-list thuộc phạm vi gate nào theo Linked gate |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q38 · Yêu cầu bao bì theo thị trường: các chỗ ta đọc câu trả lời (Vòng 5 câu 30) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 30.** SME: Regulatory duy trì hồ sơ thị trường có phiên bản (nguồn, ngày hiệu lực, người review); yêu cầu áp dụng liên kết với checklist packaging/artwork của dự án; Gate 6 đóng việc xác định và phân công, Gate 10 xác minh artwork/hồ sơ cuối đạt, Gate 11 xác minh phiên bản duyệt để phát hành; trường hồ sơ đã điền không phải bằng chứng tuân thủ; để trống = chưa đánh giá; N/A cần lý do đã review; hồ sơ đổi kích hoạt đánh giá tác động câu 1(d) (đã nối sẵn qua `raiseReferenceSignal`). Cách đọc của ta (`utils/marketPack.ts`): (1) hồ sơ thêm `effectiveFrom`, `packRequirementsNa` + `packRequirementsRationale` (không lưu N/A thiếu lý do hoặc khi đồng thời có yêu cầu), `packRequirementsReviewedBy/At` do server ghi; (2) trigger `marketPackRequirements` thành ba trạng thái — thị trường bán mà hồ sơ trống = `notAssessed` (chặn), đã bỏ khỏi `TRIGGERS_WITHOUT_UNASSESSED_STATE`; (3) sổ mới `marketPackChecklist` (gate 06/10/11, thuộc trang Packaging Specs & Artwork Evidence), mỗi thị trường có yêu cầu một dòng (dòng ảo từ `deriveMarketPackRows`, yêu cầu + revision hiện hành hiển thị chỉ đọc); (4) `sg06-market-pack` = `marketPackIdentified` (có dòng, có người phân công, `identifiedBy` do chính người đó ghi) + Key Gate Check cũ; `sg10-market-pack` (`marketPackVerified` final: Compliant + bằng chứng, hoặc N/A + lý do đã review, `verifiedBy` do chính người đó) và `sg11-market-pack` (như vậy + `releaseVerifiedVersion`) — hai mục Mandatory theo thị trường, không có trigger vì bảng 31 mục của câu 1 không có mục Gate 10/11 nào; một thị trường không có yêu cầu thì không có gì để xác minh; (5) server ghi `identifiedRevision`/`verifiedRevision` (`stampMarketPackRevisions`); hồ sơ lên revision mới thì cả hai thành cũ, phải làm lại. Dự án cũ không có dòng nào: thị trường có yêu cầu hiện dòng ảo, thị trường chưa đánh giá chặn Gate 6 cho tới khi Regulatory ghi hồ sơ.
+
+**Câu hỏi:** (a) một khối yêu cầu mỗi thị trường hay danh sách tách dòng; (b) thị trường chưa đánh giá chặn Gate 6 của mọi dự án, Regulatory ghi N/A một lần là xong; (c) hai lần xác minh riêng ở Gate 10 và 11 hay một lần; (d) ai được ghi xác minh.
+
+**Nếu trả lời khác:** `utils/marketPack.ts`; `config/registers.ts` (`marketPackChecklist`); `config/gateReadiness.ts` (`sg06-market-pack`, `sg10-market-pack`, `sg11-market-pack`, `TRIGGERS_WITHOUT_UNASSESSED_STATE`); `gateProgress.ts` (`marketPackRequirements`); `market-profiles.controller.ts`; `AdminMarketProfiles.tsx` [ASSUMPTION: R6-Q38].
 
 #### R6-Q37 · Artwork đã duyệt và lịch sử phát hành: các chỗ ta đọc câu trả lời (Vòng 5 câu 29) 🟡
 
@@ -2549,7 +2557,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg11-artwork`.
 
-#### R5-Q51 · Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì 🔴
+#### R5-Q51 · Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 30) và đã xây 26/11/2026 — phần dưới là lịch sử.** Hồ sơ thị trường do Regulatory duy trì (nguồn, ngày hiệu lực, người review); yêu cầu liên kết với checklist packaging/artwork của dự án; Gate 6 đóng việc xác định và phân công, Gate 10 xác minh artwork/hồ sơ cuối, Gate 11 xác minh phiên bản duyệt để phát hành; trống = chưa đánh giá, N/A cần lý do. → **R6-Q38**.
 
 **Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-45: ô Pack requirements trống không được hiểu là "không có yêu cầu" (câu 31(b) đã gỡ). Còn hỏi SME: ghi ở đâu và cái gì đóng mục. Câu hỏi còn lại như bên dưới.
 

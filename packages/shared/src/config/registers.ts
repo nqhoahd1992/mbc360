@@ -3915,7 +3915,41 @@ const deviationRecords: RegisterConfig = {
   ],
 };
 
+// Round 5 question 30: the project's packaging / artwork checklist of market-specific requirements. One row per market the project sells into whose Regulatory
+// profile states pack requirements (rows are offered automatically). Gate 6 closes identifying and assigning them; Gate 10 verifies the final artwork /
+// dossier; Gate 11 the version approved for release. A filled profile field is not proof of compliance. [ASSUMPTION: R6-Q38]
+const PACK_COMPLIANCE_STATUSES = ['Not assessed', 'Compliant', 'Not compliant', 'N/A'] as const;
+export const marketPackChecklist: RegisterConfig = {
+  key: 'marketPackChecklist',
+  title: 'Market Pack Requirements Checklist',
+  sheetName: 'Packaging_Specs_Artwork',
+  description:
+    "The pack requirements Regulatory records on each market's profile, carried into this project's packaging / artwork checklist. Gate 6 closes identifying and assigning them; Gate 10 verifies the final artwork or dossier meets them; Gate 11 verifies the approved version being released. A market profile that merely states requirements is not proof the product complies. If a profile changes, identification and verification must be done again.",
+  mode: 'register',
+  gate: '06/10/11',
+  // Each act is recorded on its row by the person who did it (selfAttest), so there is no second closing ceremony on top.
+  approvalRoute: 'Identification and verification are each recorded on the row by the person who did them',
+  reviewOwner: REVIEW_SPECS.packaging,
+  columns: [
+    { key: 'market', label: 'Market', type: 'market', width: 130, unique: true, gate: '06' },
+    { key: 'requirements', label: 'Requirements (from the market profile)', type: 'textarea', width: 300, editable: false, computed: true },
+    { key: 'profileRevision', label: 'Profile revision', type: 'text', width: 110, editable: false, computed: true },
+    { key: 'profileChanged', label: 'Profile changed since?', type: 'text', width: 130, editable: false, computed: true },
+    { key: 'owner', label: 'Assigned to', type: 'user', width: 150, gate: '06' },
+    { key: 'identifiedBy', label: 'Identified and assigned by', type: 'user', width: 170, selfAttest: true, gate: '06' },
+    { key: 'identifiedRevision', label: 'Identified on profile revision', type: 'text', width: 150, editable: false, gate: '06' },
+    { key: 'complianceStatus', label: 'Compliance of final artwork / dossier', type: 'select', width: 190, options: [...PACK_COMPLIANCE_STATUSES], gate: '10' },
+    { key: 'complianceEvidence', label: 'Final artwork / dossier evidence', type: 'text', width: 220, requiredWhen: { column: 'complianceStatus', values: ['Compliant'] }, gate: '10' },
+    { key: 'complianceRationale', label: 'Reviewed rationale (N/A)', type: 'textarea', width: 240, requiredWhen: { column: 'complianceStatus', values: ['N/A'] }, gate: '10' },
+    { key: 'releaseVerifiedVersion', label: 'Approved version verified for release', type: 'text', width: 200, gate: '11' },
+    { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 150, selfAttest: true, gate: '10' },
+    { key: 'verifiedRevision', label: 'Verified on profile revision', type: 'text', width: 150, editable: false, gate: '10' },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
+  ],
+};
+
 export const REGISTER_CONFIGS: RegisterConfig[] = [
+  marketPackChecklist,
   deviationRecords,
   releaseAuthorisation,
   formulationSafetyProfile,
@@ -4696,7 +4730,7 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       { title: 'Released Label Control', sheetName: 'Released_Label_Ctrl', workbookTab: 'Lily-Released_Label_Ctrl', page: 'released-label-control', gate: '06/11', contains: ['releasedLabelRegister', 'labelPlatformRollout', 'labelShipmentVerification'] },
       { title: 'Packaging BOM', sheetName: 'Packaging_BOM', workbookTab: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
-      { title: 'Packaging Specs & Artwork Evidence', sheetName: 'Packaging_Specs_Artwork', workbookTab: 'Lily-Packaging_Specs_Art', page: 'packaging-specs-artwork', gate: '06/10/11', contains: ['packagingSpecsArtwork', 'artworkLabelReviewChecklist'] },
+      { title: 'Packaging Specs & Artwork Evidence', sheetName: 'Packaging_Specs_Artwork', workbookTab: 'Lily-Packaging_Specs_Art', page: 'packaging-specs-artwork', gate: '06/10/11', contains: ['packagingSpecsArtwork', 'artworkLabelReviewChecklist', 'marketPackChecklist'] },
       'artworkChangeControl',
     ],
   },

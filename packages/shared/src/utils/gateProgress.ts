@@ -84,6 +84,7 @@ import { impactHolds } from './impactAssessments';
 import { pendingPreWork } from './preWork';
 import { RELEASE_AUTHORISATION_REGISTER, marketsWithoutReleaseAuthorisation } from './releaseAuthorisation';
 import { RELEASED_LABEL_REGISTER, releasedLabelApprovalGaps } from './artworkApproval';
+import { MARKET_PACK_REGISTER, marketPackComplianceGaps, marketPackIdentificationGaps, marketPackTrigger } from './marketPack';
 import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
@@ -738,14 +739,9 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // Round 4 question 15's five conditions for product-performance feedback,
     // in the answer's order. Four read the post-market lists that question 10
     // split apart; the first reads the review schedule.
-    case 'marketPackRequirements': {
-      const markets = activeMarketTracks(project).map((t) => t.market);
-      return project.reference.marketProfiles.some(
-        (mp) => markets.includes(mp.market) && (mp.packRequirements ?? '').trim() !== '',
-      )
-        ? 'applies'
-        : 'doesNotApply';
-    }
+    // Round 5 question 30: three states. A market whose profile says nothing is UNASSESSED ("Blank is unassessed"), not "no requirements".
+    case 'marketPackRequirements':
+      return marketPackTrigger(project);
 
     case 'productFormUnderEvaluation':
       return selectedChecklistLabels(project, 'productType').includes(PRODUCT_FORM_UNDER_EVALUATION)
@@ -1053,7 +1049,7 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   productPerformanceFeedback:
     'no performance, packaging, formula or quality issue has been recorded, no product optimisation is proposed, and no scheduled review is due',
   productFormUnderEvaluation: 'the Gate 2 brief names a product form rather than leaving it under evaluation',
-  marketPackRequirements: "no market this project sells into has pack requirements on its Regulatory market profile",
+  marketPackRequirements: "Regulatory has recorded, on every market profile this project sells into, that there are no market-specific pack requirements",
 };
 
 // Why a trigger has not been evaluated yet, in plain language — the third state
@@ -1096,7 +1092,8 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   postLaunchReviewDue: 'Nobody has recorded an actual commercial launch date, so no review schedule exists yet.',
   productPerformanceFeedback: 'Nobody has recorded the post-market feedback issue types for this product yet.',
   productFormUnderEvaluation: 'Nobody has recorded a product type at Gate 2 yet.',
-  marketPackRequirements: 'No market has been recorded for this project yet.',
+  marketPackRequirements:
+    'Regulatory has not assessed the pack requirements of every market this project sells into (blank is unassessed).\nRecord them, or a reviewed "not applicable" with its rationale, on the market profile (Company Reference Data → Market profiles).',
 };
 
 // Rule C3: watch-list groups the current formula matches whose register row is
@@ -1403,6 +1400,11 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: marketsWithoutReleaseAuthorisation(project, market).length === 0 };
     case 'releasedLabelMatchesApproval':
       return { evaluable: true, satisfied: releasedLabelApprovalGaps(project, market).length === 0 };
+    // Round 5 question 30: pack requirements identified and assigned (Gate 6), verified on the final artwork / dossier (Gate 10) and for release (Gate 11).
+    case 'marketPackIdentified':
+      return { evaluable: true, satisfied: marketPackIdentificationGaps(project, market).length === 0 };
+    case 'marketPackVerified':
+      return { evaluable: true, satisfied: marketPackComplianceGaps(project, market, check.stage).length === 0 };
     // Round 5 question 26: deviations, judged on the market's lane.
     case 'noUnresolvedDeviation':
       return { evaluable: true, satisfied: unresolvedBlockingDeviations(project, market).length === 0 };
@@ -2094,6 +2096,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${RELEASE_AUTHORISATION_REGISTER}` };
     case 'releasedLabelMatchesApproval':
       return { href: `/registers/reg/${RELEASED_LABEL_REGISTER}` };
+    case 'marketPackIdentified':
+    case 'marketPackVerified':
+      return { href: `/registers/reg/${MARKET_PACK_REGISTER}` };
     case 'noUnresolvedDeviation':
     case 'deviationsReviewed':
     case 'noCriticalDeviation':

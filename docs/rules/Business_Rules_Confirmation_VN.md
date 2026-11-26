@@ -1265,6 +1265,12 @@ Chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liê
 
 Đọc cả hai. Packaging Specs & Artwork Evidence giữ bản sửa đổi artwork đã duyệt, tệp và các Claim ID liên kết/revision claim đã duyệt. Released Label Control ghi phiên bản nhãn/artwork/công thức đã duyệt nào được cho phép và thực tế đang dùng ở mỗi thị trường, kèm chuyển tiếp và đối chiếu. Gate 11 xác nhận bản phát hành đề xuất khớp với bản ghi đã duyệt; chỉ tên tệp thì không phải phê duyệt. "Yes" và ngày phát hành thực tế ra thị trường được ghi sau khi triển khai, không bắt buộc trước khi cho phép ra mắt lần đầu. Không ép câu trả lời sai "đã phát hành" để qua Gate 11.
 
+### Câu 30 — Yêu cầu bao bì riêng theo thị trường
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 38.
+
+Regulatory duy trì hồ sơ thị trường có phiên bản, kèm nguồn, ngày hiệu lực và người review. Các yêu cầu hồ sơ áp dụng được liên kết với checklist packaging / artwork của dự án. Gate 6 đóng việc xác định và phân công các yêu cầu đó; Gate 10 xác minh artwork hoặc hồ sơ cuối đạt yêu cầu; Gate 11 xác minh phiên bản đã duyệt để phát hành. Một trường hồ sơ thị trường đã điền không phải bằng chứng sản phẩm tuân thủ. Để trống là chưa đánh giá; N/A cần lý do đã được review. Thay đổi hồ sơ có liên quan kích hoạt đánh giá tác động nêu ở câu 1(d).
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

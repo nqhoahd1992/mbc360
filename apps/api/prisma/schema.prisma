@@ -1598,6 +1598,12 @@ model MarketProfile {
   // as claimRestrictions — the trigger only needs to know whether one exists
   // (SME rule audit D, 2026-10-04).
   packRequirements String?
+  // Round 5 question 30: blank = unassessed; "not applicable" needs a rationale; reviewer/date are server-written.
+  packRequirementsNa         Boolean  @default(false)
+  packRequirementsRationale  String?
+  packRequirementsReviewedBy String?
+  packRequirementsReviewedAt DateTime?
+  effectiveFrom              String?
 
   // Shared across all three datasets.
   evidenceLink String?

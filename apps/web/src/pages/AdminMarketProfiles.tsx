@@ -68,6 +68,7 @@ function requirementTags(r: MarketProfile): string[] {
     r.enhancedSurveillance && 'Enhanced surveillance',
     r.reviewIntervalMonths && `Review ${r.reviewIntervalMonths}m`,
     r.dossierType,
+    (r.packRequirements ?? '').trim() !== '' ? 'Pack requirements' : r.packRequirementsNa ? 'Pack: not applicable' : false,
   ].filter((t): t is string => !!t);
 }
 
@@ -112,6 +113,11 @@ export default function AdminMarketProfiles() {
         dossierType: p?.dossierType,
         claimRestrictions: p?.claimRestrictions,
         packRequirements: p?.packRequirements,
+        packRequirementsNa: p?.packRequirementsNa ?? false,
+        packRequirementsRationale: p?.packRequirementsRationale,
+        packRequirementsReviewedBy: p?.packRequirementsReviewedBy,
+        packRequirementsReviewedAt: p?.packRequirementsReviewedAt,
+        effectiveFrom: p?.effectiveFrom,
         evidenceLink: p?.evidenceLink,
         reviewDate: p?.reviewDate,
         notes: p?.notes,
@@ -148,6 +154,9 @@ export default function AdminMarketProfiles() {
           dossierType: row.dossierType ?? '',
           claimRestrictions: row.claimRestrictions ?? '',
           packRequirements: row.packRequirements ?? '',
+          packRequirementsNa: row.packRequirementsNa ?? false,
+          packRequirementsRationale: row.packRequirementsRationale ?? '',
+          effectiveFrom: row.effectiveFrom ?? '',
           evidenceLink: row.evidenceLink ?? '',
           reviewDate: row.reviewDate ?? '',
           notes: row.notes ?? '',
@@ -299,7 +308,7 @@ export default function AdminMarketProfiles() {
                 <div className="mp-status">{status(r)}</div>
                 <div className="mp-tags">
                   {!r.configured ? (
-                    <span className="au-email">Treated as no market-specific requirement</span>
+                    <span className="au-email">Not assessed — projects selling here wait for Regulatory</span>
                   ) : tags.length > 0 ? (
                     tags.map((t) => (
                       <span key={t} className="c-tag">
@@ -307,7 +316,7 @@ export default function AdminMarketProfiles() {
                       </span>
                     ))
                   ) : (
-                    <span className="au-email">No market-specific requirement</span>
+                    <span className="au-email">Pack requirements not assessed</span>
                   )}
                 </div>
                 <div className="mp-updated">
@@ -447,7 +456,52 @@ export default function AdminMarketProfiles() {
                   disabled={!canEdit}
                   placeholder="Language, mandatory warnings, ingredient declaration, responsible party, notification numbers, pack size, tamper evidence, barcode, recycling marks…"
                   value={open.packRequirements}
-                  onChange={(e) => patch(open.market, { packRequirements: e.target.value })}
+                  onChange={(e) => patch(open.market, { packRequirements: e.target.value, ...(e.target.value.trim() !== '' ? { packRequirementsNa: false } : {}) })}
+                />
+                <span className="au-field-help">
+                  {(open.packRequirements ?? '').trim() !== ''
+                    ? 'Projects selling here must identify, assign and verify these on their packaging checklist.'
+                    : open.packRequirementsNa
+                      ? 'Reviewed as not applicable (see the rationale below).'
+                      : 'Blank means not assessed: projects selling here are held at Gate 6 until this is answered.'}
+                </span>
+                {open.packRequirementsReviewedBy && (
+                  <span className="au-field-help">Recorded by {open.packRequirementsReviewedBy}{open.packRequirementsReviewedAt ? ` · ${open.packRequirementsReviewedAt.slice(0, 10)}` : ''}</span>
+                )}
+              </label>
+              {(open.packRequirements ?? '').trim() === '' && (
+                <div className="au-field-inline mp-wide">
+                  <div>
+                    <div>Pack requirements: not applicable</div>
+                    <div className="au-field-help">A reviewed answer, not a blank. It needs its rationale.</div>
+                  </div>
+                  <Switch
+                    disabled={!canEdit}
+                    checked={!!open.packRequirementsNa}
+                    aria-label="Pack requirements not applicable"
+                    onChange={(v) => patch(open.market, { packRequirementsNa: v })}
+                  />
+                </div>
+              )}
+              {open.packRequirementsNa && (open.packRequirements ?? '').trim() === '' && (
+                <label className="au-field mp-wide">
+                  <span className="au-field-label">Rationale<span className="as-req">&nbsp;*</span></span>
+                  <Input.TextArea
+                    autoSize={{ minRows: 2 }}
+                    disabled={!canEdit}
+                    placeholder="Why this market has no market-specific pack requirements"
+                    value={open.packRequirementsRationale}
+                    onChange={(e) => patch(open.market, { packRequirementsRationale: e.target.value })}
+                  />
+                </label>
+              )}
+              <label className="au-field">
+                <span className="au-field-label">Effective from</span>
+                <DatePicker
+                  style={{ width: '100%' }}
+                  disabled={!canEdit}
+                  value={open.effectiveFrom ? dayjs(open.effectiveFrom) : null}
+                  onChange={(d) => patch(open.market, { effectiveFrom: d ? d.format('YYYY-MM-DD') : undefined })}
                 />
               </label>
               <label className="au-field">

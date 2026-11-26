@@ -99,6 +99,13 @@ export interface MarketProfile {
   // ingredient declaration, responsible party, notification numbers, pack size,
   // tamper evidence, barcode, recycling marks, primary/secondary information).
   packRequirements?: string;
+  // Round 5 question 30: a blank requirements block is UNASSESSED; "not applicable" is a reviewed answer that needs its rationale.
+  // Who reviewed the pack answer and when is written by the server (never taken from the request).
+  packRequirementsNa?: boolean;
+  packRequirementsRationale?: string;
+  packRequirementsReviewedBy?: string;
+  packRequirementsReviewedAt?: string;
+  effectiveFrom?: string;
   evidenceLink?: string;
   reviewDate?: string;
   notes?: string;

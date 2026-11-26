@@ -3196,6 +3196,45 @@ export async function run(base: string, db: Client): Promise<number> {
     await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, savedReg.name, savedReg.userId]);
   }
 
+  // ---- Round 5 question 30: market pack requirements — the profile states them, the project's checklist identifies and verifies them
+  console.log('\n--- Market pack requirements (Round 5 question 30)');
+  {
+    const market = (await project()).project.identity.markets[0] as string;
+    const meName = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const putProfile = (patch: any) => api('admin', 'PUT', `/reference/market-profiles/${encodeURIComponent(market)}`, { patch, signal: { criticality: 'Low', dueDate: '2099-01-01' } });
+    const packRow = async () => ((await project()).project.registers.marketPackChecklist ?? []).find((x: any) => x.market === market);
+    const putPack = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/marketPackChecklist`, { rows, expectedVersion: await version() });
+    r = await putProfile({ packRequirementsNa: true });
+    t('"not applicable" without its rationale is refused (400)', r.status === 400 && /rationale/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putProfile({ packRequirements: 'Local-language label', packRequirementsNa: true, packRequirementsRationale: 'x' });
+    t('"not applicable" together with requirements is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await putProfile({ packRequirements: 'Local-language label; mandatory warnings' });
+    t('a market profile stating pack requirements is saved', r.status < 300, `${r.status} ${short(r.json)}`);
+    const prof = (await api('admin', 'GET', '/reference/market-profiles')).json?.find((x: any) => x.market === market);
+    t('...and the server records who set the pack answer and when', prof?.packRequirementsReviewedBy === meName && !!prof?.packRequirementsReviewedAt, short(prof));
+    let row = await packRow();
+    t('the project is offered a checklist row carrying the requirements and the profile revision, without anyone saving it', row?.requirements === 'Local-language label; mandatory warnings' && row?.profileRevision === String(prof?.revision), short(row));
+    r = await putPack([{ market, owner: meName, identifiedBy: meName, identifiedRevision: 'forged', verifiedRevision: 'forged', complianceStatus: 'Not assessed' }]);
+    row = await packRow();
+    t('identifying records the profile revision the server read, not the one the request carried', r.status < 300 && row?.identifiedRevision === String(prof?.revision), `${r.status} ${short(row)}`);
+    t('...and a verification that was never made carries no revision', row?.verifiedRevision === '', short(row));
+    r = await putPack([{ ...row, complianceStatus: 'Compliant', complianceEvidence: 'final-artwork-v3.pdf', verifiedBy: meName }]);
+    row = await packRow();
+    t('verifying as themselves records the revision it stood on', r.status < 300 && row?.verifiedRevision === String(prof?.revision) && row?.profileChanged === '', `${r.status} ${short(row)}`);
+    r = await putProfile({ packRequirements: 'Local-language label; mandatory warnings; importer name' });
+    row = await packRow();
+    t('a change to the profile makes both acts show as stale', r.status < 300 && row?.profileChanged === 'Yes', `${r.status} ${short(row)}`);
+    // Leave the run as it was: the row, the profile, its history and its signals go.
+    r = await putPack([]);
+    t('the test checklist row is removed again', r.status < 300, `${r.status} ${short(r.json)}`);
+    const pid = (await db.query(`SELECT id FROM market_profiles WHERE market = $1`, [market])).rows[0]?.id as string | undefined;
+    if (pid) {
+      await db.query(`DELETE FROM reference_signals WHERE dataset = 'market-profile' AND "entryId" = $1`, [pid]);
+      await db.query(`DELETE FROM reference_revisions WHERE dataset = 'market-profile' AND "entryId" = $1`, [pid]);
+      await db.query(`DELETE FROM market_profiles WHERE id = $1`, [pid]);
+    }
+  }
+
   // The Low/Medium resolution rule (question 9) is covered by npm run verify:gap-controls: on this project every gate that could carry the field is
   // either signed, held by an open change or not current, so a gate save cannot reach gapBlocksDecision here.
 

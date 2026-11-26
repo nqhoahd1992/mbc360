@@ -3,6 +3,7 @@ import { RULEBOOK_CATEGORY, applyRulebookChanges } from './changeRulebooks';
 import { FORMULATION_CHANGE_VIEW, applyChangeView } from './changeViews';
 import { WATCH_LIST_VERSION, matchIngredientWatchLists, watchlistMatchLines } from './ingredientWatch';
 import { REGISTER_CONFIGS } from '../config/registers';
+import { MARKET_PACK_REGISTER, deriveMarketPackRows } from './marketPack';
 import { applyMarketProfileInheritance } from './referenceInheritance';
 
 // Columns and blocks the workbook computes with formulas, computed here the same way. Applied on the server when a register is
@@ -108,6 +109,8 @@ export function screenedProductStatus(current: string, matches: number, noMatch:
 }
 
 export function deriveRegisterRows(registerKey: string, rows: RegisterRow[], project: ProjectData): RegisterRow[] {
+  // Round 5 question 30: the market's pack requirements come from Regulatory's profile, with the revision they are read at.
+  if (registerKey === MARKET_PACK_REGISTER) return deriveMarketPackRows(project, rows);
   // The Required dossier type of a market is Regulatory's, from its market profile (SW-59): derived, so the register can never disagree with it.
   if (registerKey === 'regulatoryChecklistStatus') {
     const cfg = REGISTER_CONFIGS.find((c) => c.key === registerKey);

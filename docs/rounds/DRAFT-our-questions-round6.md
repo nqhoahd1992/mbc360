@@ -917,3 +917,22 @@ You told us to read both registers: the packaging register holds the approved ar
 **(b)** Should a stale approval (a claim moved to a new revision after the artwork was approved) hold Gate 10 as built, or only warn?
 
 **(c)** Should the released-label row also carry the market-specific authorisation, or is the market on the approved record plus the markets affected enough?
+
+## Question 38 — Market pack requirements: have we read your answer correctly?
+
+*Where in the application:* Company page **Market profiles** (pack requirements, new "not applicable" answer and rationale, effective-from date, who recorded it), the project's **Packaging Specs & Artwork Evidence** page (new **Market Pack Requirements Checklist**), and the Gate 6, Gate 10 and Gate 11 items about market pack requirements.
+
+You told us Regulatory maintains versioned market profiles with source, effective date and reviewer; the applicable requirements are linked to the project's packaging / artwork checklist; Gate 6 closes identifying and assigning them, Gate 10 verifies compliant final artwork or dossier, and Gate 11 verifies the approved version for release; a filled market-profile field is not proof that the product complies; blank means unassessed, and N/A needs a reviewed rationale; and a relevant profile change triggers the impact assessment of Question 1(d). We built it as follows:
+
+- **The profile.** The market profile keeps its source (evidence link) and revision history, and gains an **effective-from** date and an explicit **"not applicable" answer with its rationale**. The server records who set the pack answer and when. A blank pack-requirements block is **unassessed**, never "no requirements"; "not applicable" cannot be saved without a rationale or together with requirements. Changing the pack requirements raises the Question 1(d) impact signal as before.
+- **The project checklist.** A new register, **Market Pack Requirements Checklist**, offers one row for each market the project sells into whose profile states requirements. The row shows the requirements and the profile revision as they stand now, and records who is assigned, who identified them, the compliance of the final artwork / dossier (Not assessed / Compliant / Not compliant / N/A), the evidence, the reviewed N/A rationale, the approved version verified for release, and who verified.
+- **Gate 6** (the existing item, now holding a market nobody has assessed): every market has an assessed profile, and every market with requirements has them identified and assigned by a person. **Gate 10** (new item, per market): the final artwork / dossier is verified — Compliant with its evidence, or N/A with a reviewed rationale — by a person. **Gate 11** (new item, per market): the same, plus the approved version being released is named.
+- **A profile change makes both acts stale.** The server records the profile revision each identification and verification stood on; if the profile moves to a later revision, both must be done again.
+
+**(a)** Is one block of requirements per market (rather than a list split line by line — language, warnings, ingredient declaration and so on) the right unit for the checklist?
+
+**(b)** Is it right that a market whose profile says nothing holds Gate 6 for every project selling there, even where the market in fact has no pack rules — Regulatory records "not applicable" once, with its rationale, and every project then passes?
+
+**(c)** Should Gates 10 and 11 have two separate verifications (final artwork / dossier, then the approved release version), or is one verification of the approved version enough?
+
+**(d)** Who may record the verification — the person assigned to the market's requirements, or only Regulatory or Packaging?

@@ -916,3 +916,22 @@ Các bạn nói đọc cả hai sổ: sổ packaging giữ bản sửa đổi ar
 **(b)** Một phê duyệt cũ (claim lên revision mới sau khi artwork được duyệt) có nên giữ Gate 10 như đã xây, hay chỉ cảnh báo?
 
 **(c)** Dòng nhãn đã phát hành có nên mang cả phép cho phép theo thị trường, hay thị trường trên bản ghi đã duyệt cộng với markets affected là đủ?
+
+## Câu 38 — Yêu cầu bao bì theo thị trường: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* trang công ty **Market profiles** (yêu cầu bao bì, câu trả lời "không áp dụng" mới kèm lý do, ngày hiệu lực, người ghi nhận), trang **Packaging Specs & Artwork Evidence** của dự án (sổ mới **Market Pack Requirements Checklist**), và các mục Gate 6, Gate 10, Gate 11 về yêu cầu bao bì theo thị trường.
+
+Các bạn nói Regulatory duy trì hồ sơ thị trường có phiên bản, kèm nguồn, ngày hiệu lực và người review; các yêu cầu áp dụng được liên kết với checklist packaging / artwork của dự án; Gate 6 đóng việc xác định và phân công, Gate 10 xác minh artwork hoặc hồ sơ cuối đạt yêu cầu, Gate 11 xác minh phiên bản đã duyệt để phát hành; một trường hồ sơ thị trường đã điền không phải bằng chứng sản phẩm tuân thủ; để trống là chưa đánh giá, và N/A cần lý do đã được review; thay đổi hồ sơ có liên quan kích hoạt đánh giá tác động của câu 1(d). Chúng tôi đã xây như sau:
+
+- **Hồ sơ thị trường.** Giữ nguồn (liên kết bằng chứng) và lịch sử phiên bản, thêm **ngày hiệu lực** và câu trả lời **"không áp dụng" kèm lý do**. Máy chủ ghi ai đặt câu trả lời về bao bì và khi nào. Khối yêu cầu bao bì để trống là **chưa đánh giá**, không bao giờ là "không có yêu cầu"; "không áp dụng" không lưu được nếu thiếu lý do hoặc nếu đồng thời có yêu cầu. Đổi yêu cầu bao bì vẫn phát tín hiệu đánh giá tác động của câu 1(d).
+- **Checklist của dự án.** Sổ mới **Market Pack Requirements Checklist** đưa ra một dòng cho mỗi thị trường dự án bán mà hồ sơ có yêu cầu. Dòng hiện yêu cầu và phiên bản hồ sơ ở thời điểm hiện tại, và ghi ai được phân công, ai xác định, mức tuân thủ của artwork / hồ sơ cuối (Not assessed / Compliant / Not compliant / N/A), bằng chứng, lý do N/A đã review, phiên bản đã duyệt được xác minh để phát hành, và ai xác minh.
+- **Gate 6** (mục có sẵn, nay chặn thị trường chưa ai đánh giá): mọi thị trường có hồ sơ đã đánh giá, và mọi thị trường có yêu cầu đã được một người xác định và phân công. **Gate 10** (mục mới, theo thị trường): artwork / hồ sơ cuối được một người xác minh — Compliant kèm bằng chứng, hoặc N/A kèm lý do đã review. **Gate 11** (mục mới, theo thị trường): như vậy, và nêu rõ phiên bản đã duyệt đang phát hành.
+- **Hồ sơ đổi thì cả hai hành động thành cũ.** Máy chủ ghi phiên bản hồ sơ mà mỗi lần xác định và xác minh dựa vào; hồ sơ lên phiên bản mới thì phải làm lại cả hai.
+
+**(a)** Một khối yêu cầu cho mỗi thị trường (thay vì danh sách tách từng dòng — ngôn ngữ, cảnh báo, khai báo thành phần…) có phải đơn vị đúng cho checklist không?
+
+**(b)** Thị trường mà hồ sơ chưa nói gì thì chặn Gate 6 của mọi dự án bán ở đó, kể cả khi thực tế thị trường không có quy định bao bì riêng — Regulatory ghi "không áp dụng" một lần kèm lý do thì mọi dự án đều qua. Có đúng không?
+
+**(c)** Gate 10 và Gate 11 có cần hai lần xác minh riêng (artwork / hồ sơ cuối, rồi phiên bản duyệt để phát hành), hay một lần xác minh phiên bản đã duyệt là đủ?
+
+**(d)** Ai được ghi xác minh — người được phân công cho yêu cầu của thị trường, hay chỉ Regulatory hoặc Packaging?
