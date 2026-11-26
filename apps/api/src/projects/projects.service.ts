@@ -109,6 +109,7 @@ import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safety
 import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import { bypassable } from './dev-flags';
+import { pifRevisionNextStatuses, pifRevisionOpenProblems } from '@mbc360/shared/utils/pifRevisions';
 import {
   NEXT_ACTION_TYPES,
   actionCancellationGaps,
@@ -240,7 +241,7 @@ import {
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
 } from '@mbc360/shared/types';
-import type { GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
+import type { PifRevisionStatus, GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeControlAssessment,
@@ -5635,6 +5636,13 @@ export class ProjectsService {
             );
           }
         }
+        // Round 5 question 25: leaving Approved is an act with a recorded reason (Regulatory / Quality SUSPEND it), not a field change. A market
+        // being withdrawn is its own record and is not affected. [ASSUMPTION: R6-Q33]
+        if (prev.launchApproval === 'Approved' && next.launchApproval !== 'Approved' && !next.withdrawnDate?.trim()) {
+          throw new BadRequestException(
+            `${next.market}: launch approval cannot be taken off Approved by editing it — Regulatory or Quality suspend the approval and record why (Suspend approval)`,
+          );
+        }
         let launchApproval = next.launchApproval;
         // C5 the other way round (SME rule audit B25, 2026-10-04): moving the PIF
         // off Approved while launch approval stands used to be kept as-is, because
@@ -5645,7 +5653,7 @@ export class ProjectsService {
         // [ASSUMPTION: R5-Q40].
         if (next.pifStatus !== 'Approved' && prev.launchApproval === 'Approved' && next.launchApproval === 'Approved') {
           throw new BadRequestException(
-            `${next.market}: the PIF cannot leave Approved while launch approval stands — change the launch approval first (rule C5)`,
+            `${next.market}: the PIF cannot leave Approved while launch approval stands (rule C5). To update it, open a draft PIF revision under a Change Control record; if new information undermines the approved version, Regulatory or Quality suspend the approval and record why`,
           );
         }
         if (launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
@@ -5695,6 +5703,8 @@ export class ProjectsService {
             withdrawnReason: next.withdrawnReason ?? null,
             // The closure belongs to a withdrawal: taking the withdrawal back leaves nothing to close. Otherwise these are written only by
             // the closure routes below, never by this save.
+            // The approval given again ends its suspension.
+            ...(launchApproval === 'Approved' ? { approvalSuspendedBy: null, approvalSuspendedAt: null, approvalSuspendedReason: null } : {}),
             ...(next.withdrawnDate?.trim()
               ? {}
               : { withdrawalClosureCriteria: null, withdrawalClosureUntil: null, withdrawalClosureSetBy: null, withdrawalClosedAt: null, withdrawalClosedBy: null }),
@@ -5767,6 +5777,95 @@ export class ProjectsService {
       if (gaps.length > 0) throw new BadRequestException(listMessage(`${market}'s closure cannot be confirmed yet:`, gaps));
       await tx.marketTrack.update({ where: { id: stored.id }, data: { withdrawalClosedAt: this.dateOrNull(today), withdrawalClosedBy: user.displayName } });
       return { market, closedAt: today };
+    });
+  }
+
+  // Round 5 question 25: updating the PIF of a market on sale. The approved PIF and the launch decision stay in force; the update is a separate DRAFT
+  // revision raised under a Change Control record. It changes the market's status only if and when it is approved. [ASSUMPTION: R6-Q33]
+  private pifTrack(project: ProjectData, market: string, formulaVersion: string | undefined) {
+    const version = (formulaVersion ?? '').trim() || project.formulaVersion;
+    const track = project.marketTracks.find((t) => t.market === market && t.formulaVersion === version);
+    if (!track) throw new NotFoundException(`"${market}" has no market track for formula ${version} on this project`);
+    return { track, version };
+  }
+
+  async openPifRevision(
+    user: SessionUser,
+    id: string,
+    market: string,
+    body: { formulaVersion?: string; changeId?: string; reason?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'pif_revision.opened', async (tx, _row, project) => {
+      if (!canChangeMarketTracksInProject(project, { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) })) {
+        throw new ForbiddenException(MARKET_TRACKS_REASON);
+      }
+      const { track, version } = this.pifTrack(project, market, body.formulaVersion);
+      const change = resolveChangeRef(project.changes, body.changeId ?? '');
+      const problems = pifRevisionOpenProblems(project, track, { changeId: change ? body.changeId : '', reason: body.reason });
+      if (!change && (body.changeId ?? '').trim() !== '') problems.push(`"${body.changeId}" is not a Change Control record on this project`);
+      if (problems.length > 0) throw new BadRequestException(listMessage(`The PIF revision of ${market} cannot be opened:`, problems));
+      const created = await tx.pifRevision.create({
+        data: { projectId: id, market, formulaVersion: version, changeId: change!.changeId, reason: (body.reason ?? '').trim(), openedBy: user.displayName },
+      });
+      return { market, revision: created.id };
+    });
+  }
+
+  async setPifRevisionStatus(
+    user: SessionUser,
+    id: string,
+    revisionId: string,
+    body: { status?: string; evidenceLink?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'pif_revision.status_set', async (tx, _row, project) => {
+      if (!canChangeMarketTracksInProject(project, { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) })) {
+        throw new ForbiddenException(MARKET_TRACKS_REASON);
+      }
+      const rev = project.pifRevisions.find((r) => r.id === revisionId);
+      if (!rev) throw new NotFoundException('That PIF revision is not on this project');
+      const next = body.status as PifRevisionStatus;
+      if (!pifRevisionNextStatuses(rev.status).includes(next)) {
+        throw new BadRequestException(`A revision that is ${rev.status} cannot become ${body.status ?? '(nothing)'}`);
+      }
+      const data: Prisma.PifRevisionUpdateInput = { status: next };
+      if (typeof body.evidenceLink === 'string') data.evidenceLink = body.evidenceLink.trim() || null;
+      if (next === 'Approved') {
+        data.approvedBy = user.displayName;
+        data.approvedAt = new Date();
+      }
+      await tx.pifRevision.update({ where: { id: revisionId }, data });
+      return { revision: revisionId, status: next };
+    });
+  }
+
+  // "If new information undermines the current version's safety/compliance, Regulatory/Quality must suspend the affected current approval and
+  // record the reason." Their act, as themselves (an administrator does not stand in); the launch approval reads Blocked until it is given again.
+  async suspendMarketApproval(
+    user: SessionUser,
+    id: string,
+    market: string,
+    body: { formulaVersion?: string; reason?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'market.approval_suspended', async (tx, row, project) => {
+      const holders = ['regulatory', 'quality'].map((k) => (project.identity.reviewers[k] ?? '').trim()).filter((n) => n !== '');
+      if (!holders.some((n) => n.toLowerCase() === user.displayName.trim().toLowerCase())) {
+        throw new ForbiddenException(`Only the project's Regulatory person or Quality person (${holders.join(' or ') || 'nobody is named'}) suspends an approval`);
+      }
+      const { track, version } = this.pifTrack(project, market, body.formulaVersion);
+      if (track.launchApproval !== 'Approved') throw new BadRequestException(`${market}'s launch approval is ${track.launchApproval}, so there is no approval to suspend`);
+      const reason = (body.reason ?? '').trim();
+      if (reason === '') throw new BadRequestException('The reason for suspending the approval is required');
+      const versionId = row.formulaVersions.find((v) => v.version === version)?.id;
+      const stored = row.marketTracks.find((t) => t.market === market && t.formulaVersionId === versionId);
+      if (!stored) throw new NotFoundException(`"${market}" has no market track for formula ${version}`);
+      await tx.marketTrack.update({
+        where: { id: stored.id },
+        data: { launchApproval: 'Blocked', launchApprovedDate: null, approvalSuspendedBy: user.displayName, approvalSuspendedAt: this.dateOrNull(new Date().toISOString().slice(0, 10)), approvalSuspendedReason: reason },
+      });
+      return { market, version };
     });
   }
 

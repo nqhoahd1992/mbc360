@@ -2460,6 +2460,74 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('SG12 passed', gp.isGatePassed(pj.project, 'SG12'));
 
+  // ---- Round 5 question 25: updating the PIF of a market on sale — a draft revision under a Change Control record, and the suspension of an approval
+  console.log('\n--- a market on sale: a draft PIF revision leaves the approval in force; Regulatory / Quality suspend an approval with a reason (question 25)');
+  {
+    const market = MARKETS[0];
+    const meNameQ = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const savedReviewersQ = (await db.query(`SELECT "roleKey", name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = ANY($2)`, [PROJECT, ['regulatory', 'quality']])).rows;
+    const trackNow = async () => {
+      const pjq = (await project()).project;
+      return (pjq.marketTracks as any[]).find((x) => x.market === market && x.formulaVersion === pjq.formulaVersion);
+    };
+    const revisions = async () => ((await project()).project.pifRevisions as any[]).filter((x) => x.market === market);
+    const chg = ((await project()).project.changes as any[])[0]?.changeId as string | undefined;
+    t('the project has a Change Control record to raise a revision under', !!chg);
+    const openRev = async (body: Record<string, unknown>) => api('admin', 'POST', `/projects/${PROJECT}/markets/${encodeURIComponent(market)}/pif-revisions`, { ...body, expectedVersion: await version() });
+    const setRevStatus = async (revId: string, status: string) => api('admin', 'POST', `/projects/${PROJECT}/pif-revisions/${revId}/status`, { status, expectedVersion: await version() });
+    // The tracks of this run are driven by the gate signatures, so put the market in the state the question is about, and put it back after.
+    const savedTrackQ = (await db.query(`SELECT id, "pifStatus", "launchApproval", "launchApprovedDate" FROM market_tracks WHERE "projectId" = $1 AND market = $2 AND "formulaVersionId" = (SELECT id FROM formula_versions WHERE "projectId" = $1 ORDER BY "createdAt" DESC LIMIT 1)`, [PROJECT, market])).rows[0];
+    await db.query(`UPDATE market_tracks SET "pifStatus" = 'Approved', "launchApproval" = 'Approved', "launchApprovedDate" = '2025-12-01' WHERE id = $1`, [savedTrackQ.id]);
+    const before = await trackNow();
+    t('the market is on sale with an approved PIF and an approved launch', before?.pifStatus === 'Approved' && before?.launchApproval === 'Approved', short(before));
+
+    let q: any = await openRev({ changeId: 'CHG-NOT-HERE', reason: 'e2e: update the PIF' });
+    t('a revision under a record the project does not have is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await openRev({ changeId: chg, reason: '' });
+    t('...and one with no reason (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await openRev({ changeId: chg, reason: 'e2e: update the PIF after a formula change' });
+    t('a draft revision is opened under a Change Control record', q.status < 300, `${q.status} ${short(q.json)}`);
+    {
+      const after = await trackNow();
+      t('...and the approved PIF and the launch approval stay exactly as they were', after?.pifStatus === 'Approved' && after?.launchApproval === 'Approved' && after?.launchApprovedDate === before?.launchApprovedDate, short(after));
+    }
+    q = await openRev({ changeId: chg, reason: 'e2e: a second one' });
+    t('a second revision while one is in progress is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    const rev = (await revisions()).find((x) => x.status === 'Draft');
+    q = await setRevStatus(rev.id, 'Approved');
+    t('a draft cannot jump to Approved (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await setRevStatus(rev.id, 'Under Review');
+    t('it goes to review...', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await setRevStatus(rev.id, 'Approved');
+    t('...and is approved, recording who approved it', q.status < 300 && (await revisions()).some((x) => x.id === rev.id && x.status === 'Approved' && !!x.approvedBy), `${q.status} ${short(q.json)}`);
+    t('...with the market\'s own approvals still untouched', (await trackNow())?.launchApproval === 'Approved' && (await trackNow())?.pifStatus === 'Approved');
+
+    // Taking the approval off Approved is a suspension with a reason, not an edit.
+    const tracksNow = ((await project()).project.marketTracks as any[]).map((x) => ({ ...x }));
+    q = await api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks: tracksNow.map((x) => (x.market === market && x.formulaVersion === (before as any).formulaVersion ? { ...x, launchApproval: 'Blocked' } : x)), expectedVersion: await version() });
+    t('launch approval cannot be taken off Approved by editing it (400: the controlled-baseline rule or the suspension rule answers first)', q.status === 400 && /suspend|controlled baseline/i.test(JSON.stringify(q.json)), `${q.status} ${short(q.json)}`);
+
+    const suspend = async (body: Record<string, unknown>) => api('admin', 'POST', `/projects/${PROJECT}/markets/${encodeURIComponent(market)}/suspend-approval`, { ...body, expectedVersion: await version() });
+    await db.query(`UPDATE project_reviewers SET name = 'Somebody Else', "userId" = NULL WHERE "projectId" = $1 AND "roleKey" = ANY($2)`, [PROJECT, ['regulatory', 'quality']]);
+    q = await suspend({ reason: 'e2e: new safety information' });
+    t('somebody who is not the project\'s Regulatory or Quality person cannot suspend an approval, an administrator included (403)', q.status === 403, `${q.status} ${short(q.json)}`);
+    await db.query(`UPDATE project_reviewers SET name = $3 WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, 'regulatory', meNameQ]);
+    q = await suspend({ reason: '' });
+    t('a suspension with no reason is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await suspend({ reason: 'e2e: new safety information undermines the version on sale' });
+    {
+      const after = await trackNow();
+      t('Regulatory suspends the approval and records who, when and why; the launch approval reads Blocked', q.status < 300 && after?.launchApproval === 'Blocked' && after?.approvalSuspendedBy === meNameQ && !!after?.approvalSuspendedReason, `${q.status} ${short(q.json)} ${short(after)}`);
+    }
+    q = await suspend({ reason: 'again' });
+    t('an approval that is not standing cannot be suspended again (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+
+    // Leave the run as it was.
+    await db.query(`UPDATE market_tracks SET "pifStatus" = $2, "launchApproval" = $3, "launchApprovedDate" = $4, "approvalSuspendedBy" = NULL, "approvalSuspendedAt" = NULL, "approvalSuspendedReason" = NULL WHERE id = $1`, [savedTrackQ.id, savedTrackQ.pifStatus, savedTrackQ.launchApproval, savedTrackQ.launchApprovedDate]);
+    await db.query(`DELETE FROM pif_revisions WHERE "projectId" = $1`, [PROJECT]);
+    for (const rr of savedReviewersQ) await db.query(`UPDATE project_reviewers SET name = $3, "userId" = $4 WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, rr.roleKey, rr.name, rr.userId]);
+  }
+
   // ---- Round 5 question 19(a): a withdrawn market keeps its Gate 12 lane until a closure is confirmed
   console.log('\n--- a withdrawn market: Gate 12 obligations stay until the closure is confirmed (question 19(a))');
   {

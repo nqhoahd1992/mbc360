@@ -126,6 +126,10 @@ interface AppState {
   setMarketTracksBulk: (id: string, tracks: MarketTrack[]) => void;
   setWithdrawalClosure: (id: string, market: string, criteria: string, until: string) => Promise<void>;
   confirmWithdrawalClosure: (id: string, market: string) => Promise<void>;
+  // Round 5 question 25.
+  openPifRevision: (id: string, market: string, body: { formulaVersion?: string; changeId: string; reason: string }) => Promise<boolean>;
+  setPifRevisionStatus: (id: string, revisionId: string, body: { status: string; evidenceLink?: string }) => Promise<boolean>;
+  suspendMarketApproval: (id: string, market: string, body: { formulaVersion?: string; reason: string }) => Promise<boolean>;
 
   // C2: dedicated study approval workflow (Study Author / Department Reviewer /
   // Independent Reviewer).
@@ -694,6 +698,9 @@ export const useAppStore = create<AppState>()(
         setWithdrawalClosure: (id, market, criteria, until) =>
           writeSection(id, (v) => projectsApi.setWithdrawalClosure(id, market, criteria, until, v)),
         confirmWithdrawalClosure: (id, market) => writeSection(id, (v) => projectsApi.confirmWithdrawalClosure(id, market, v)),
+        openPifRevision: (id, market, body) => tryWriteSection(id, (v) => projectsApi.openPifRevision(id, market, body, v)),
+        setPifRevisionStatus: (id, revisionId, body) => tryWriteSection(id, (v) => projectsApi.setPifRevisionStatus(id, revisionId, body, v)),
+        suspendMarketApproval: (id, market, body) => tryWriteSection(id, (v) => projectsApi.suspendMarketApproval(id, market, body, v)),
         setFunctionAssignees: (id, assignments) =>
           writeSection(id, (v) => projectsApi.setFunctionAssignees(id, assignments, v)),
         acknowledgeReadinessItem: (id, gateId, itemId, functionKey, confirmClear = false) =>

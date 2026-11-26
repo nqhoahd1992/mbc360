@@ -1494,6 +1494,30 @@ export interface MarketTrack {
   withdrawalClosureSetBy?: string;
   withdrawalClosedAt?: string;
   withdrawalClosedBy?: string;
+  // Round 5 question 25: when new information undermines the version on sale, Regulatory or Quality SUSPEND the affected approval and record why. The
+  // launch approval then reads Blocked; these three say who suspended it, when and why. Server-written by the suspension route only, cleared when the
+  // approval is given again. [ASSUMPTION: R6-Q33]
+  approvalSuspendedBy?: string;
+  approvalSuspendedAt?: string;
+  approvalSuspendedReason?: string;
+}
+
+// Round 5 question 25: updating the PIF of a market already on sale does not withdraw what is approved. The approved PIF and the market's launch decision
+// stay as they are; the update is a SEPARATE draft revision, raised under a Change Control record, and it takes effect only once it is approved.
+export const PIF_REVISION_STATUSES = ['Draft', 'Under Review', 'Approved', 'Withdrawn'] as const;
+export type PifRevisionStatus = (typeof PIF_REVISION_STATUSES)[number];
+export interface PifRevision {
+  id: string;
+  market: string;
+  formulaVersion: string;
+  changeId: string; // the master Change Control record it was raised under
+  reason: string;
+  status: PifRevisionStatus;
+  evidenceLink?: string;
+  openedBy?: string;
+  openedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
 }
 
 // Round 4 question 14's project-level roll-up, transcribed. Explicitly a summary
@@ -1850,6 +1874,8 @@ export interface ProjectData {
   marketAdditionAssessments: MarketAdditionAssessment[];
   // Round 5 question 23(c): the formula version waiting for a different reviewer's confirmation, if any.
   formulaVersionProposal?: FormulaVersionProposal;
+  // Round 5 question 25: the draft and approved revisions of a market's PIF.
+  pifRevisions: PifRevision[];
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
   phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals

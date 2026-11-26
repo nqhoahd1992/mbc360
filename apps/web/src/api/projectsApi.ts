@@ -615,6 +615,16 @@ export const confirmWithdrawalClosure = (id: string, market: string, expectedVer
     { method: 'POST', body: JSON.stringify({ expectedVersion }) },
   );
 
+// Round 5 question 25: a draft PIF revision, its status, and the suspension of an approval.
+const post = (id: string, path: string, body: Record<string, unknown>, v: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/${path}`, { method: 'POST', body: JSON.stringify({ ...body, expectedVersion: v }) });
+export const openPifRevision = (id: string, market: string, body: { formulaVersion?: string; changeId: string; reason: string }, v: number) =>
+  post(id, `markets/${encodeURIComponent(market)}/pif-revisions`, body, v);
+export const setPifRevisionStatus = (id: string, revisionId: string, body: { status: string; evidenceLink?: string }, v: number) =>
+  post(id, `pif-revisions/${encodeURIComponent(revisionId)}/status`, body, v);
+export const suspendMarketApproval = (id: string, market: string, body: { formulaVersion?: string; reason: string }, v: number) =>
+  post(id, `markets/${encodeURIComponent(market)}/suspend-approval`, body, v);
+
 export const setStudyApprovals = (id: string, approvals: ProjectData['studyApprovals'], v: number) =>
   put(id, 'study-approvals', { approvals }, v);
 

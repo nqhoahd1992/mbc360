@@ -96,6 +96,7 @@ export const PROJECT_INCLUDE = {
   scaleUpAssessments: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   marketAdditionAssessments: { orderBy: { addedAt: 'asc' } },
   formulaVersionProposal: true,
+  pifRevisions: { orderBy: { openedAt: 'asc' } },
   gateSignOffs: {
     orderBy: [{ gateId: 'asc' }, { market: 'asc' }, { role: 'asc' }],
     include: { assignedTo: { select: { displayName: true } } },
@@ -875,6 +876,9 @@ function toProjectDataRaw(
       withdrawalClosureSetBy: opt(t.withdrawalClosureSetBy),
       withdrawalClosedAt: dateOnly(t.withdrawalClosedAt),
       withdrawalClosedBy: opt(t.withdrawalClosedBy),
+      approvalSuspendedBy: opt(t.approvalSuspendedBy),
+      approvalSuspendedAt: dateOnly(t.approvalSuspendedAt),
+      approvalSuspendedReason: opt(t.approvalSuspendedReason),
     })),
     postLaunchReviews: p.postLaunchReviews.map((r) => ({
       id: r.id,
@@ -1011,6 +1015,19 @@ function toProjectDataRaw(
       ...(v.linkedChangeId ? { linkedChangeId: v.linkedChangeId } : {}),
       ...(v.documentationOnly ? { documentationOnly: true } : {}),
       ...(v.noReleaseConfirmedBy ? { noReleaseConfirmedBy: v.noReleaseConfirmedBy } : {}),
+    })),
+    pifRevisions: p.pifRevisions.map((r) => ({
+      id: r.id,
+      market: r.market,
+      formulaVersion: r.formulaVersion,
+      changeId: r.changeId,
+      reason: r.reason,
+      status: r.status as ProjectData['pifRevisions'][number]['status'],
+      ...(r.evidenceLink ? { evidenceLink: r.evidenceLink } : {}),
+      ...(r.openedBy ? { openedBy: r.openedBy } : {}),
+      openedAt: r.openedAt.toISOString(),
+      ...(r.approvedBy ? { approvedBy: r.approvedBy } : {}),
+      ...(r.approvedAt ? { approvedAt: r.approvedAt.toISOString() } : {}),
     })),
     ...(p.formulaVersionProposal
       ? {

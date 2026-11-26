@@ -159,6 +159,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     changeControlAssessments: [],
     scaleUpAssessments: [],
     marketAdditionAssessments: [],
+    pifRevisions: [],
     readinessAckLog: [],
     phaseSignOffLog: [],
     postLaunchReviews: [],

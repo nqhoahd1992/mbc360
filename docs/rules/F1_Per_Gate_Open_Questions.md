@@ -1418,7 +1418,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q30 · R5-Q45 · R6-Q30 | **22(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q30 hỏi lại một chỗ ta đọc) | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
 | ✅ R5-Q56 · R5-Q39 · R5-Q42 · R6-Q31 (R5-Q2 còn mở) | **23(a) · (b) · (c) · (d)** (đã trả lời 05/11, xây 26/11/2026; R6-Q31 hỏi lại các chỗ ta đọc) | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
 | ✅ R5-Q60 · R5-Q61 · R6-Q32 | **24(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q32 hỏi lại các chỗ ta đọc) | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
-| R5-Q40 | **25** | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
+| ✅ R5-Q40 · R6-Q33 | **25** (đã trả lời 05/11, xây 26/11/2026; R6-Q33 hỏi lại các chỗ ta đọc) | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
 | R5-Q41 | **26** | Bản ghi deviation khi phát hành chưa được duyệt |
 | R5-Q43 | **27** | Ai chấp nhận pre-work của một phase |
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q33 · Cập nhật PIF của thị trường đang bán: các chỗ ta đọc câu trả lời (Vòng 5 câu 25) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 25.** SME: không ép rút phiên bản đã duyệt chỉ vì mở bản cập nhật nháp; giữ nguyên PIF/phiên bản đã duyệt và quyết định ra mắt; tạo bản sửa đổi nháp riêng theo CHG, không phát hành khi chưa duyệt; nếu thông tin mới làm suy yếu độ an toàn/tuân thủ của phiên bản hiện hành thì Regulatory/Quality phải đình chỉ phê duyệt bị ảnh hưởng và ghi lý do; phê duyệt theo từng phiên bản để một bản sửa nháp không huỷ phê duyệt hợp lệ hay đổi cơ sở của nó. Cách đọc của ta: (1) **bản sửa đổi nháp** (bảng `pif_revisions`, migration `20261126230000`, `utils/pifRevisions.ts`): chỉ mở trên PIF đang Approved, kèm bản ghi CHG chính của dự án và lý do, mỗi thị trường × phiên bản công thức một bản đang xử lý; Draft → Under Review → Approved (hoặc trả lại/rút); mở/duyệt do người được đổi market tracks (SW-37: Regulatory, Project Manager, Lead, quản trị viên); duyệt bản sửa đổi không đổi `pifStatus` hay `launchApproval`; (2) **cách sửa trực tiếp bị đóng** (`setMarketTracks`): không đưa PIF hay launch approval khỏi Approved bằng cách sửa khi phê duyệt còn hiệu lực (trừ thị trường đang ghi rút); (3) **đình chỉ** (`suspendMarketApproval`, `POST …/markets/:market/suspend-approval`): chỉ người Regulatory hoặc Quality của dự án, bằng tên mình, admin không thay; bắt buộc lý do; launch approval thành Blocked và ghi `approvalSuspendedBy/At/Reason`; đặt lại Approved thì xoá đình chỉ; "phê duyệt hiện hành bị ảnh hưởng" đọc là launch approval của phiên bản đang bán.
+
+**Câu hỏi:** (a) ai duyệt bản sửa đổi PIF; (b) có nên giữ thêm thứ gì khi bản sửa đổi đang chờ (artwork/thông tin công bố trích PIF sửa đổi); (c) đình chỉ có cần với tới claims/regulatory approval không.
+
+**Nếu trả lời khác:** `utils/pifRevisions.ts`; `projects.service.ts` (`openPifRevision`, `setPifRevisionStatus`, `suspendMarketApproval`, `setMarketTracks`); `PifRevisionBlock.tsx`, `MarketTrackingCard.tsx` [ASSUMPTION: R6-Q33].
 
 #### R6-Q32 · Action Critical còn mở và việc huỷ nó: các chỗ ta đọc câu trả lời (Vòng 5 câu 24) 🟡
 
@@ -2395,7 +2403,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `guardNextActions`.
 
-#### R5-Q40 · Thị trường đã bán có được mở lại PIF mà giữ launch approval không 🔴
+#### R5-Q40 · Thị trường đã bán có được mở lại PIF mà giữ launch approval không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 25) và đã xây 26/11/2026 — phần dưới là lịch sử.** Không ép rút phê duyệt chỉ vì mở bản cập nhật nháp; giữ nguyên PIF/phiên bản đã duyệt và quyết định ra mắt; bản sửa đổi nháp riêng theo CHG, không phát hành khi chưa duyệt; thông tin mới làm suy yếu phiên bản hiện hành thì Regulatory/Quality đình chỉ phê duyệt bị ảnh hưởng và ghi lý do. → **R6-Q33**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B25).** C5: launch approval cần PIF Approved. Giờ hệ thống từ chối hạ PIF khỏi Approved khi launch approval còn hiệu lực — phải đổi launch approval trước.
 

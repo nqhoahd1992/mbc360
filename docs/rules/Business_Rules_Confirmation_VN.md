@@ -1227,6 +1227,12 @@ Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh v
 
 **(b)** Khi đã xác minh đóng độc lập, action Critical không buộc gate phải dùng quyết định có điều kiện vĩnh viễn; Proceed thường khả thi nếu mọi tiêu chí hiện tại đều đạt. Huỷ cần lý do, uỷ quyền đủ năng lực và xác nhận không còn vấn đề tồn dư. Action nhầm/trùng được huỷ kèm dấu vết đó. Không bao giờ huỷ chỉ để gỡ chặn; phải giải quyết cả phát hiện liên quan.
 
+### Câu 25 — Cập nhật PIF khi một phiên bản đã duyệt vẫn đang bán
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 33.
+
+Không ép rút phiên bản đã duyệt hiện có chỉ vì một bản cập nhật PIF nháp được mở. Giữ nguyên PIF/phiên bản đã duyệt và quyết định ra mắt của thị trường; tạo một bản sửa đổi nháp riêng theo CHG. Phiên bản công thức/PIF mới không được phát hành khi chưa được duyệt. Nếu thông tin mới làm suy yếu độ an toàn/tuân thủ của phiên bản hiện hành, Regulatory/Quality phải đình chỉ phê duyệt hiện hành bị ảnh hưởng và ghi lý do. Phê duyệt theo từng phiên bản ngăn một bản sửa nháp vừa huỷ một phê duyệt hợp lệ vừa âm thầm đổi cơ sở của nó.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

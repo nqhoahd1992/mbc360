@@ -239,6 +239,7 @@ model Project {
   scaleUpAssessments       ScaleUpAssessment[]
   marketAdditionAssessments MarketAdditionAssessment[]
   formulaVersionProposal    FormulaVersionProposal?
+  pifRevisions              PifRevision[]
   reviewers       ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -357,6 +358,27 @@ model FormulaVersionProposal {
   proposedAt       DateTime @default(now())
 
   @@map("formula_version_proposals")
+}
+
+// Round 5 question 25: a draft revision of a market's PIF, raised under a Change Control record while the approved PIF stays in force.
+model PifRevision {
+  id           String    @id @default(cuid())
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  market       String
+  formulaVersion String
+  changeId     String
+  reason       String
+  status       String    @default("Draft")
+  evidenceLink String?
+  openedBy     String?
+  openedAt     DateTime  @default(now())
+  approvedBy   String?
+  approvedAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([projectId, market])
+  @@map("pif_revisions")
 }
 
 model ProjectMarket {
@@ -1218,6 +1240,10 @@ model MarketTrack {
   withdrawalClosureSetBy    String?
   withdrawalClosedAt        DateTime?     @db.Date
   withdrawalClosedBy        String?
+  // Round 5 question 25: Regulatory / Quality suspended the approval of the version on sale. Server-written by the suspension route only.
+  approvalSuspendedBy       String?
+  approvalSuspendedAt       DateTime?     @db.Date
+  approvalSuspendedReason   String?
   updatedAt        DateTime        @updatedAt
 
   // F4 (SME rule audit D, 2026-10-04): one track per market PER FORMULA VERSION.

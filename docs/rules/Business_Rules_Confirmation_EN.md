@@ -1227,6 +1227,12 @@ Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional 
 
 **(b)** Once independently verified closed, a Critical action does not force a permanent conditional decision; plain Proceed is possible if all current criteria are met. Cancellation needs reason, qualified authorisation and confirmation of no residual issue. A mistaken duplicate/misraised action can be cancelled with that trail. Never cancel merely to remove a block; resolve any associated finding as well.
 
+### Question 25 — Updating a PIF while an approved version remains on sale
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 33.
+
+Do not force withdrawal of the approved existing version merely because a draft PIF update is opened. Keep the approved PIF/version and market launch decision intact; create a separate draft revision under CHG. The new formula/PIF version cannot release until approved. If new information undermines the current version's safety/compliance, Regulatory/Quality must suspend the affected current approval and record the reason. Version-specific approvals prevent a draft edit from either cancelling a valid approval or silently changing its basis.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

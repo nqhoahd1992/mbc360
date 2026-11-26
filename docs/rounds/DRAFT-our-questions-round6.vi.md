@@ -832,3 +832,19 @@ Các bạn nói action Critical còn mở chặn cả Proceed lẫn Proceed with
 **(a)** "Người có quyền quyết định gate" có đúng là uỷ quyền đủ năng lực để huỷ action Critical không, hay còn phải là người giữ chức năng độc lập liên quan (ví dụ Safety cho action an toàn)?
 
 **(b)** Phạm vi theo thị trường ở trên có đúng không, nhất là việc action Critical không nêu thị trường giữ mọi thị trường?
+
+## Câu 33 — Cập nhật PIF của thị trường đang bán: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* trang **Phase 4**, thẻ **Regulatory & launch tracking** của một thị trường (khối mới "PIF revisions", kèm "Suspend the approval").
+
+Các bạn nói không ép rút phiên bản đã duyệt chỉ vì mở một bản cập nhật PIF nháp; giữ nguyên PIF/phiên bản đã duyệt và quyết định ra mắt của thị trường, tạo một bản sửa đổi nháp riêng theo Change Control, bản đó không được phát hành khi chưa duyệt; và nếu thông tin mới làm suy yếu độ an toàn hay tuân thủ của phiên bản hiện hành thì Regulatory hoặc Quality phải đình chỉ phê duyệt bị ảnh hưởng và ghi lý do. Chúng tôi đã xây như sau:
+
+- **Bản sửa đổi nháp.** Ở thị trường có PIF Approved, người có thẩm quyền (người Regulatory và Project Manager của dự án, Lead hoặc quản trị viên) mở một bản sửa đổi kèm bản ghi Change Control nó được nêu theo và lý do. Mỗi thị trường và phiên bản công thức chỉ có một bản sửa đổi đang xử lý. Nó đi Draft → Under Review → Approved (hoặc trả lại, hoặc rút). Mở, xem xét hay duyệt bản sửa đổi **không đổi gì** ở thị trường: PIF vẫn Approved và launch approval vẫn Approved.
+- **Cách sửa trực tiếp cũ bị đóng.** Khi phê duyệt còn hiệu lực, không thể đưa PIF hay launch approval khỏi Approved bằng cách sửa; màn hình và máy chủ đều chỉ sang mở bản sửa đổi hoặc đình chỉ.
+- **Đình chỉ.** Chỉ người Regulatory hoặc Quality của dự án (bằng tên mình; quản trị viên không thay) đình chỉ launch approval của phiên bản đang bán, bắt buộc có lý do. Launch approval khi đó hiện Blocked, và thẻ ghi ai đình chỉ, khi nào, vì sao. Đặt lại launch approval về Approved thì chấm dứt đình chỉ.
+
+**(a)** Ai nên duyệt một bản sửa đổi PIF: những người được đổi market tracks (như đã xây), hay chỉ Regulatory?
+
+**(b)** "Phiên bản mới không được phát hành khi chưa duyệt": chúng tôi giữ nguyên mọi thứ đang bán và không phát hành gì từ bản nháp. Có nên giữ thêm thứ gì khi bản sửa đổi đang chờ (ví dụ artwork hay thông tin công bố mới trích dẫn PIF sửa đổi) không?
+
+**(c)** Đình chỉ **launch approval** có đúng nghĩa là đình chỉ "phê duyệt hiện hành bị ảnh hưởng" không, hay đình chỉ còn phải với tới được claims approval hoặc regulatory approval?

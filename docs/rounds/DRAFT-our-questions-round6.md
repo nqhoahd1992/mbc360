@@ -833,3 +833,19 @@ You told us that an open Critical action blocks both Proceed and Proceed with Co
 **(a)** Is "someone who may decide the gate" the right qualified authorisation to cancel a Critical action, or should it also have to be someone holding the relevant independent function (for example Safety for a safety action)?
 
 **(b)** Is the per-market scope above right, in particular that a Critical action naming no market holds every market?
+
+## Question 33 — Updating the PIF of a market on sale: have we read your answer correctly?
+
+*Where in the application:* **Phase 4** page, card **Regulatory & launch tracking** of a market (new block "PIF revisions", with "Suspend the approval").
+
+You told us not to force the withdrawal of the approved version merely because a draft PIF update is opened; to keep the approved PIF/version and the market's launch decision intact and create a separate draft revision under a Change Control record, which cannot release until approved; and that if new information undermines the current version's safety or compliance, Regulatory or Quality must suspend the affected approval and record the reason. We built it as follows:
+
+- **A draft revision.** On a market whose PIF is Approved, an authorised person (the Regulatory and Project Manager people, the Lead or an administrator) opens a revision with the Change Control record it is raised under and the reason. Only one revision per market and formula version is in progress at a time. It goes Draft → Under Review → Approved (or is sent back or withdrawn). Opening, reviewing or approving it changes **nothing** on the market: the PIF stays Approved and the launch approval stays Approved.
+- **The old edit is closed.** The PIF cannot be moved off Approved, and the launch approval cannot be taken off Approved, by editing them while the approval stands; the screen and the server say to open a revision or to suspend.
+- **Suspending.** Only the project's Regulatory person or Quality person (as themselves; an administrator does not stand in) suspends the launch approval of the version on sale, with a required reason. The launch approval then reads Blocked, and the track shows who suspended it, when and why. Setting the launch approval back to Approved ends the suspension.
+
+**(a)** Who should approve a PIF revision: the people who may change the market tracks (as built), or Regulatory only?
+
+**(b)** "The new version cannot release until approved": we leave everything that is on sale as it is and release nothing from the draft. Should anything else be held while a revision is pending (for example, new artwork or published information that cites the revised PIF)?
+
+**(c)** Is suspending the **launch approval** the right meaning of suspending "the affected current approval", or should a suspension also be able to reach the claims approval or the regulatory approval?

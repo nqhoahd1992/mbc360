@@ -7,6 +7,7 @@ import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
 import OpenChangesNotice from './OpenChangesNotice';
 import WithdrawalClosureBlock from './WithdrawalClosureBlock';
+import PifRevisionBlock from './PifRevisionBlock';
 import ReferenceSource from './ReferenceSource';
 import { canChangeMarketTracks, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
 import { useSession } from '../auth/useSession';
@@ -88,7 +89,7 @@ export default function MarketTrackingCard({
         disabled: field === 'pifStatus' && s !== 'Approved' && track.launchApproval === 'Approved',
         title:
           field === 'pifStatus' && s !== 'Approved' && track.launchApproval === 'Approved'
-            ? 'Change the launch approval first (rule C5)'
+            ? 'The PIF stays Approved while launch approval stands (rule C5): open a draft revision below, or Regulatory / Quality suspend the approval'
             : undefined,
       }))}
       onChange={(v: MarketApprovalStatus) => {
@@ -112,6 +113,9 @@ export default function MarketTrackingCard({
           options={STATUS_OPTIONS.map((s) => ({
             value: s,
             label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+            // Round 5 question 25: leaving Approved is a suspension by Regulatory / Quality with a reason, not a field change (the server refuses it).
+            disabled: s !== 'Approved' && t.launchApproval === 'Approved' && !t.withdrawnDate,
+            title: s !== 'Approved' && t.launchApproval === 'Approved' && !t.withdrawnDate ? 'Regulatory or Quality suspend the approval and record why (below)' : undefined,
           }))}
           onChange={(v: MarketApprovalStatus) =>
             patch(i, {
@@ -267,6 +271,7 @@ export default function MarketTrackingCard({
                 <span className="mt-track-note">current formula version</span>
               </div>
               {trackForm(t, index)}
+              {project && <PifRevisionBlock project={project} track={tracks.find((c) => c.market === t.market && c.formulaVersion === t.formulaVersion) ?? t} />}
               {project && t.withdrawnDate && tracks.some((c) => c.market === t.market && c.formulaVersion === t.formulaVersion && !!c.withdrawnDate) && (
                 <WithdrawalClosureBlock project={project} track={tracks.find((c) => c.market === t.market && c.formulaVersion === t.formulaVersion)!} />
               )}

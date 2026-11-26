@@ -910,6 +910,37 @@ export class ProjectsController {
     return this.projects.confirmWithdrawalClosure(user, id, market, body.expectedVersion);
   }
 
+  // Round 5 question 25: a draft PIF revision under a Change Control record, its status, and the suspension of an approval.
+  @Post(':id/markets/:market/pif-revisions')
+  openPifRevision(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('market') market: string,
+    @Body() body: { formulaVersion?: string; changeId?: string; reason?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.openPifRevision(user, id, market, body, body.expectedVersion);
+  }
+
+  @Post(':id/pif-revisions/:revisionId/status')
+  setPifRevisionStatus(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('revisionId') revisionId: string,
+    @Body() body: { status?: string; evidenceLink?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setPifRevisionStatus(user, id, revisionId, body, body.expectedVersion);
+  }
+
+  @Post(':id/markets/:market/suspend-approval')
+  suspendMarketApproval(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('market') market: string,
+    @Body() body: { formulaVersion?: string; reason?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.suspendMarketApproval(user, id, market, body, body.expectedVersion);
+  }
+
   @Put(':id/next-actions')
   setNextActions(
     @CurrentUser() user: SessionUser,
