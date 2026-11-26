@@ -819,3 +819,17 @@ You told us that at the seven critical gates Prepared, Reviewed and Approved are
 **(c)** Should a cancelled substantive action also need the person who raised it to be told, or is the authorised justification and impact review enough?
 
 **(d)** How should the system recognise a phase approval that "makes a new substantive critical decision"? Is there a signal we can read, or should the Lead decide when nominating?
+
+## Question 32 — An open Critical action and cancelling one: have we read your answer correctly?
+
+*Where in the application:* **Next Actions** (the action drawer when a Critical action is cancelled); the **Phase Gate Flow** decision and the "What's blocking Gate N" list.
+
+You told us that an open Critical action blocks both Proceed and Proceed with Conditions for its affected gate or scope, that Hold and Backtrack stay available, that nothing lets a risk-acceptance override release an unresolved Critical issue; that once a Critical action is independently verified closed a plain Proceed is possible; and that cancelling one needs a reason, qualified authorisation and confirmation of no residual issue, is allowed for a mistaken or duplicate action with that trail, and is never done merely to remove a block. This was already how the application behaved, and we have added what was missing. We read the open parts as follows:
+
+- **Scope.** On a gate signed per market (Gates 10–12) a Critical action that names a market holds that market's lane only; one that names no market holds every lane.
+- **Hold and Backtrack** are never refused because of a Critical action; only the two passing decisions are.
+- **Cancelling a Critical action** needs, besides the justification and the impact review already asked of any substantive action, an explicit confirmation by the person cancelling that no residual issue remains and any associated finding is resolved. "Qualified authorisation" is read as someone who may decide the gate (its Approved-by signer, the project Lead or an administrator), and never the action's owner.
+
+**(a)** Is "someone who may decide the gate" the right qualified authorisation to cancel a Critical action, or should it also have to be someone holding the relevant independent function (for example Safety for a safety action)?
+
+**(b)** Is the per-market scope above right, in particular that a Critical action naming no market holds every market?

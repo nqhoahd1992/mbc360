@@ -1,4 +1,4 @@
-import { DatePicker, Input, Select } from 'antd';
+import { Checkbox, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
@@ -360,6 +360,13 @@ export default function NextActionsCard({
                   />
                   {actionCancellationGaps(a).length > 0 && <p className="rt-note">Still needed: {actionCancellationGaps(a).join(' and ')}.</p>}
                 </RecordField>
+                {a.priority === 'Critical' && (
+                  <RecordField label={<>No residual issue<span className="as-req">&nbsp;*</span></>} wide>
+                    <Checkbox disabled={freezeOf(a).all} checked={a.cancellationNoResidual === true} onChange={(e) => patch(at(a), { cancellationNoResidual: e.target.checked })}>
+                      I confirm no residual issue remains and any associated finding is resolved — this Critical action is not being cancelled just to remove a block
+                    </Checkbox>
+                  </RecordField>
+                )}
               </>
             )}
             <RecordField label="Raised by">

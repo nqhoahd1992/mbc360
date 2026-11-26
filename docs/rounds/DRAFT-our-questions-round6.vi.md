@@ -818,3 +818,17 @@ Các bạn nói ở bảy gate trọng yếu Prepared, Reviewed và Approved là
 **(c)** Khi huỷ một action thực chất, có cần báo cho người đã nêu action không, hay lý do được uỷ quyền và đánh giá tác động là đủ?
 
 **(d)** Hệ thống nên nhận ra thế nào một phê duyệt phase "đưa ra quyết định trọng yếu mới"? Có tín hiệu nào đọc được không, hay để Lead quyết khi chỉ định?
+
+## Câu 32 — Action Critical còn mở và việc huỷ nó: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* **Next Actions** (ngăn kéo action khi huỷ một action Critical); quyết định **Phase Gate Flow** và danh sách "What's blocking Gate N".
+
+Các bạn nói action Critical còn mở chặn cả Proceed lẫn Proceed with Conditions của gate/phạm vi bị ảnh hưởng, Hold và Backtrack vẫn dùng được, không có ngoại lệ chấp nhận rủi ro nào cho phép phát hành một vấn đề Critical chưa giải quyết; khi action Critical đã được xác minh đóng độc lập thì Proceed thường là khả thi; và huỷ một action Critical cần lý do, uỷ quyền đủ năng lực và xác nhận không còn vấn đề tồn dư, được phép cho action nhầm/trùng kèm dấu vết đó, và không bao giờ huỷ chỉ để gỡ chặn. Ứng dụng vốn đã chạy như vậy, và chúng tôi đã thêm phần còn thiếu. Các phần để ngỏ chúng tôi đọc như sau:
+
+- **Phạm vi.** Ở gate ký theo thị trường (Gate 10–12), action Critical nêu một thị trường chỉ giữ làn của thị trường đó; action không nêu thị trường giữ mọi làn.
+- **Hold và Backtrack** không bao giờ bị từ chối vì action Critical; chỉ hai quyết định cho qua bị chặn.
+- **Huỷ action Critical** cần, ngoài lý do và đánh giá tác động đã hỏi ở mọi action thực chất, một xác nhận rõ ràng của người huỷ rằng không còn vấn đề tồn dư và mọi phát hiện liên quan đã được giải quyết. "Uỷ quyền đủ năng lực" được đọc là người có quyền quyết định gate (người ký Approved-by, Lead hoặc quản trị viên), không bao giờ là chủ action.
+
+**(a)** "Người có quyền quyết định gate" có đúng là uỷ quyền đủ năng lực để huỷ action Critical không, hay còn phải là người giữ chức năng độc lập liên quan (ví dụ Safety cho action an toàn)?
+
+**(b)** Phạm vi theo thị trường ở trên có đúng không, nhất là việc action Critical không nêu thị trường giữ mọi thị trường?

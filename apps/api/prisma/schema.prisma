@@ -436,6 +436,8 @@ model NextAction {
   verifier           String?
   cancellationReason String?
   cancellationImpact String?
+  // Round 5 question 24(b): the confirmation, when a Critical action is cancelled, that no residual issue remains.
+  cancellationNoResidual Boolean?
   // The market this action belongs to on a gate signed per market (Gates 10-12). Null = every market, which holds every lane.
   market        String?
   createdAt     DateTime  @default(now())

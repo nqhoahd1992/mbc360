@@ -1432,6 +1432,9 @@ export interface NextAction {
   verifier?: string;
   cancellationReason?: string;
   cancellationImpact?: string;
+  // Round 5 question 24(b): cancelling a Critical action also needs the authorised person's confirmation that no residual issue remains and that any
+  // associated finding was resolved — never cancelled merely to remove a block. [ASSUMPTION: R6-Q32]
+  cancellationNoResidual?: boolean;
   // Gates 10-12 are signed per market, so an action belongs to ONE market or to all of them (project owner, 2026-11-11: an open
   // action in one market must not hold another). Absent = every market, which holds every lane — the same convention as a change
   // record that names no market (SW-54). Always absent on a gate that is not signed per market.

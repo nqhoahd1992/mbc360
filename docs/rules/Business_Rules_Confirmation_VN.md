@@ -1219,6 +1219,14 @@ Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh v
 
 **(d)** Khi đóng phase cần rà soát độc lập: người chuẩn bị khác người rà soát và người phê duyệt. Người rà soát có thể phê duyệt bản tóm tắt phase khi được phép, vì các gate trọng yếu bên dưới đã có phê duyệt riêng biệt. Nếu phê duyệt phase đưa ra quyết định trọng yếu mới thì áp quy tắc ba người. Không có phê duyệt phase trùng lặp nào được ghi đè gate chưa đạt.
 
+### Câu 24 — Action Critical và việc tiến gate
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 32.
+
+**(a)** Action Critical còn mở chặn cả Proceed lẫn Proceed with Conditions của gate/phạm vi bị ảnh hưởng. Hold/Backtrack vẫn dùng được. "Chặn mọi quyết định" không được ngăn việc ghi các quyết định bảo vệ đó. Không có ngoại lệ chấp nhận rủi ro nào cho phép phát hành một vấn đề Critical bị cấm hoặc chưa giải quyết.
+
+**(b)** Khi đã xác minh đóng độc lập, action Critical không buộc gate phải dùng quyết định có điều kiện vĩnh viễn; Proceed thường khả thi nếu mọi tiêu chí hiện tại đều đạt. Huỷ cần lý do, uỷ quyền đủ năng lực và xác nhận không còn vấn đề tồn dư. Action nhầm/trùng được huỷ kèm dấu vết đó. Không bao giờ huỷ chỉ để gỡ chặn; phải giải quyết cả phát hiện liên quan.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

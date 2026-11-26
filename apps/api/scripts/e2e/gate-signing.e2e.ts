@@ -362,6 +362,31 @@ export async function run(base: string, db: Client): Promise<number> {
     t('...with both it is cancelled and the record keeps them', r.status < 300 && (await find(OWN))?.status === 'Cancelled' && !!(await find(OWN))?.cancellationImpact, `${r.status} ${short(await find(OWN))}`);
   }
 
+  // ============================================================ Round 5 question 24: an open Critical action, and cancelling one
+  console.log('\n--- an open Critical action blocks both passing decisions but not Hold; cancelling one needs the no-residual-issue confirmation (question 24)');
+  {
+    const GATE = 'SG01'; // the gate open for work at this point, so its decision can be recorded
+    const nameOf = async (key: string): Promise<string> => (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
+    const [sekarName, tuanName] = [await nameOf('sekar'), await nameOf('tuan')];
+    const actions = async () => ((await project()).project.nextActions as any[]).filter((a) => a.gateId === GATE);
+    const put = async (key: string, list: any[]) => api(key, 'PUT', `/projects/${PROJECT}/next-actions`, { gateIds: [GATE], actions: list, expectedVersion: await version() });
+    const find = async (id: string) => (await actions()).find((a) => a.id === id);
+    const CRIT = 'NA-E2E-CRIT';
+    let r: any = await put('tuan', [...(await actions()), { id: CRIT, gateId: GATE, description: 'e2e: critical action', owner: tuanName, dueDate: '2030-01-01', status: 'Open', priority: 'Critical', actionType: 'Safety', verifier: sekarName }]);
+    t('a Critical action is raised', r.status < 300, `${r.status} ${short(r.json)}`);
+    t('while it is open it is a hard block on Proceed with Conditions as well, read on the live project', gp.gateBlockers((await project()).project, GATE, 'Proceed with Conditions').some((b: any) => b.id === 'critical-next-actions'));
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/${GATE}`, { decision: 'Hold', expectedVersion: await version() });
+    t('...but Hold, a protective decision, can still be recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+
+    // Cancelling it: an authorised person, a justification, an impact review and the confirmation that no residual issue remains.
+    r = await put('admin', (await actions()).map((a) => (a.id === CRIT ? { ...a, status: 'Cancelled', cancellationReason: 'Raised twice by mistake', cancellationImpact: 'The same finding is tracked on another action' } : a)));
+    t('a Critical action is not cancelled without the no-residual-issue confirmation (400)', r.status === 400 && /residual/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('admin', (await actions()).map((a) => (a.id === CRIT ? { ...a, status: 'Cancelled', cancellationReason: 'Raised twice by mistake', cancellationImpact: 'The same finding is tracked on another action', cancellationNoResidual: true } : a)));
+    t('...with it, it is cancelled and the record keeps the confirmation', r.status < 300 && (await find(CRIT))?.status === 'Cancelled' && (await find(CRIT))?.cancellationNoResidual === true, `${r.status} ${short(await find(CRIT))}`);
+    const blockers = ((await api('admin', 'GET', `/projects/${PROJECT}`)).json.project.nextActions as any[]).filter((a) => a.gateId === GATE && a.priority === 'Critical' && !['Closed', 'Cancelled'].includes(a.status));
+    t('once cancelled it holds nothing: no open Critical action is left on the gate', blockers.length === 0, short(blockers));
+  }
+
   // ============================================================ N/A with a rationale on the Phase 2-4 requirement tables
   console.log('\n--- requirement tables: N/A with a rationale counts as dealt with on Phase 2-4, except where a row is always mandatory');
   {

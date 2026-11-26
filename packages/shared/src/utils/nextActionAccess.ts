@@ -42,7 +42,7 @@ export function mayRemoveNextAction(action: Pick<NextAction, 'raisedBy'>, actor:
   return me !== '' && (action.raisedBy ?? '').trim() === me;
 }
 
-const norm = (value: string | undefined) => (value ?? '').trim();
+const norm = (value: string | boolean | undefined) => String(value ?? '').trim();
 
 export function nextActionRecordChanged(before: NextAction, after: NextAction): boolean {
   return NEXT_ACTION_RECORD_FIELDS.some((field) => norm(before[field]) !== norm(after[field]));
@@ -88,7 +88,7 @@ export function nextActionFreeze(committed: NextAction | undefined, gatePassed: 
 // they move with it on an open action and are not separately editable.
 const FROZEN_WHEN_TERMINAL = [
   'description', 'gateId', 'owner', 'dueDate', 'priority', 'status', 'dateCompleted', 'verifiedBy',
-  'completionCriteria', 'escalationTrigger', 'evidenceLink', 'actionType', 'verifier', 'cancellationReason', 'cancellationImpact',
+  'completionCriteria', 'escalationTrigger', 'evidenceLink', 'actionType', 'verifier', 'cancellationReason', 'cancellationImpact', 'cancellationNoResidual',
 ] as const;
 const FROZEN_WHEN_OPEN = ['description', 'gateId', 'priority', 'actionType'] as const;
 

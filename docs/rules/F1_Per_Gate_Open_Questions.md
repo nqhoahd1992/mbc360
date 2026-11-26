@@ -1417,7 +1417,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q32 · R6-Q29 | **21** (đã trả lời 05/11, xây 26/11/2026; R6-Q29 hỏi lại một chỗ ta đọc) | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
 | ✅ R5-Q30 · R5-Q45 · R6-Q30 | **22(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q30 hỏi lại một chỗ ta đọc) | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
 | ✅ R5-Q56 · R5-Q39 · R5-Q42 · R6-Q31 (R5-Q2 còn mở) | **23(a) · (b) · (c) · (d)** (đã trả lời 05/11, xây 26/11/2026; R6-Q31 hỏi lại các chỗ ta đọc) | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
-| R5-Q60 · R5-Q61 | **24(a) · (b)** | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
+| ✅ R5-Q60 · R5-Q61 · R6-Q32 | **24(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q32 hỏi lại các chỗ ta đọc) | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
 | R5-Q40 | **25** | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
 | R5-Q41 | **26** | Bản ghi deviation khi phát hành chưa được duyệt |
 | R5-Q43 | **27** | Ai chấp nhận pre-work của một phase |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q32 · Action Critical còn mở và việc huỷ nó: các chỗ ta đọc câu trả lời (Vòng 5 câu 24) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 24.** SME nêu: (a) action Critical còn mở chặn cả Proceed và Proceed with Conditions của gate/phạm vi bị ảnh hưởng, Hold/Backtrack vẫn dùng được, không có ngoại lệ chấp nhận rủi ro; (b) action Critical đã xác minh đóng độc lập thì Proceed thường là khả thi; huỷ cần lý do, uỷ quyền đủ năng lực và xác nhận không còn vấn đề tồn dư; action nhầm/trùng huỷ được kèm dấu vết; không huỷ chỉ để gỡ chặn. Phần chặn và phần "đóng rồi thì không chặn" đã đúng sẵn (`critical-next-actions`, `hardBlock`); Hold/Backtrack không đi qua `resolveDecision`'s guard (chỉ Proceed/Proceed with Conditions bị kiểm). Phần thêm mới: trường `cancellationNoResidual` (migration `20261126220000`) — huỷ action Critical cần thêm xác nhận của người huỷ rằng không còn vấn đề tồn dư và mọi phát hiện liên quan đã giải quyết, ngoài lý do và đánh giá tác động đã đòi ở câu 23(b) (`actionCancellationGaps`). Cách đọc của ta: (1) "uỷ quyền đủ năng lực" = người có quyền quyết định gate (người ký Approved-by, Lead, quản trị viên), không bao giờ là chủ action (`actionClosureRefusal`); (2) phạm vi: ở Gate 10–12 action nêu một thị trường chỉ giữ làn của thị trường đó, action không nêu thị trường giữ mọi làn.
+
+**Câu hỏi:** (a) "người có quyền quyết định gate" có đủ để huỷ action Critical không, hay còn phải là người giữ chức năng độc lập liên quan; (b) phạm vi theo thị trường có đúng không.
+
+**Nếu trả lời khác:** `utils/actionVerification.ts` (`actionClosureRefusal`, `actionCancellationGaps`); `utils/gateProgress.ts` (`critical-next-actions`, `marketView`); `NextActionsCard.tsx` [ASSUMPTION: R6-Q32].
 
 #### R6-Q31 · Một người giữ hai vai trên một bản ghi: các chỗ ta đọc câu trả lời (Vòng 5 câu 23) 🟡
 
@@ -2596,7 +2604,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateSnapshot.ts` — `snapshotChanges` (phần điều kiện đã chấp nhận); `packages/shared/src/utils/nextActionAccess.ts` — `nextActionFreeze`, `nextActionFreezeViolation`; `apps/api/src/projects/projects.service.ts` — `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `freezeOf`.
 
-#### R5-Q60 · Action Critical còn mở có chặn cả Proceed with Conditions không 🔴
+#### R5-Q60 · Action Critical còn mở có chặn cả Proceed with Conditions không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 24(a)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Có: chặn cả Proceed và Proceed with Conditions của gate/phạm vi bị ảnh hưởng; Hold/Backtrack vẫn dùng được; không có ngoại lệ chấp nhận rủi ro. → **R6-Q32**.
 
 **Lộ ra 09/10/2026, khi chủ dự án nhớ lại rằng Proceed with Conditions cho action Critical đi qua.** F8 chỉ nói *"Critical actions must prevent normal gate closure"*. Code hiện đọc "normal" là mọi quyết định: một action Critical còn mở chặn **cả** Proceed with Conditions (`critical-next-actions`, `hardBlock: true`, không được xoá bởi Proceed with Conditions). Cách đọc khác, khớp với trí nhớ của chủ dự án: Critical chặn Proceed thường, còn Proceed with Conditions là đường đóng gate *không bình thường* nên cho qua. Cách đọc hiện tại chưa từng được ghi thành câu hỏi, và cũng chưa có dấu giả định; câu này bù lại.
 
@@ -2606,7 +2616,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — mục `critical-next-actions` trong `gateReadinessChecklist` và `hardGateBlockers`.
 
-#### R5-Q61 · Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không 🔴
+#### R5-Q61 · Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 24(b)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Không: sau khi xác minh đóng độc lập, Proceed thường khả thi; huỷ cần lý do, uỷ quyền đủ năng lực và xác nhận không còn tồn dư; không huỷ chỉ để gỡ chặn. → **R6-Q32**.
 
 **Chủ dự án chốt (09/10/2026), sau khi có người đề xuất ngược lại.** Một phiên khác từng viết rằng gate từng có action Critical, dù đã đóng hoặc huỷ, vẫn không được Proceed thuần mà chỉ qua được bằng Proceed with Conditions. Chủ dự án bác đề xuất đó và chốt: **khi action Critical đã Closed hoặc Cancelled thì nó không còn chặn gì, gate pass với Proceed thuần** (miễn không còn action mở nào). Căn cứ chủ dự án nêu: *"tôi tôn trọng SME first"* — rà lại toàn bộ câu trả lời của SME thì `R1-B2` chỉ nói action mở chỉ được tồn tại khi quyết định là Proceed with Conditions và *"otherwise all actions should normally be completed before gate closure"*, `F8` chỉ nói *"Critical actions must prevent normal gate closure"* — cả hai nói về action **còn mở**. Không có câu nào buộc một gate từng có vấn đề Critical phải đi bằng Proceed with Conditions.
 

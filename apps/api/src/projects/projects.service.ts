@@ -5433,6 +5433,7 @@ export class ProjectsService {
           verifier: a.verifier ?? null,
           cancellationReason: a.cancellationReason ?? null,
           cancellationImpact: a.cancellationImpact ?? null,
+          cancellationNoResidual: a.cancellationNoResidual ?? null,
         };
         if (keep.has(a.id)) {
           await tx.nextAction.update({ where: { id: a.id }, data });

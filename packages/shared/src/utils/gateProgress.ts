@@ -2811,7 +2811,7 @@ export function gateReadinessChecklist(
   // Merging them into one item would hide which severity is actually the
   // problem and make the "clears with Proceed with Conditions" note (only
   // true for the non-critical item) ambiguous.
-  // [ASSUMPTION: R5-Q60] F8 says only that Critical actions "prevent normal gate
+  // [ASSUMPTION: R5-Q60] (answered, Round 5 question 24(a): it blocks both decisions) F8 says only that Critical actions "prevent normal gate
   // closure"; reading "normal" as every decision is ours.
   // [ASSUMPTION: R5-Q61] Only OPEN Critical actions block. Once a Critical action is
   // Closed or Cancelled it no longer counts, so the gate can pass on a plain Proceed.

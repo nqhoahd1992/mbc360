@@ -81,6 +81,8 @@ export function actionCancellationGaps(a: NextAction): string[] {
   const gaps: string[] = [];
   if (!(a.cancellationReason ?? '').trim()) gaps.push('the justification for cancelling it');
   if (!(a.cancellationImpact ?? '').trim()) gaps.push('the impact review: what the cancellation leaves unaddressed');
+  // Round 5 question 24(b): a Critical action is cancelled only with the confirmation that no residual issue remains and any associated finding is resolved.
+  if (a.priority === 'Critical' && a.cancellationNoResidual !== true) gaps.push('the confirmation that no residual issue remains and any associated finding is resolved');
   return gaps;
 }
 

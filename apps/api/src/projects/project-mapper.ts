@@ -829,6 +829,7 @@ function toProjectDataRaw(
       verifier: opt(a.verifier),
       cancellationReason: opt(a.cancellationReason),
       cancellationImpact: opt(a.cancellationImpact),
+      ...(a.cancellationNoResidual ? { cancellationNoResidual: true } : {}),
       ...(a.market ? { market: a.market } : {}),
     })),
     // E3(b): the readiness engine evaluates each open change's impact at Gate 11,

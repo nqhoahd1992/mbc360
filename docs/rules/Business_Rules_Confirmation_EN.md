@@ -1219,6 +1219,14 @@ Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional 
 
 **(d)** At phase closure require an independent review: preparer differs from reviewer and approver. Reviewer may also approve the phase summary where permitted, since the underlying critical gates already have their distinct approvals. If the phase approval makes a new substantive critical decision, apply the three-person rule. No duplicate phase approval may override a failed gate.
 
+### Question 24 — Critical actions and gate progression
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 32.
+
+**(a)** An open Critical action blocks both Proceed and Proceed with Conditions for its affected gate/scope. Hold/Backtrack remain available. "Blocks every decision" must not prevent recording those protective decisions. No risk-acceptance override allows a prohibited or unresolved Critical issue to release.
+
+**(b)** Once independently verified closed, a Critical action does not force a permanent conditional decision; plain Proceed is possible if all current criteria are met. Cancellation needs reason, qualified authorisation and confirmation of no residual issue. A mistaken duplicate/misraised action can be cancelled with that trail. Never cancel merely to remove a block; resolve any associated finding as well.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*
