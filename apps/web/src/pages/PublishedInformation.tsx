@@ -1,4 +1,8 @@
 import { Alert, Empty } from 'antd';
+import dayjs from 'dayjs';
+import { contentValidityWarnings } from '@mbc360/shared/utils/deviations';
+import { Link } from 'react-router-dom';
+import Notice from '../components/Notice';
 import { useParams } from 'react-router-dom';
 import { publicationRules, publishedInfoApproval, RELEASED_INFO_STATES } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
@@ -31,6 +35,9 @@ export default function PublishedInformation() {
       (C6_STEPS.some((step) => row[step] !== 'Y') || !RELEASED_INFO_STATES.includes(String(row.workflowState))),
   );
   const locked = isGateRefLocked(project, publishedInfoApproval.gate);
+  // Round 5 question 26(d): released content whose review date has come, or whose claim or approved wording is no longer valid, is shown to its owner until
+  // somebody records what was decided. A due review date asks for a re-review; it does not by itself prove the content was published unlawfully.
+  const warnings = contentValidityWarnings(project, dayjs().format('YYYY-MM-DD')).filter((w) => !w.dispositioned);
 
   return (
     <div className="concept">
@@ -50,6 +57,19 @@ export default function PublishedInformation() {
               .map((r) => String(r.recordId || r.publishedItem || 'unnamed item'))
               .join(', ')}.`}
           />
+        )}
+        {warnings.length > 0 && (
+          <Notice tone="warn" title={`${warnings.length} released item${warnings.length > 1 ? 's' : ''} need${warnings.length > 1 ? '' : 's'} a validity review`}>
+            <ul style={{ margin: '4px 0 6px 18px', padding: 0 }}>
+              {warnings.map((w) => (
+                <li key={`${w.recordId}|${w.kind}`}>
+                  <b>{w.recordId}</b> — {w.kind}: {w.detail}. Owner: {w.owner || 'not named'}.{w.promptContainment ? ' A claim that is unsupported or withdrawn needs prompt containment.' : ''}
+                </li>
+              ))}
+            </ul>
+            Record what was decided in the row's Validity review section. If the content was used while it was no longer valid, log it as a{' '}
+            <Link className="c-link" to={`/projects/${id}/registers/reg/deviationRecords`}>deviation</Link>.
+          </Notice>
         )}
         <DynamicTable
           config={publicationRules}

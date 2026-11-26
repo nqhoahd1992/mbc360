@@ -1419,7 +1419,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q56 · R5-Q39 · R5-Q42 · R6-Q31 (R5-Q2 còn mở) | **23(a) · (b) · (c) · (d)** (đã trả lời 05/11, xây 26/11/2026; R6-Q31 hỏi lại các chỗ ta đọc) | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
 | ✅ R5-Q60 · R5-Q61 · R6-Q32 | **24(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q32 hỏi lại các chỗ ta đọc) | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
 | ✅ R5-Q40 · R6-Q33 | **25** (đã trả lời 05/11, xây 26/11/2026; R6-Q33 hỏi lại các chỗ ta đọc) | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
-| R5-Q41 | **26** | Bản ghi deviation khi phát hành chưa được duyệt |
+| ✅ R5-Q41 · R6-Q34 | **26** (đã trả lời 05/11, xây 26/11/2026; R6-Q34 hỏi lại các chỗ ta đọc) | Bản ghi deviation khi phát hành chưa được duyệt |
 | R5-Q43 | **27** | Ai chấp nhận pre-work của một phase |
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
 | R5-Q47 · R5-Q62 | **28(a) · (b)** | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q34 · Bản ghi deviation: các chỗ ta đọc câu trả lời (Vòng 5 câu 26) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 26.** SME: (a) chặn phát hành trong workflow là đủ; nội dung phát hiện đã đăng ngoài workflow ghi như deviation, không gắn nhãn đã duyệt về sau; (b) các trường của bản ghi, giữ bằng chứng sự cố gốc; (c) sai lệch an toàn/tuân thủ/claim/phiên bản chưa giải quyết chặn Gate 11 bị ảnh hưởng, Gate 12 ghi nhận và rà soát, Critical chưa giải quyết chặn việc đóng, không Critical có thể ở dưới hành động kiểm soát được chấp nhận, không chặn toàn cục sản phẩm/thị trường không liên quan; (d) cảnh báo hết hạn/đến hạn/rút/thay thế cho chủ sở hữu và theo dõi disposition, hạn rà soát không tự chứng minh đăng sai, claim không được hỗ trợ/bị cấm cần ngăn chặn ngay. Cách đọc của ta: (1) **sổ** `deviationRecords` (gate `11/12`, `approvalRoute` riêng nên không có nghi thức đóng sổ, `utils/deviations.ts`, `config/deviations.ts`): một dòng một sự cố; `DEVIATION_ORIGINAL_COLUMNS` khoá khi đã lưu (`lockedOnceSaved`, server `deviationRecordViolations`), không xoá được dòng đã lưu (`neverRemoveRows`); High/Critical cần root cause; Closed cần xác minh + quyết định + ngày; (2) **Gate 11** `sg11-deviations` (per-market): deviation loại Safety/Compliance/Claims/Version mismatch chưa Closed và chưa được chấp nhận giữ làn của thị trường nó nêu (để trống = mọi thị trường); "Other" không giữ; "được chấp nhận" = Next Action còn sống đủ trường (`controlledActionGaps`) + người chấp nhận + mức dưới Critical; (3) **Gate 12** `sg12-deviations-reviewed` (mỗi deviation có reviewer và disposition khác Open) và `sg12-critical-deviation` (Critical chưa Closed giữ việc đóng, không được Proceed with Conditions xoá; chấp nhận không thay cho Critical); (4) **cảnh báo nội dung** (`contentValidityWarnings`): thông tin đã phát hành quá hạn `expiryReviewDate`, claim không còn Supported, hoặc wording thư viện bị rút; mở tới khi dòng ghi `validityDisposition` + `validityReviewedDate` (và với hạn rà soát: ngày ≥ ngày hạn); claim không được hỗ trợ/bị rút ghi "cần ngăn chặn ngay".
+
+**Câu hỏi:** (a) sổ chỉ đọc sau khi Gate 11 và 12 đã qua — có nên ghi deviation bất cứ lúc nào; (b) bốn loại giữ Gate 11 và "Other" không giữ có đúng không; (c) ghi disposition trên dòng thông tin công bố có đủ để "theo dõi" cảnh báo không.
+
+**Nếu trả lời khác:** `utils/deviations.ts`; `config/deviations.ts`; `config/registers.ts` (`deviationRecords`, `publishedInfoApproval`); `config/gateReadiness.ts` (`sg11-deviations`, `sg12-deviations-reviewed`, `sg12-critical-deviation`); `projects.service.ts` (`setRegisterRows`); `PublishedInformation.tsx`; `DynamicTable.tsx` [ASSUMPTION: R6-Q34].
 
 #### R6-Q33 · Cập nhật PIF của thị trường đang bán: các chỗ ta đọc câu trả lời (Vòng 5 câu 25) 🟡
 
@@ -2413,7 +2421,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `setMarketTracks`.
 
-#### R5-Q41 · Bản ghi deviation khi phát hành chưa được duyệt 🔴
+#### R5-Q41 · Bản ghi deviation khi phát hành chưa được duyệt ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 26) và đã xây 26/11/2026 — phần dưới là lịch sử.** Chặn phát hành trong workflow là đủ; nội dung đăng ngoài workflow ghi như deviation, không gắn nhãn đã duyệt về sau; các trường của bản ghi và giữ bằng chứng gốc; chặn Gate 11 bị ảnh hưởng, Gate 12 ghi nhận và rà soát, Critical chặn việc đóng; cảnh báo hết hạn/đến hạn/rút kèm theo dõi disposition. → **R6-Q34**.
 
 **Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-48: mỗi phát hành chưa được duyệt có bản ghi deviation riêng. Còn hỏi SME: bản ghi chứa gì, có chặn Gate 11/12 không, có cảnh báo khi hết hiệu lực không. Câu hỏi còn lại như bên dưới.
 

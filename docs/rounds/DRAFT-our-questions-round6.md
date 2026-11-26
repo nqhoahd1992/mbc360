@@ -849,3 +849,20 @@ You told us not to force the withdrawal of the approved version merely because a
 **(b)** "The new version cannot release until approved": we leave everything that is on sale as it is and release nothing from the draft. Should anything else be held while a revision is pending (for example, new artwork or published information that cites the revised PIF)?
 
 **(c)** Is suspending the **launch approval** the right meaning of suspending "the affected current approval", or should a suspension also be able to reach the claims approval or the regulatory approval?
+
+## Question 34 — Deviation records: have we read your answer correctly?
+
+*Where in the application:* the new register **Deviation Records** (Sales & Marketing, beside the Publication / Deployment Record); the **Published Information Approval** page (a warning list and a new Validity review section on each row); the Gate 11 and Gate 12 readiness lists.
+
+You told us that blocking release inside the workflow is right and that content found published outside it is logged as a deviation, never labelled approved afterwards; what a deviation records, with the evidence of the original incident preserved; that an unresolved safety, compliance, claims or version mismatch blocks the affected Gate 11 release (never unrelated products or markets), that Gate 12 records and reviews deviations and a Critical unresolved one blocks the affected review's closure, and that a non-critical one may stay under explicitly accepted controlled actions; and that expiry, review-due and withdrawn or superseded content show as warnings to their owners with the disposition tracked. We built it as follows:
+
+- **The record.** One row per incident with every field you listed. The original incident (how it was found, dates, reporter, SKU, market, channel, claim, evidence, approval expected and actual) cannot be changed once the row is saved, and a saved deviation can never be removed — it is closed, with its verification, closure decision and date. A High or Critical one also needs its root cause. A deviation names a market; one that names none counts for every market of the project.
+- **Gate 11.** A deviation whose kind is Safety, Compliance, Claims or Version mismatch, and that is neither closed nor accepted, holds that market's launch lane only. A kind of "Other" is recorded and reviewed but holds nothing. A deviation is **accepted** under a controlled action when it has a tracked Next Action that is live and fully specified, an accepter, and a severity below Critical.
+- **Gate 12.** Every deviation of the market needs a reviewer and a disposition other than Open; a Critical deviation holds the market's closure until it is closed (an accepted action does not stand for a Critical one), even under Proceed with Conditions.
+- **Content warnings.** Released published information past its review date, or whose claim is no longer Supported or whose approved wording was withdrawn, shows to its content owner until a person records what was decided (re-reviewed and still valid, use restricted, withdrawn or superseded, deviation raised) with the date; a due review date is shown as a request for re-review, not as proof of unlawful publication, and an unsupported or withdrawn claim is flagged as needing prompt containment.
+
+**(a)** Like all gate evidence the register becomes read-only once both Gate 11 and Gate 12 have passed, so a deviation discovered after that needs a Backtrack to record. Should deviations be recordable at any time, including after Gate 12 has passed?
+
+**(b)** Are Safety, Compliance, Claims and Version mismatch the right kinds to hold Gate 11, and is "Other" correctly left as record-and-review only?
+
+**(c)** Is recording the decision on the published-information row (a disposition, a date and any use restriction) the right way to "track the disposition" of a content warning?

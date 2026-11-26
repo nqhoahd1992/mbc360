@@ -61,8 +61,8 @@
 .rt-drawer-hint { color: var(--c-text-3); font-size: 12px; }
 .rt-sections { display: grid; gap: 28px; }
 .rt-sec-title { margin-bottom: 12px; font-size: 13px; font-weight: 600; }
-.rt-grid { display: grid; gap: 16px; }
-@media (min-width: 640px) { .rt-grid { grid-template-columns: 1fr 1fr; } .rt-span-2 { grid-column: span 2; } }
+.rt-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .rt-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .rt-span-2 { grid-column: span 2; } }
 .rt-grid > label { min-width: 0; }
 .rt-label { display: flex; align-items: center; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
 .rt-list-controls .rt-label { margin-bottom: 4px; font-size: 12px; }

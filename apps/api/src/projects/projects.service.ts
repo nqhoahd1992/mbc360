@@ -109,6 +109,7 @@ import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safety
 import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import { bypassable } from './dev-flags';
+import { DEVIATION_REGISTER, deviationAcceptanceGaps, deviationRecordViolations } from '@mbc360/shared/utils/deviations';
 import { pifRevisionNextStatuses, pifRevisionOpenProblems } from '@mbc360/shared/utils/pifRevisions';
 import {
   NEXT_ACTION_TYPES,
@@ -3336,6 +3337,14 @@ export class ProjectsService {
         }
         // The claims that kept their link follow the library (SW-59).
         rows = applyClaimsLibraryInheritance(config.columns, rows, project.reference?.claimsLibrary, committedClaims, 'unchanged');
+      }
+      // Round 5 question 26(b): a deviation keeps the original incident as first recorded and is closed, never deleted; one accepted under a controlled
+      // action needs the action, who accepted it, and a severity below Critical. [ASSUMPTION: R6-Q34]
+      if (registerKey === DEVIATION_REGISTER) {
+        const violations = deviationRecordViolations(project.registers[registerKey] ?? [], rows);
+        if (violations.length > 0) throw new BadRequestException(listMessage('A deviation record is preserved as it was first recorded:', violations));
+        const cannotAccept = rows.flatMap((r) => deviationAcceptanceGaps(r, project).map((g) => `${String(r.deviationId ?? '').trim() || '(new)'}: ${g}`));
+        if (cannotAccept.length > 0) throw new BadRequestException(listMessage('A deviation cannot be accepted under a controlled action yet:', cannotAccept));
       }
       if (registerKey === RM_EVIDENCE_REGISTER) {
         const bad = rmEvidenceContradictions(rows);

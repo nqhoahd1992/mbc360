@@ -848,3 +848,20 @@ Các bạn nói không ép rút phiên bản đã duyệt chỉ vì mở một b
 **(b)** "Phiên bản mới không được phát hành khi chưa duyệt": chúng tôi giữ nguyên mọi thứ đang bán và không phát hành gì từ bản nháp. Có nên giữ thêm thứ gì khi bản sửa đổi đang chờ (ví dụ artwork hay thông tin công bố mới trích dẫn PIF sửa đổi) không?
 
 **(c)** Đình chỉ **launch approval** có đúng nghĩa là đình chỉ "phê duyệt hiện hành bị ảnh hưởng" không, hay đình chỉ còn phải với tới được claims approval hoặc regulatory approval?
+
+## Câu 34 — Bản ghi deviation: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* sổ mới **Deviation Records** (Sales & Marketing, cạnh Publication / Deployment Record); trang **Published Information Approval** (danh sách cảnh báo và phần Validity review mới trên mỗi dòng); danh sách readiness của Gate 11 và Gate 12.
+
+Các bạn nói chặn phát hành trong workflow là đúng và nội dung phát hiện đã đăng ngoài workflow được ghi như một deviation, không bao giờ gắn nhãn đã duyệt về sau; deviation ghi những gì, với bằng chứng sự cố gốc được giữ nguyên; một sai lệch an toàn, tuân thủ, claim hoặc phiên bản chưa giải quyết chặn lần phát hành bị ảnh hưởng ở Gate 11 (không bao giờ chặn sản phẩm hay thị trường không liên quan), Gate 12 ghi nhận và rà soát deviation và một deviation Critical chưa giải quyết chặn việc đóng đợt rà soát bị ảnh hưởng, deviation không Critical có thể ở lại dưới các hành động kiểm soát được chấp nhận rõ ràng; và nội dung hết hạn, đến hạn rà soát, bị rút hay bị thay thế hiện thành cảnh báo cho chủ của nó, kèm theo dõi xử lý. Chúng tôi đã xây như sau:
+
+- **Bản ghi.** Mỗi sự cố một dòng với mọi trường các bạn liệt kê. Sự cố gốc (cách phát hiện, các ngày, người báo cáo, SKU, thị trường, kênh, claim, bằng chứng, phê duyệt kỳ vọng và thực tế) không đổi được khi dòng đã lưu, và deviation đã lưu không bao giờ xoá được — nó được đóng, kèm xác minh, quyết định đóng và ngày. Deviation High hoặc Critical còn cần nguyên nhân gốc. Một deviation nêu một thị trường; cái không nêu thị trường tính cho mọi thị trường của dự án.
+- **Gate 11.** Deviation có loại Safety, Compliance, Claims hoặc Version mismatch, chưa đóng và chưa được chấp nhận, chỉ giữ làn ra mắt của thị trường đó. Loại "Other" được ghi và rà soát nhưng không giữ gì. Một deviation được **chấp nhận** dưới hành động kiểm soát khi có một Next Action theo dõi còn sống và đầy đủ, một người chấp nhận, và mức độ dưới Critical.
+- **Gate 12.** Mọi deviation của thị trường cần người rà soát và một disposition khác Open; deviation Critical giữ việc đóng của thị trường đó cho tới khi được đóng (hành động được chấp nhận không thay cho deviation Critical), kể cả với Proceed with Conditions.
+- **Cảnh báo nội dung.** Thông tin đã phát hành quá hạn rà soát, hoặc có claim không còn Supported hay wording đã duyệt bị rút, hiện cho chủ nội dung tới khi có người ghi quyết định (đã rà soát lại và vẫn hợp lệ, hạn chế sử dụng, rút hoặc thay thế, đã nêu deviation) kèm ngày; hạn rà soát đến được hiện như yêu cầu rà soát lại, không phải bằng chứng đã đăng bất hợp pháp, và claim không được hỗ trợ hay bị rút được đánh dấu cần ngăn chặn ngay.
+
+**(a)** Như mọi bằng chứng gate, sổ chỉ đọc khi cả Gate 11 và Gate 12 đã qua, nên deviation phát hiện sau đó cần Backtrack mới ghi được. Có nên cho ghi deviation bất cứ lúc nào, kể cả sau khi Gate 12 đã qua không?
+
+**(b)** Safety, Compliance, Claims và Version mismatch có đúng là các loại giữ Gate 11 không, và "Other" chỉ ghi-và-rà-soát có đúng không?
+
+**(c)** Ghi quyết định ngay trên dòng thông tin công bố (disposition, ngày và hạn chế sử dụng nếu có) có đúng là cách "theo dõi xử lý" một cảnh báo nội dung không?

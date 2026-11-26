@@ -2,6 +2,7 @@ import { RISK_LEVELS, type RegisterRow } from '../types';
 import { FORMULATION_CHANGE_VIEW, type ChangeViewConfig } from '../utils/changeViews';
 import { CLAIM_REVIEW_OUTCOMES, CLAIM_SCOPE_EXCLUDED, CLAIM_SCOPE_OPTIONS, CLAIM_SUBJECT_FLAGS } from './claimReview';
 import { TREND_CONCLUSIONS } from './postMarketReview';
+import { DEVIATION_DISPOSITIONS, DEVIATION_ISSUE_TYPES, DEVIATION_SEVERITIES, DEVIATION_SOURCES, VALIDITY_DISPOSITIONS } from './deviations';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -46,6 +47,8 @@ export interface RegisterColumn {
   // the API refuses any other name, and the table offers "Record as me" instead
   // of a picker of everyone.
   selfAttest?: boolean;
+  // Round 5 question 26(b): "preserve evidence of the original incident". Once a row has been SAVED the cell is read-only (the server refuses a change too).
+  lockedOnceSaved?: boolean;
   // Worked out from the rest of the row on every read and never stored (a status). It is not part of what a signature on the row covers: a status that
   // changes when the signature is recorded would make the signature stale the moment it was given.
   computed?: boolean;
@@ -246,6 +249,8 @@ export interface RegisterConfig {
   // closed a second time — "use existing report/register approvals where available", and "do not duplicate the same approval". The value says
   // which route. [ASSUMPTION: R6-Q19]
   approvalRoute?: string;
+  // A register whose saved rows are never removed — a record of what happened is closed, not deleted. The text says why, where the Remove button is.
+  neverRemoveRows?: string;
   // Round 5 question 11: this register is a VIEW of the Change Control log — its rows are master change records of one kind with an overlay of
   // this register's own fields; the `base` columns are read from the master record and never stored here. See utils/changeViews.ts.
   changeView?: ChangeViewConfig;
@@ -2106,6 +2111,8 @@ export const publishedInfoApproval: RegisterConfig = {
       columns: ['noProductClaim', 'noProductClaimBy', 'noProductClaimConfirmedBy', 'noProductClaimConfirmedAt', 'claimId', 'masterWording', 'exactWording', 'wordingEquivalence', 'equivalenceConfirmedBy', 'equivalenceConfirmedDate'],
     },
     { title: 'Evidence and release', hint: 'What proves it, where it went live and when to look again.', columns: ['evidenceTypeRequired', 'evidenceLink', 'finalPublishedLink', 'expiryReviewDate', 'notes'] },
+    // Round 5 question 26(d): what the owner did when a warning came up on released content. [ASSUMPTION: R6-Q34]
+    { title: 'Validity review', hint: 'Record what was done when this content comes up for review, or its claim or wording is no longer valid.', columns: ['validityDisposition', 'validityReviewedDate', 'useRestriction'] },
     {
       title: 'Approval',
       rail: true,
@@ -2191,6 +2198,9 @@ export const publishedInfoApproval: RegisterConfig = {
     { key: 'status', label: 'Status', type: 'select', width: 130, options: PUBLICATION_STATUS_OPTIONS },
     { key: 'dateApproved', label: 'Date approved', type: 'date', width: 120 },
     { key: 'expiryReviewDate', label: 'Expiry / review date', type: 'date', width: 120 },
+    { key: 'validityDisposition', label: 'Validity review: what was decided', type: 'select', width: 190, options: [...VALIDITY_DISPOSITIONS] },
+    { key: 'validityReviewedDate', label: 'Validity reviewed on', type: 'date', width: 150 },
+    { key: 'useRestriction', label: 'Defined use restriction', type: 'text', width: 200 },
     { key: 'finalPublishedLink', label: 'Final published link', type: 'text', width: 150 },
     { key: 'notes', label: 'Closure / notes', type: 'textarea', width: 170 },
   ],
@@ -3794,7 +3804,69 @@ const postMarketTrends: RegisterConfig = {
   ],
 };
 
+// Round 5 question 26: one row per incident of something released without approval, or released correctly and later no longer valid. The original incident is
+// kept as first recorded; what is decided about it is added. A deviation that leaves a safety, compliance, claims or version mismatch unresolved holds that
+// market's Gate 11 release; Gate 12 reviews it; a Critical one unresolved holds the closure of that market's review (utils/deviations.ts). [ASSUMPTION: R6-Q34]
+const deviationRecords: RegisterConfig = {
+  key: 'deviationRecords',
+  title: 'Deviation Records',
+  sheetName: 'Published_Info_Approval',
+  description:
+    'Material released without approval, or released correctly and later no longer valid, is logged here as a deviation — never labelled approved afterwards. The original incident is preserved as first recorded and a deviation is closed, not deleted.',
+  mode: 'register',
+  gate: '11/12',
+  approvalRoute: "The reviewer's own disposition and closure on each deviation",
+  drawerTabs: true,
+  neverRemoveRows: 'A deviation is a record of what happened: close it, do not delete it.',
+  drawerSections: [
+    {
+      title: 'The incident',
+      hint: 'What happened, as first recorded. It cannot be changed once saved.',
+      columns: ['deviationId', 'source', 'discoveryDate', 'incidentDate', 'reporter', 'sku', 'market', 'channel', 'claimId', 'contentDescription', 'evidenceLink', 'approvalExpected', 'approvalActual'],
+    },
+    { title: 'Impact and containment', hint: 'How far it went and what was done about it.', columns: ['scopeOfUse', 'issueType', 'severity', 'impactAssessment', 'containment', 'rootCause', 'owner', 'dueDate'] },
+    {
+      title: 'Review and closure',
+      hint: 'Who reviewed it, what was decided, and how it was closed.',
+      columns: ['reviewer', 'disposition', 'acceptedActionId', 'acceptedBy', 'capaId', 'changeId', 'verification', 'closureDecision', 'closureDate'],
+    },
+  ],
+  columns: [
+    { key: 'deviationId', label: 'Deviation ID', type: 'text', width: 110, lockedOnceSaved: true },
+    { key: 'source', label: 'How it was found', type: 'select', width: 220, options: [...DEVIATION_SOURCES], lockedOnceSaved: true },
+    { key: 'discoveryDate', label: 'Discovery date', type: 'date', width: 130, lockedOnceSaved: true },
+    { key: 'incidentDate', label: 'Incident date', type: 'date', width: 130, lockedOnceSaved: true },
+    { key: 'reporter', label: 'Reporter', type: 'user', width: 150, lockedOnceSaved: true },
+    { key: 'sku', label: 'SKU', type: 'text', width: 130, lockedOnceSaved: true },
+    { key: 'market', label: 'Market', type: 'market', width: 130, lockedOnceSaved: true },
+    { key: 'channel', label: 'Channel', type: 'select', width: 190, options: [...PUBLICATION_CHANNELS], lockedOnceSaved: true },
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200, lockedOnceSaved: true },
+    { key: 'contentDescription', label: 'Content or claim, and its revision', type: 'textarea', width: 240, lockedOnceSaved: true },
+    { key: 'evidenceLink', label: 'URL, file or screenshot', type: 'text', width: 220, lockedOnceSaved: true },
+    { key: 'approvalExpected', label: 'Approval expected', type: 'text', width: 200, lockedOnceSaved: true },
+    { key: 'approvalActual', label: 'Approval actually in place', type: 'text', width: 200, lockedOnceSaved: true },
+    { key: 'scopeOfUse', label: 'Scope and duration of use', type: 'textarea', width: 220 },
+    { key: 'issueType', label: 'Kind of issue', type: 'select', width: 160, options: [...DEVIATION_ISSUE_TYPES] },
+    { key: 'severity', label: 'Severity', type: 'select', width: 110, options: [...DEVIATION_SEVERITIES] },
+    { key: 'impactAssessment', label: 'Impact assessment', type: 'textarea', width: 240 },
+    { key: 'containment', label: 'Containment and correction', type: 'textarea', width: 240 },
+    { key: 'rootCause', label: 'Root cause', type: 'textarea', width: 220, requiredWhen: { column: 'severity', values: ['High', 'Critical'] } },
+    { key: 'owner', label: 'Owner', type: 'user', width: 150 },
+    { key: 'dueDate', label: 'Due date', type: 'date', width: 120 },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 150, selfAttest: true },
+    { key: 'disposition', label: 'Disposition', type: 'select', width: 230, options: [...DEVIATION_DISPOSITIONS] },
+    { key: 'acceptedActionId', label: 'Carrying action (Next Action)', type: 'nextActionRef', width: 230, requiredWhen: { column: 'disposition', values: ['Accepted under controlled action'] } },
+    { key: 'acceptedBy', label: 'Accepted by', type: 'user', width: 150, selfAttest: true, sensitive: true, requiredWhen: { column: 'disposition', values: ['Accepted under controlled action'] } },
+    { key: 'capaId', label: 'CAPA / improvement link', type: 'text', width: 170 },
+    { key: 'changeId', label: 'Change Control', type: 'changeRef', width: 170 },
+    { key: 'verification', label: 'Verification / effectiveness', type: 'textarea', width: 220, requiredWhen: { column: 'disposition', values: ['Closed'] } },
+    { key: 'closureDecision', label: 'Closure decision', type: 'textarea', width: 220, requiredWhen: { column: 'disposition', values: ['Closed'] } },
+    { key: 'closureDate', label: 'Closure date', type: 'date', width: 130, requiredWhen: { column: 'disposition', values: ['Closed'] } },
+  ],
+};
+
 export const REGISTER_CONFIGS: RegisterConfig[] = [
+  deviationRecords,
   formulationSafetyProfile,
   formulationSafetyMatrix,
   criticalSafetyFindings,
@@ -3897,6 +3969,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
   regulatoryChecklistStatus: { column: 'componentId', prefix: 'RC' },
   postMarketTrends: { column: 'trendId', prefix: 'MT' },
+  deviationRecords: { column: 'deviationId', prefix: 'DEV' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };
@@ -4558,6 +4631,8 @@ const DEPARTMENTS: RawDept[] = [
       // from the approval that authorises it. Filed beside the approval register
       // it follows on from.
       'publicationRecord',
+      // Round 5 question 26: a record of something released without approval (or no longer valid), beside the records of what was approved and published.
+      'deviationRecords',
     ],
   },
   {

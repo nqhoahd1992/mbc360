@@ -81,6 +81,7 @@ import {
   trendRowGaps,
 } from './postMarketReview';
 import { impactHolds } from './impactAssessments';
+import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { isDoneStatus } from './doneStatus';
@@ -1392,6 +1393,13 @@ export function evaluateReadinessCheck(
     // "A Critical unresolved issue blocks closure."
     case 'noOpenCriticalCapa':
       return { evaluable: true, satisfied: openCriticalCapa(project).length === 0 };
+    // Round 5 question 26: deviations, judged on the market's lane.
+    case 'noUnresolvedDeviation':
+      return { evaluable: true, satisfied: unresolvedBlockingDeviations(project, market).length === 0 };
+    case 'deviationsReviewed':
+      return { evaluable: true, satisfied: deviationsAwaitingReview(project, market).length === 0 };
+    case 'noCriticalDeviation':
+      return { evaluable: true, satisfied: unresolvedCriticalDeviations(project, market).length === 0 };
     case 'aseanChecklistComplete':
       return { evaluable: true, satisfied: !aseanChecklistIncomplete(project) };
     case 'finalSafetySignOffComplete':
@@ -2072,6 +2080,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'postMarketFindingsDealtWith':
     case 'noOpenCriticalCapa':
       return { href: '/post-market' };
+    case 'noUnresolvedDeviation':
+    case 'deviationsReviewed':
+    case 'noCriticalDeviation':
+      return { href: `/registers/reg/${DEVIATION_REGISTER}` };
     case 'aseanChecklistComplete':
       return { href: `/registers/reg/${ASEAN_CHECKLIST_REGISTER}` };
     case 'finalSafetySignOffComplete':

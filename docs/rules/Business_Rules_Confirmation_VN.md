@@ -1233,6 +1233,18 @@ Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh v
 
 Không ép rút phiên bản đã duyệt hiện có chỉ vì một bản cập nhật PIF nháp được mở. Giữ nguyên PIF/phiên bản đã duyệt và quyết định ra mắt của thị trường; tạo một bản sửa đổi nháp riêng theo CHG. Phiên bản công thức/PIF mới không được phát hành khi chưa được duyệt. Nếu thông tin mới làm suy yếu độ an toàn/tuân thủ của phiên bản hiện hành, Regulatory/Quality phải đình chỉ phê duyệt hiện hành bị ảnh hưởng và ghi lý do. Phê duyệt theo từng phiên bản ngăn một bản sửa nháp vừa huỷ một phê duyệt hợp lệ vừa âm thầm đổi cơ sở của nó.
 
+### Câu 26 — Phát hành chưa được duyệt và bản ghi deviation
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 34.
+
+**(a)** Có, ngăn chặn việc duyệt/phát hành trong workflow khi điều kiện tiên quyết không đạt. Ghi việc đăng ngoài hệ thống chưa được duyệt mà phát hiện được như một deviation; không gắn nhãn đã duyệt về sau.
+
+**(b)** Ghi Deviation ID, ngày phát hiện/sự cố, người báo cáo, SKU/thị trường/kênh, nội dung/claim và bản sửa đổi, URL/tệp/ảnh chụp, phê duyệt kỳ vọng so với thực tế, phạm vi/thời gian sử dụng, mức độ nghiêm trọng và đánh giá tác động, ngăn chặn/khắc phục, chủ sở hữu, hạn, người rà soát và disposition. Liên kết CAPA/CHG, nguyên nhân gốc khi cần, xác minh/hiệu quả và quyết định/ngày đóng. Giữ nguyên bằng chứng sự cố gốc.
+
+**(c)** Chặn việc phát hành Gate 11 bị ảnh hưởng khi deviation để lại sai lệch an toàn, tuân thủ, claim hoặc phiên bản chưa giải quyết. Gate 12 ghi nhận và rà soát; trường hợp Critical chưa giải quyết chặn việc đóng đợt rà soát bị ảnh hưởng. Deviation không Critical có thể ở lại dưới các hành động kiểm soát được chấp nhận rõ ràng. Không chặn toàn cục các sản phẩm hay thị trường không liên quan.
+
+**(d)** Có. Hiện cảnh báo hết hạn/đến hạn rà soát và nội dung bị rút/thay thế cho chủ sở hữu chịu trách nhiệm và theo dõi disposition. Ngày rà soát đến hạn kích hoạt rà soát lại và mọi hạn chế sử dụng đã định; bản thân nó không chứng minh việc đăng trước đó là bất hợp pháp. Claim không được hỗ trợ hoặc bị cấm đã biết cần ngăn chặn ngay. Sự kiện rút/đăng thực tế vẫn ghi riêng.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

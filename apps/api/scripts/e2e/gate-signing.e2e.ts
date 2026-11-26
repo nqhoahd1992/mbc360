@@ -2426,6 +2426,38 @@ export async function run(base: string, db: Client): Promise<number> {
   t('...recorded in the signature as information, so SG10 stays passed', gp.isGatePassed(pj.project, 'SG10') && (await stale('SG10', 'Approved by', MARKETS[MARKETS.length - 1])).length === 0, short(await stale('SG10', 'Approved by', MARKETS[MARKETS.length - 1])));
 
   // ------------------------------------------------------------ SG11
+  // ============================================================ Round 5 question 26: a deviation record is preserved as first recorded and closed, never deleted
+  console.log('\n--- deviation records: the original incident is preserved, a deviation is never removed, an accepted one needs its controlled action (question 26)');
+  {
+    const REG = 'deviationRecords';
+    const meNameD = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const rowsNow = async () => (((await project()).project.registers?.[REG] ?? []) as any[]).map((x) => ({ ...x }));
+    const putDev = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/${REG}`, { rows, expectedVersion: await version() });
+    const fresh = {
+      source: 'Published outside the workflow', discoveryDate: '2026-11-01', incidentDate: '2026-10-20', reporter: meNameD, sku: 'e2e SKU', market: MARKETS[0], channel: 'Website',
+      contentDescription: 'e2e: a banner with an unapproved claim', evidenceLink: 'https://example.com/screenshot', approvalExpected: 'Approved for Release', approvalActual: 'None',
+      scopeOfUse: 'Two weeks', issueType: 'Claims', severity: 'Medium', impactAssessment: 'Limited reach', owner: meNameD, dueDate: '2026-12-01', disposition: 'Open',
+    };
+    let d: any = await putDev([...(await rowsNow()), fresh]);
+    t('a deviation is saved and gets its generated Deviation ID', d.status < 300 && /^DEV-\d+/.test(String((await rowsNow())[0]?.deviationId)), `${d.status} ${short(d.json)}`);
+    const saved = (await rowsNow())[0];
+
+    d = await putDev((await rowsNow()).map((x) => (x.deviationId === saved.deviationId ? { ...x, evidenceLink: 'https://example.com/other' } : x)));
+    t('the original incident cannot be changed once saved (400)', d.status === 400 && /first recorded/.test(JSON.stringify(d.json)), `${d.status} ${short(d.json)}`);
+    d = await putDev([]);
+    t('a saved deviation cannot be removed (400)', d.status === 400 && /never deleted/.test(JSON.stringify(d.json)), `${d.status} ${short(d.json)}`);
+    d = await putDev((await rowsNow()).map((x) => (x.deviationId === saved.deviationId ? { ...x, severity: 'High', rootCause: 'e2e: no review step for social posts', containment: 'Taken down', disposition: 'Contained' } : x)));
+    t('what is decided afterwards can be added (severity, containment, disposition)', d.status < 300, `${d.status} ${short(d.json)}`);
+    d = await putDev((await rowsNow()).map((x) => (x.deviationId === saved.deviationId ? { ...x, disposition: 'Accepted under controlled action' } : x)));
+    t('accepting it with no controlled action and no accepter is refused (400)', d.status === 400 && /controlled/.test(JSON.stringify(d.json)), `${d.status} ${short(d.json)}`);
+    d = await putDev((await rowsNow()).map((x) => (x.deviationId === saved.deviationId ? { ...x, severity: 'Critical', disposition: 'Accepted under controlled action', acceptedBy: meNameD } : x)));
+    t('a Critical deviation cannot be carried under an accepted action (400)', d.status === 400, `${d.status} ${short(d.json)}`);
+
+    // Close it properly, so the gates that follow are not held by it.
+    d = await putDev((await rowsNow()).map((x) => (x.deviationId === saved.deviationId ? { ...x, severity: 'High', reviewer: meNameD, disposition: 'Closed', verification: 'Checked every channel', closureDecision: 'Closed after correction', closureDate: '2026-11-10' } : x)));
+    t('it is closed with its verification, decision and date', d.status < 300 && (await rowsNow())[0]?.disposition === 'Closed', `${d.status} ${short(d.json)}`);
+  }
+
   console.log('\n--- SG11');
   for (const m of MARKETS) await nominate('SG11', m);
   await complete('SG11');

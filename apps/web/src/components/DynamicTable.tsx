@@ -244,7 +244,9 @@ export default function DynamicTable({
   const viewReason = config.changeView
     ? 'This register is a view of the Change Control log — raise or remove the change on the Change Control page'
     : undefined;
+  const idColumn = config.columns.find((c) => c.autoId);
   const removeBlock = (row: RegisterRow) =>
+    (config.neverRemoveRows && idColumn && rows.some((r) => text(r[idColumn.key]) !== '' && text(r[idColumn.key]) === text(row[idColumn.key])) ? config.neverRemoveRows : undefined) ??
     viewReason ??
     removeBlockedReason?.(row) ??
     (rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? undefined : access.reason);
@@ -392,7 +394,9 @@ export default function DynamicTable({
     // A gate reference is read-only by nature: shown as the gate it names, linking to it.
     if (column.gateLink) return <GateLink value={text(row[column.key])} />;
 
-    const editable = column.editable !== false && !readOnly && !frozenGate && !access.cellBlocked(column.key, row);
+    // Round 5 question 26(b): the original incident of a deviation is preserved as first recorded, so once the row has been saved these cells are read-only.
+    const savedRow = column.lockedOnceSaved ? rows.some((r) => idColumn && text(r[idColumn.key]) !== '' && text(r[idColumn.key]) === text(row[idColumn.key])) : false;
+    const editable = column.editable !== false && !readOnly && !frozenGate && !access.cellBlocked(column.key, row) && !savedRow;
     const value = row[column.key];
 
     // A column marked `inheritFromEntry` is filled from the company restricted and caution list entry the row links (SW-59) and is read-only

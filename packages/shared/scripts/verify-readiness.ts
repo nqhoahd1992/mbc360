@@ -659,6 +659,10 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
     case 'postMarketFindingsDealtWith':
     case 'noOpenCriticalCapa':
       return [{ label: 'post-market records', lockRef: 'NONE', note: 'setCapa has no gate lock' }];
+    case 'noUnresolvedDeviation':
+    case 'deviationsReviewed':
+    case 'noCriticalDeviation':
+      return [registerSource('deviationRecords')];
     case 'aseanChecklistComplete':
       return [registerSource(ASEAN_CHECKLIST_REGISTER)];
     case 'gateFieldFilled':

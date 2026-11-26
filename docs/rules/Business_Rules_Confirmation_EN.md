@@ -1233,6 +1233,18 @@ Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional 
 
 Do not force withdrawal of the approved existing version merely because a draft PIF update is opened. Keep the approved PIF/version and market launch decision intact; create a separate draft revision under CHG. The new formula/PIF version cannot release until approved. If new information undermines the current version's safety/compliance, Regulatory/Quality must suspend the affected current approval and record the reason. Version-specific approvals prevent a draft edit from either cancelling a valid approval or silently changing its basis.
 
+### Question 26 — Unapproved publication and deviation records
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 34.
+
+**(a)** Yes, prevent approval/release within the workflow when prerequisites fail. Log discovered external unapproved publication as a deviation; do not label it approved retrospectively.
+
+**(b)** Record Deviation ID, discovery/incident dates, reporter, SKU/market/channel, content/claim and revision, URL/file/screenshot, approval expected versus actual, scope/duration of use, severity and impact assessment, containment/correction, owner, due date, reviewer and disposition. Link CAPA/CHG, root cause where needed, verification/effectiveness and closure decision/date. Preserve evidence of the original incident.
+
+**(c)** Block affected Gate 11 release where the deviation leaves an unresolved safety, compliance, claims or version mismatch. Gate 12 records and reviews it; Critical unresolved cases block the affected review's closure. A non-critical deviation may remain under explicitly accepted controlled actions. Do not globally block unrelated products or markets.
+
+**(d)** Yes. Show expiry/review-due and withdrawn/superseded content warnings to accountable owners and track the disposition. A review date becoming due triggers re-review and any defined use restriction; it does not by itself prove unlawful prior publication. A known unsupported or prohibited claim needs prompt containment. Actual withdrawal/publication events remain separately recorded.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

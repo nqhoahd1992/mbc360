@@ -1,4 +1,5 @@
 /* Detail-drawer tabs: one concern per tab (see DrawerTabs.tsx). */
+.dt-tabs { min-width: 0; }
 .dt-tabs .ant-tabs-nav { margin-bottom: 16px; }
 .dt-tabs .ant-tabs-content-holder { min-width: 0; }
 .dt-dot { display: inline-block; width: 6px; height: 6px; margin-left: 2px; border-radius: 50%; background: var(--c-warn); vertical-align: middle; }

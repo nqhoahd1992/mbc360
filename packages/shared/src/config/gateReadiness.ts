@@ -404,6 +404,11 @@ export type ReadinessCheck =
   | { kind: 'postMarketRecordsTriaged' }
   | { kind: 'postMarketFindingsDealtWith' }
   | { kind: 'noOpenCriticalCapa' }
+  // Round 5 question 26: no deviation of the market leaves a safety, compliance, claims or version mismatch unresolved; every deviation is reviewed and
+  // dispositioned; no Critical deviation is left unresolved.
+  | { kind: 'noUnresolvedDeviation' }
+  | { kind: 'deviationsReviewed' }
+  | { kind: 'noCriticalDeviation' }
   // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
   // ASEAN market being selected.
   | { kind: 'aseanChecklistComplete' }
@@ -557,12 +562,15 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg11-changes-admin',
   'sg11-launch',
   'sg11-reg-conditions',
+  'sg11-deviations',
   'sg11-signoff',
   // Gate 12
   'sg12-feedback',
   'sg12-feedback-review',
   'sg12-signals-triaged',
   'sg12-critical-open',
+  'sg12-deviations-reviewed',
+  'sg12-critical-deviation',
   'sg12-pms-baseline',
   'sg12-change-links',
   'sg12-market-additions',
@@ -3171,6 +3179,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       assumption: 'R6-Q28',
     },
     {
+      // Round 5 question 26(c): "Block affected Gate 11 release where the deviation leaves an unresolved safety, compliance, claims or version mismatch
+      // ... Do not globally block unrelated products or markets." Judged on this market's lane (a deviation naming no market holds every market of the
+      // project). A non-critical one may be carried by an explicitly accepted controlled action. [ASSUMPTION: R6-Q34]
+      id: 'sg11-deviations',
+      label: 'No unresolved deviation leaves a safety, compliance, claims or version mismatch in this market',
+      tier: 'Mandatory',
+      check: { kind: 'noUnresolvedDeviation' },
+      nonVacuousBecause:
+        'A market with no deviation has nothing to resolve, so the item is correctly satisfied; what it guards is a deviation left open, which it reads directly from the register.',
+      assumption: 'R6-Q34',
+    },
+    {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg11-signoff',
       label: 'Prepared, reviewed and approved sign-off',
@@ -3294,6 +3314,26 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       nonVacuousBecause:
         'A product with nothing reported has nothing to triage, so the item is correctly satisfied; what it guards is a record logged but not triaged, which it reads directly.',
       assumption: 'R6-Q30',
+    },
+    {
+      // Round 5 question 26(c): "Gate 12 records and reviews it" — every deviation of the market has its reviewer and a disposition. [ASSUMPTION: R6-Q34]
+      id: 'sg12-deviations-reviewed',
+      label: 'Every deviation is reviewed and has a recorded disposition',
+      tier: 'Mandatory',
+      check: { kind: 'deviationsReviewed' },
+      nonVacuousBecause:
+        'A market with no deviation has nothing to review, so the item is correctly satisfied; what it guards is a deviation left without a reviewer or disposition, which it reads directly.',
+      assumption: 'R6-Q34',
+    },
+    {
+      // "Critical unresolved cases block the affected review's closure." Not cleared by Proceed with Conditions, and only a closed Critical deviation is done.
+      id: 'sg12-critical-deviation',
+      label: 'No Critical deviation left unresolved',
+      tier: 'Mandatory',
+      check: { kind: 'noCriticalDeviation' },
+      nonVacuousBecause:
+        'A market with no Critical deviation has nothing to resolve, so the item is correctly satisfied; what it guards is a Critical deviation still open, which it reads directly.',
+      assumption: 'R6-Q34',
     },
     {
       // "A Critical unresolved issue blocks closure." Not cleared by Proceed with Conditions: it is a closure condition, not a deferral.

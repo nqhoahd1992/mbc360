@@ -59,6 +59,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {
+    deviationRecords: ['acceptedActionId', 'acceptedBy', 'approvalActual', 'approvalExpected', 'channel', 'closureDate', 'closureDecision', 'contentDescription', 'discoveryDate', 'disposition', 'dueDate', 'evidenceLink', 'impactAssessment', 'issueType', 'market', 'owner', 'reporter', 'rootCause', 'scopeOfUse', 'severity', 'source', 'verification'],
     gmpLinks: ['link'],
     publishedInfoApproval: ['workflowState'],
     regulatoryChecklistStatus: ['component', 'componentId', 'conditionActionId', 'conditionTiming', 'externalAuthorisation', 'market', 'regulatoryApproval'],
@@ -67,6 +68,8 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
+    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects'],
+    deviationRecords: ['acceptedActionId', 'acceptedBy', 'approvalActual', 'approvalExpected', 'channel', 'closureDate', 'closureDecision', 'contentDescription', 'discoveryDate', 'disposition', 'dueDate', 'evidenceLink', 'impactAssessment', 'issueType', 'market', 'owner', 'reporter', 'reviewer', 'rootCause', 'scopeOfUse', 'severity', 'source', 'verification'],
     postMarketTrends: ['action', 'actionId', 'comparisonPeriod', 'conclusion', 'interpretation', 'market', 'periodEnd', 'periodStart', 'productVersionBatches', 'reportCount', 'reviewDate', 'reviewer', 'sourceRecords'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
@@ -87,6 +90,7 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
   },
   SG12: {
+    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
