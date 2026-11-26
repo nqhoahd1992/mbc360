@@ -1277,6 +1277,14 @@ Regulatory maintains versioned market profiles with source, effective date and r
 
 "Required" means a substantive assessment or record, or a valid link to approved reusable evidence. "Conditional" requires a documented applicability decision. "Reference" means controlled reference content; it does not require duplicate project signatures. Existing evidence may be reused where its version and applicability are confirmed. A claim-free product still needs safety, stability, microbiological-risk and manufacturing evidence, so its prospective plan and applicable protocols remain required; competitor / scientific work can be reused or waived for a verified administrative-only scope. "No claims" waives only claim-specific registers and activities, after checking that the label, website and other intended material contain no express or implied efficacy claims. All public information still needs approval. ASEAN-only projects can omit a duplicate non-ASEAN checklist but cannot omit a per-market compliance / readiness conclusion. The per-register table (groups A, A2, B, C, D, E: rule, gate, what satisfies it) is recorded in `packages/shared/src/config/registerApplicability.ts`.
 
+### Question 32 — Change Control before a new formula version
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 40.
+
+For a change to a controlled / locked or released formula, yes: approve the linked master CHG before creating the controlled replacement formula version for implementation. Evaluation samples may be developed under the submitted CHG as clearly unapproved trials; they cannot overwrite or release the controlled version. Routine pre-lock development iterations use the iteration log; retain the Major-version CHG rule in Question 11. NP's required commercial approval and qualified technical approvals remain part of the controlled-change route.
+
+Record retrospective changes promptly and apply the same gate and release controls. Assess its actual impact, raise a deviation where necessary, and hold / reopen affected current readiness until it is reviewed. A late record must preserve the real implementation date and approval gap.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

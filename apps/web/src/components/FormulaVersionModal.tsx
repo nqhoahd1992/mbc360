@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Checkbox, Input, Radio, Typography, message } from 'antd';
 import { MAJOR_CHANGE_CRITERIA } from '@mbc360/shared/config/changeTriggers';
+import { Select } from 'antd';
+import { formulaIsControlled, changesAvailableForNewVersion } from '@mbc360/shared/utils/changeOrder';
 import { useAppStore } from '../store/useAppStore';
 import LabeledInput from './LabeledInput';
 
@@ -39,6 +41,11 @@ export default function FormulaVersionModal({
       (t) => t.formulaVersion === currentVersion && !!t.actualLaunchDate && !t.withdrawnDate,
     ),
   );
+  // Round 5 question 32: a new version of a controlled (previously approved) formula is created against its approved master change record.
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const controlled = project ? formulaIsControlled(project) : false;
+  const availableChanges = project && controlled ? changesAvailableForNewVersion(project) : [];
+  const [changeId, setChangeId] = useState<string | undefined>();
   const [documentationOnly, setDocumentationOnly] = useState(false);
   const [confirmNoRelease, setConfirmNoRelease] = useState(false);
 
@@ -54,6 +61,7 @@ export default function FormulaVersionModal({
       setMajorCriteria([]);
       setVersion(suggestVersion(currentVersion, 'Minor'));
       setReason('');
+      setChangeId(undefined);
       setDocumentationOnly(false);
       setConfirmNoRelease(false);
     }
@@ -92,6 +100,7 @@ export default function FormulaVersionModal({
         changeType,
         reason: reason.trim() || undefined,
         majorCriteria: majorCriteria.length > 0 ? majorCriteria : undefined,
+        ...(controlled && changeId ? { changeId } : {}),
         ...(documentationOnly ? { documentationOnly: true } : {}),
         ...(!onSale && confirmNoRelease && !documentationOnly ? { confirmNoRelease: true } : {}),
       });
@@ -117,6 +126,7 @@ export default function FormulaVersionModal({
           !version.trim() ||
           version.trim() === currentVersion ||
           !reason.trim() ||
+          (controlled && !changeId) ||
           (!onSale && !documentationOnly && !confirmNoRelease),
       }}
     >
@@ -172,6 +182,28 @@ export default function FormulaVersionModal({
             </Checkbox>
             <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4, marginBottom: 0 }}>
               A version that was never released is superseded by this one without a sales or stock transition. Its trial and study history is kept.
+            </Typography.Paragraph>
+          </div>
+        )}
+        {controlled && (
+          <div>
+            <div style={{ marginBottom: 4, fontWeight: 600 }}>
+              Approved change record<span className="as-req">&nbsp;*</span>
+            </div>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              optionFilterProp="label"
+              value={changeId}
+              onChange={setChangeId}
+              placeholder={availableChanges.length > 0 ? 'Pick the approved formulation change' : 'No approved formulation change is ready'}
+              options={availableChanges.map((c) => ({ value: c.changeId, label: `${c.changeId} — ${c.trigger} (${c.status})` }))}
+              notFoundContent="No formulation change is approved to implement and free of a version"
+            />
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4, marginBottom: 0 }}>
+              This formula has been approved before, so it is a controlled baseline. Raise the change on Change Control, have its impact assessed (and NP and the
+              technical functions approve it) first. Evaluation samples can be made under the submitted change as unapproved trials in the Development Iteration
+              Log; they cannot replace the controlled version.
             </Typography.Paragraph>
           </div>
         )}

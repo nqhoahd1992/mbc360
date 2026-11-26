@@ -957,3 +957,22 @@ Your table gives each register a rule (Required, Conditional, Reference, Optiona
 **(c)** For the Test Report Index, you said it may be generated from the unique linked reports. We kept it manual (entries, or "not applicable" when no report is relied on). Should it be generated?
 
 **(d)** Who may record a reuse or "not applicable" decision — the person assigned to the register's area, the project Lead, or a named function?
+
+## Question 40 — The approved change before the new formula version, and changes recorded after they happened: have we read your answer correctly?
+
+*Where in the application:* **Formula BOM** ("Propose a new formula version"), **Change Control** ("Open Change Request" and the change's Assessment tab), and the **Development Iteration Log**.
+
+You told us that for a change to a controlled, locked or released formula the linked master change record is approved before the controlled replacement version is created; evaluation samples may be made under the submitted change as clearly unapproved trials, and cannot overwrite or release the controlled version; routine pre-lock iterations stay in the iteration log; the Major-version rule of Question 11 stays; NP's commercial approval and the qualified technical approvals remain part of the route; and a change recorded after it happened is recorded promptly, with the same gate and release controls, its actual impact assessed, a deviation raised where necessary, the affected current readiness held or reopened until it is reviewed, and the real implementation date and approval gap preserved. We built it as follows:
+
+- **A controlled formula.** A formula is controlled once it has been approved (Gate 5 passed, now or before a Backtrack). For such a formula a new version is proposed against an **approved master change record**: a formulation change that has been assessed, approved to implement (Approved – Implementation Pending, or In Implementation), has had its technical areas assessed by the accountable functions, and does not already carry a version. It is checked again when the version is confirmed. The version implements that change; no second change record is raised for it. A formula that has never been approved keeps the earlier route (a Major version raises its own change record).
+- **Editing the controlled formula** now needs a formulation change that is **approved** to implement; a change that is only submitted or under review is not enough.
+- **Trials.** An iteration-log row that names a change that is not approved is shown as an **unapproved trial** and cannot be adopted (decision "Adopt this version" or status "Adopted") until the change is approved.
+- **A change recorded after it happened.** The Open Change Request form has "This change has already been made", with the **real implementation date** and the **approval gap**; both are kept exactly as first recorded and cannot be edited later. Such a record is accepted at whatever gate the project is on, and — whatever status it carries, even Completed — it **holds the readiness of the gates it can affect until Quality's change-control reviewer has assessed its impact**; a Material outcome reopens the confirmed gates as for any change. The reviewer also records, in words, whether a deviation is needed and which one; a **Material** outcome needs a Deviation Record that names the change.
+
+**(a)** Is "approved to implement (or in implementation) and not yet carrying a version" the right moment for the new version to be created?
+
+**(b)** Must a version of a formula that has never been approved (still before Gate 5) also have its approved change first, or is the iteration log enough there until the lock?
+
+**(c)** Should an unapproved trial also be unable to carry the controlled formula's version number, or is "cannot be adopted" enough?
+
+**(d)** For a retrospective change, is a deviation required whenever its impact is Material, as built, or in other cases too (for example a Quality or Safety impact that is not Material)?

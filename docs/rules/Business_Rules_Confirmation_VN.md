@@ -1277,6 +1277,14 @@ Regulatory duy trì hồ sơ thị trường có phiên bản, kèm nguồn, ng�
 
 "Required" nghĩa là một đánh giá hoặc bản ghi thực chất, hoặc một liên kết hợp lệ tới bằng chứng đã duyệt có thể dùng lại. "Conditional" cần một quyết định áp dụng có tài liệu. "Reference" là nội dung tham chiếu có kiểm soát, không cần chữ ký dự án trùng lặp. Bằng chứng sẵn có có thể dùng lại khi phiên bản và phạm vi áp dụng đã được xác nhận. Sản phẩm không claim vẫn cần bằng chứng an toàn, ổn định, rủi ro vi sinh và sản xuất, nên kế hoạch bằng chứng và các quy trình thử áp dụng vẫn bắt buộc; công việc đối thủ / khoa học có thể dùng lại hoặc miễn cho phạm vi chỉ hành chính đã xác minh. "No claims" chỉ miễn các sổ và hoạt động riêng cho claim, sau khi kiểm tra nhãn, website và tài liệu dự kiến khác không có claim hiệu quả rõ ràng hay ngầm. Mọi thông tin công khai vẫn cần duyệt. Dự án chỉ ASEAN có thể bỏ checklist ngoài ASEAN trùng lặp nhưng không bỏ được kết luận tuân thủ / sẵn sàng theo thị trường. Bảng từng sổ (nhóm A, A2, B, C, D, E: quy tắc, gate, điều kiện thoả) ghi trong `packages/shared/src/config/registerApplicability.ts`.
 
+### Câu 32 — Change Control trước phiên bản công thức mới
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 40.
+
+Với thay đổi của công thức đã kiểm soát / đã khoá hoặc đã phát hành: có — duyệt master CHG liên kết trước khi tạo phiên bản công thức thay thế có kiểm soát để triển khai. Mẫu đánh giá có thể được phát triển dưới CHG đã nộp như các thử nghiệm chưa duyệt, ghi rõ; chúng không được ghi đè hay phát hành phiên bản có kiểm soát. Các lần lặp phát triển thông thường trước khi khoá dùng iteration log; giữ quy tắc CHG cho phiên bản Major ở câu 11. Phê duyệt thương mại bắt buộc của NP và các phê duyệt kỹ thuật đủ thẩm quyền vẫn nằm trong lộ trình thay đổi có kiểm soát.
+
+Ghi các thay đổi hồi tố ngay khi phát hiện và áp dụng cùng kiểm soát gate và phát hành. Đánh giá tác động thực tế, nêu deviation khi cần, và giữ / mở lại mức sẵn sàng hiện hành bị ảnh hưởng cho tới khi được review. Bản ghi muộn phải giữ nguyên ngày triển khai thực tế và khoảng trống phê duyệt.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

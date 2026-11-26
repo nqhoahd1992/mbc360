@@ -55,7 +55,10 @@ t('a backtrack that reopened a Gate 05 that had passed marks the formula approve
 t('a backtrack that reopened a Gate 05 that had NOT passed does not', !formulaWasApproved({ ...base, backtrackEvents: [backtrackFrom({ gateId: 'SG05', status: 'In Progress' })] }));
 t('Gate 05 passed now counts', formulaWasApproved({ ...base, gates: base.gates.map((g) => (g.gateId === 'SG05' ? passedGate5 : g)) }));
 t('back at Gate 05 with no open formulation change, editing the BOM is refused with the reason', !!formulaChangeRequirement(approvedBack));
-t('...and allowed while a formulation change is open', formulaChangeRequirement({ ...approvedBack, changes: [change()] }) === undefined && hasOpenFormulationChange({ ...approvedBack, changes: [change()] }));
+const approvedChange = change({ status: 'Approved - Implementation Pending', impactTriage: 'Material impact' });
+t('...and allowed while a formulation change is APPROVED to implement', formulaChangeRequirement({ ...approvedBack, changes: [approvedChange] }) === undefined && hasOpenFormulationChange({ ...approvedBack, changes: [approvedChange] }));
+t('...but not by one that is only open (Under Review): evaluation samples are unapproved trials and cannot overwrite the controlled formula (Round 5 question 32)', !!formulaChangeRequirement({ ...approvedBack, changes: [change()] }) && /unapproved trials/.test(formulaChangeRequirement({ ...approvedBack, changes: [change()] }) ?? ''));
+t('...nor one approved but never assessed', !!formulaChangeRequirement({ ...approvedBack, changes: [change({ status: 'Approved - Implementation Pending' })] }));
 t('...but not by a change that is closed', !!formulaChangeRequirement({ ...approvedBack, changes: [change({ status: 'Completed' })] }));
 t('...nor by a rejected one', !!formulaChangeRequirement({ ...approvedBack, changes: [change({ status: 'Rejected' })] }));
 t('...nor by a change that is not about the formula', !!formulaChangeRequirement({ ...approvedBack, changes: [change({ affectedArea: 'Artwork / label', triggerId: undefined })] }));

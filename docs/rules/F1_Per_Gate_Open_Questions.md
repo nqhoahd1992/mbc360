@@ -1426,7 +1426,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q50 · R6-Q37 | **29** (đã trả lời 05/11, xây 26/11/2026; R6-Q37 hỏi lại các chỗ ta đọc) | "Approved artwork version" ở Gate 11 đọc gì |
 | ✅ R5-Q51 · R6-Q38 | **30** (đã trả lời 05/11, xây 26/11/2026; R6-Q38 hỏi lại các chỗ ta đọc) | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
 | ✅ R5-Q65 · R6-Q39 | **31** (đã trả lời 05/11, xây 26/11/2026; R6-Q39 hỏi lại các chỗ ta đọc) | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
-| R5-Q66 | **32(a)(b)** (phần (a)(c) cũ đã quyết SW-44) | Change Control mở trước hay sau khi thay đổi xảy ra |
+| ✅ R5-Q66 · R6-Q40 | **32** (đã trả lời 05/11, xây 26/11/2026; R6-Q40 hỏi lại các chỗ ta đọc) | Change Control mở trước hay sau khi thay đổi xảy ra |
 | R5-Q68 | **33** | Dòng watch-list thuộc phạm vi gate nào theo Linked gate |
 | R5-Q71 · R5-Q72 · R5-Q73 | **34(a) · (b)(c)(d) · (e)** | Chuẩn bằng chứng Sheet 6: gate "đi tiếp" · Grade và transferability · hồ sơ tìm tài liệu |
 | ✅ R5-Q33 | — (SW-39) | Đóng gap Critical/High đã giải quyết — đã quyết: trạng thái Resolved |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q40 · Change đã duyệt trước phiên bản công thức mới; change ghi sau khi đã xảy ra: các chỗ ta đọc câu trả lời (Vòng 5 câu 32) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 32.** SME: với thay đổi của công thức đã kiểm soát/khoá/phát hành, duyệt master CHG liên kết trước khi tạo phiên bản thay thế; mẫu đánh giá làm dưới CHG đã nộp là thử nghiệm chưa duyệt, không ghi đè/phát hành phiên bản kiểm soát; lần lặp trước khi khoá dùng iteration log; giữ quy tắc Major của câu 11; NP và duyệt kỹ thuật vẫn nằm trong lộ trình; change ghi sau: ghi ngay, cùng kiểm soát gate/phát hành, đánh giá tác động thực, nêu deviation khi cần, giữ/mở lại sẵn sàng hiện hành tới khi review, giữ ngày triển khai thực và khoảng trống phê duyệt. **Đảo ngược một quy tắc ta tự đặt trong câu hỏi:** ta từng viết bản ghi hồi tố "không giữ gate"; SME nói ngược lại. Cách đọc của ta (`utils/changeOrder.ts`): (1) "đã kiểm soát" = `formulaWasApproved` (Gate 5 đã qua, nay hoặc trước một Backtrack); (2) với công thức đó `proposeFormulaVersion` đòi `changeId` (lưu trên `formula_version_proposals.changeId`) và `confirmFormulaVersionProposal` kiểm tra lại: `versionChangeProblems` — là change về công thức, `changeLinkProblem(…, 'implementation')`, status Approved – Implementation Pending hoặc In Implementation (không phải Completed), đã triage, các mảng kỹ thuật đã được function đánh giá (`areasAwaitingAssessment`), chưa mang phiên bản nào; phiên bản gắn `linkedChangeId` vào CHG đó và KHÔNG tạo CHG thứ hai (`syncFormulationOverlay` giữ dòng FC); công thức chưa từng được duyệt giữ lộ trình cũ; (3) `formulaChangeRequirement` nay đòi change đã duyệt triển khai (`hasApprovedFormulationChange`), change mới nộp thì không đủ; (4) dòng iteration log nêu change chưa duyệt = "thử nghiệm chưa duyệt" (`trialMark` dẫn xuất) và không được "Adopt this version"/"Adopted" (`iterationTrialProblems`, server từ chối); (5) `ChangeRecord.retrospective` + `actualImplementationDate` + `approvalGap` (migration `20261126260000`) nhập lúc mở change, giữ nguyên như lần đầu (`setChanges` từ chối đổi), nhận ở mọi gate (bỏ SW-30 cho bản ghi hồi tố), `isTriagePending` tính cả bản ghi hồi tố ở mọi status nên `change-hold` giữ các gate chưa qua cho tới khi `quality-change-control` triage; triage ghi thêm `retrospectiveReview` (có cần deviation không, cái nào/vì sao không) và kết quả Material cần một dòng Deviation Records có `changeId` trỏ tới change (`retrospectiveReviewProblems`).
+
+**Câu hỏi:** (a) thời điểm tạo phiên bản = đã duyệt triển khai hoặc đang triển khai, chưa mang phiên bản; (b) công thức chưa từng duyệt có cũng cần change đã duyệt trước không; (c) thử nghiệm chưa duyệt có không được mang số phiên bản của bản kiểm soát nữa không; (d) deviation bắt buộc khi Material hay cả trường hợp khác.
+
+**Nếu trả lời khác:** `utils/changeOrder.ts`; `utils/formulaBaseline.ts`; `utils/changeTriage.ts` (`isTriagePending`); `projects.service.ts` (`proposeFormulaVersion`, `confirmFormulaVersionProposal`, `setChanges`, `triageChange`, `setRegisterRows`); `FormulaVersionModal.tsx`; `ChangeControl.tsx`; `ChangeTriageBlock.tsx` [ASSUMPTION: R6-Q40].
 
 #### R6-Q39 · Áp dụng theo từng sổ trong 78 sổ: các chỗ ta đọc bảng (Vòng 5 câu 31) 🟡
 
@@ -2914,7 +2922,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác (lịch sử, nay là `newlyAcceptingActRows`):** `newlyCarriedVerdictRows` + khối kiểm trong `setRegisterRows` (`apps/api/src/projects/projects.service.ts`) và khối kiểm trong `assertCanCarryConditions`; `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R5-Q67].
 
-#### R5-Q66 · Change Control mở trước khi thay đổi xảy ra, hay có thể mở sau để ghi nhận ngược 🔴
+#### R5-Q66 · Change Control mở trước khi thay đổi xảy ra, hay có thể mở sau để ghi nhận ngược ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 32) và đã xây 26/11/2026 — phần dưới là lịch sử.** Với công thức đã kiểm soát: duyệt master CHG trước khi tạo phiên bản thay thế; mẫu đánh giá dưới CHG đã nộp là thử nghiệm chưa duyệt; bản ghi hồi tố ghi ngay, **giữ** gate/sẵn sàng tới khi review (đảo ngược quy tắc ta tự đặt "không giữ gate"), giữ ngày thực và khoảng trống phê duyệt. → **R6-Q40**.
 
 **Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-44: một thay đổi đã xảy ra vẫn ghi được sau đó, như bản ghi bổ sung không giữ gate (câu 33(a)(c) đã gỡ). Còn hỏi SME: Change Control đã duyệt có là điều kiện tiên quyết của version mới không, và cách sửa công thức sau Gate 05. Câu hỏi còn lại như bên dưới.
 

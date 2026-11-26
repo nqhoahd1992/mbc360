@@ -66,6 +66,9 @@ interface ChangeForm {
   dueDate?: Dayjs;
   owner: string;
   notes?: string;
+  retrospective?: boolean;
+  actualImplementationDate?: Dayjs;
+  approvalGap?: string;
 }
 
 export default function ChangeControl() {
@@ -141,6 +144,7 @@ export default function ChangeControl() {
 
   // Default is Yes (see initialValues); only hide the message when explicitly No.
   const commRequired = Form.useWatch('communicationRequired', form) !== false;
+  const retrospective = Form.useWatch('retrospective', form) === true;
 
   // `form`'s `initialValues` only apply once, at first mount — reopening the
   // Modal later would not pick up a since-changed active project, so the
@@ -179,6 +183,9 @@ export default function ChangeControl() {
       requestedBy: sessionName,
       dateRequested: dayjs().format('YYYY-MM-DD'),
       dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DD') : undefined,
+      ...(values.retrospective
+        ? { retrospective: true, actualImplementationDate: values.actualImplementationDate?.format('YYYY-MM-DD') }
+        : { retrospective: undefined, actualImplementationDate: undefined, approvalGap: undefined }),
       status: 'Draft',
     };
     // Closes only once the server has the record; a refused write keeps the drawer open with the input.
@@ -395,6 +402,7 @@ export default function ChangeControl() {
                 <div className="cc-summary">
                   <span className="c-tag">{c.status}</span>
                   <span className="c-tag">Risk {c.riskLevel}</span>
+                  {c.retrospective && <span className="c-tag c-tag-warn">Recorded after it happened</span>}
                   <span className={`c-tag ${triageSummary(c).tone}`}>{triageSummary(c).label}</span>
                   {triageSummary(c).holds && <span className="cc-summary-note">{triageSummary(c).holds}</span>}
                 </div>
@@ -416,6 +424,9 @@ export default function ChangeControl() {
                                         {dlRow('Product / SKU', c.productSku)}
                     {dlRow('Affected area', c.affectedArea)}
                     {dlRow('Old version', c.oldVersion)}
+                    {dlRow('Recorded after it happened', c.retrospective ? 'Yes — a retrospective record' : undefined)}
+                    {dlRow('Real implementation date', c.retrospective ? c.actualImplementationDate : undefined)}
+                    {dlRow('Approval gap', c.retrospective ? c.approvalGap : undefined)}
                     {dlRow('Owner', c.owner)}
                     {dlRow('Due', c.dueDate)}
                     {dlRow('Closed', c.closedDate)}
@@ -752,6 +763,21 @@ export default function ChangeControl() {
             <Form.Item name="salesMarketingMessage" label="Sales / Marketing message" preserve={false}>
               <Input.TextArea rows={2} placeholder="Customer-facing explanation if applicable" />
             </Form.Item>
+          )}
+          {/* Round 5 question 32: something that already happened is recorded promptly, with its real date and what approval was missing. It holds the
+              readiness it can affect until Quality's reviewer has assessed it. */}
+          <Form.Item name="retrospective" label="This change has already been made" valuePropName="checked" extra="Record it promptly. The real date and the approval gap are kept exactly as written here, and the change holds the readiness it can affect until it has been reviewed.">
+            <Switch />
+          </Form.Item>
+          {retrospective && (
+            <div className="cc-form-grid">
+              <Form.Item name="actualImplementationDate" label="Real implementation date" rules={[{ required: true, message: 'The date it was actually implemented' }]}>
+                <DatePicker style={{ width: '100%' }} disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
+              </Form.Item>
+              <Form.Item name="approvalGap" label="Approval gap" rules={[{ required: true, message: 'What was missing when it was implemented, and who approved it and when' }]}>
+                <Input.TextArea rows={2} placeholder="What approval was missing when it was implemented; who approved it, and when" />
+              </Form.Item>
+            </div>
           )}
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} />

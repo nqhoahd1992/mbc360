@@ -2663,6 +2663,8 @@ export const productDevelopmentIterations: RegisterConfig = {
     { key: 'nextAction', label: 'Next action', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedChangeId', label: 'Linked Change ID', type: 'changeRef', width: 160 },
+    // Round 5 question 32: an evaluation sample made under a change record that is not approved yet is shown as an unapproved trial; it cannot be adopted.
+    { key: 'trialMark', label: 'Trial status', type: 'text', width: 220, editable: false, computed: true },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Open', 'In progress', 'Superseded', 'Adopted', 'On hold', 'Closed'] },
   ],
 };

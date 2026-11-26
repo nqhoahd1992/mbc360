@@ -11,13 +11,13 @@
 // columns are part of what the gate's signature records, but a trigger never owns a column.
 export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
   SG02: {
-    carrierEmollientReview: ['assessment', 'ingredientName', 'percentInDraft', 'recommendation', 'researchBacked', 'role'],
+    carrierEmollientReview: ['assessment', 'ingredientName', 'percentInDraft', 'role'],
     carrierReviewSummary: ['answer'],
     developmentBrief: ['briefLink', 'briefOwner', 'briefStatus'],
     needsAnatomyExposureNotes: ['notes'],
-    needsLiteratureSearchMethod: ['exclusionCriteria', 'inclusionCriteria', 'recordsScreenedIncluded', 'searchDate', 'searchString'],
+    needsLiteratureSearchMethod: ['exclusionCriteria', 'inclusionCriteria', 'notes', 'recordsScreenedIncluded', 'searchDate', 'searchString'],
     needsResearchQuestions: [],
-    registerApplicability: ['decidedBy', 'decision', 'evidenceLink', 'rationale', 'register'],
+    registerApplicability: ['register'],
     vulnerableUserAssessment: ['additionalAssessments', 'responsibleReviewer', 'safetyPathway', 'vulnerableGroup'],
   },
   SG03: {
@@ -48,7 +48,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     claimEvidenceTraceability: ['claimScope', 'evidencePlanConfirmedBy'],
     efficacyAssurance: ['evidenceLink', 'notes'],
     evidencePlanProspective: [],
-    needsTechnologyTraceability: ['criticalAttribute', 'designImplication', 'need', 'technologyDirection'],
+    needsTechnologyTraceability: ['criticalAttribute', 'designImplication', 'evidenceStatus', 'need', 'reference', 'technologyDirection'],
     potencyProcessControl: ['ingredientActive', 'marker', 'processControl', 'riskFactor', 'targetSpec'],
     productFamilyRegister: ['effectiveDate', 'familyCode', 'familyName', 'formulaVersion', 'manufacturingProductCode', 'versionFormulaNo'],
     registerApplicability: ['register'],
@@ -104,7 +104,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     batchFormulaTrace: ['actualBatchRecordLink', 'batchLot', 'formulaVersion', 'manufacturingDate', 'masterBomVersion', 'productSku'],
     deviationRecords: ['acceptedActionId', 'acceptedBy', 'approvalActual', 'approvalExpected', 'channel', 'closureDate', 'closureDecision', 'contentDescription', 'discoveryDate', 'disposition', 'dueDate', 'evidenceLink', 'impactAssessment', 'issueType', 'market', 'owner', 'reporter', 'rootCause', 'scopeOfUse', 'severity', 'source', 'verification'],
     gmpLinks: ['link'],
-    labelPlatformRollout: ['currentImage', 'linkedRecordId', 'platform', 'platformUrl', 'productSku'],
+    labelPlatformRollout: ['linkedRecordId', 'platform', 'platformUrl', 'productSku'],
     packagingSpecsArtwork: ['approval', 'artworkFile', 'artworkId', 'artworkVersion'],
     publishedInfoApproval: ['workflowState'],
     registerApplicability: ['decidedBy', 'decision', 'evidenceLink', 'rationale', 'register'],
@@ -114,7 +114,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope'],
+    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects', 'reviewedWording'],
     deviationRecords: ['acceptedActionId', 'acceptedBy', 'approvalActual', 'approvalExpected', 'channel', 'closureDate', 'closureDecision', 'contentDescription', 'discoveryDate', 'disposition', 'dueDate', 'evidenceLink', 'impactAssessment', 'issueType', 'market', 'owner', 'reporter', 'reviewer', 'rootCause', 'scopeOfUse', 'severity', 'source', 'verification'],
     postMarketTrends: ['action', 'actionId', 'comparisonPeriod', 'conclusion', 'interpretation', 'market', 'periodEnd', 'periodStart', 'productVersionBatches', 'reportCount', 'reviewDate', 'reviewer', 'sourceRecords'],
     vulnerableUserAssessment: ['vulnerableGroup'],
@@ -136,7 +136,7 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'claimsProductEffect', 'evidenceBasisRequired'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope'],
+    claimEvidenceTraceability: ['claimCategory', 'claimRisk', 'claimScope', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

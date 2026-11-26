@@ -53,6 +53,7 @@
     "verify:artwork-approval": "tsx packages/shared/scripts/verify-artwork-approval.ts",
     "verify:market-pack": "tsx packages/shared/scripts/verify-market-pack.ts",
     "verify:register-applicability": "tsx packages/shared/scripts/verify-register-applicability.ts",
+    "verify:change-order": "tsx packages/shared/scripts/verify-change-order.ts",
     "verify:requirement-deferral": "tsx packages/shared/scripts/verify-requirement-deferral.ts",
     "verify:requirement-na": "tsx packages/shared/scripts/verify-requirement-na.ts",
     "verify:market-additions": "tsx packages/shared/scripts/verify-market-additions.ts",

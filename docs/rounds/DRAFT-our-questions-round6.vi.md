@@ -956,3 +956,22 @@ Bảng của các bạn gán cho mỗi sổ một quy tắc (Required, Condition
 **(c)** Test Report Index: các bạn nói có thể sinh từ các báo cáo liên kết duy nhất. Chúng tôi giữ nhập tay (dòng nhập, hoặc "not applicable" khi không dựa vào báo cáo nào). Có nên sinh tự động không?
 
 **(d)** Ai được ghi quyết định reuse hoặc "not applicable" — người được phân công cho khu vực của sổ, Lead dự án, hay một function có tên?
+
+## Câu 40 — Change đã duyệt trước phiên bản công thức mới, và change được ghi sau khi đã xảy ra: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* **Formula BOM** ("Propose a new formula version"), **Change Control** ("Open Change Request" và tab Assessment của change), và **Development Iteration Log**.
+
+Các bạn nói rằng với thay đổi của công thức đã kiểm soát, đã khoá hoặc đã phát hành thì bản ghi change chủ (master CHG) liên kết được duyệt trước khi tạo phiên bản thay thế có kiểm soát; mẫu đánh giá có thể làm dưới CHG đã nộp như các thử nghiệm chưa duyệt, ghi rõ, và không được ghi đè hay phát hành phiên bản có kiểm soát; các lần lặp trước khi khoá vẫn dùng iteration log; quy tắc Major ở câu 11 giữ nguyên; phê duyệt thương mại của NP và các phê duyệt kỹ thuật đủ thẩm quyền vẫn nằm trong lộ trình; và thay đổi được ghi sau khi đã xảy ra phải được ghi ngay, áp dụng cùng kiểm soát gate và phát hành, đánh giá tác động thực tế, nêu deviation khi cần, giữ hoặc mở lại mức sẵn sàng hiện hành bị ảnh hưởng cho tới khi được review, và giữ nguyên ngày triển khai thực tế cùng khoảng trống phê duyệt. Chúng tôi đã xây như sau:
+
+- **Công thức đã kiểm soát.** Công thức được coi là đã kiểm soát khi đã từng được duyệt (Gate 5 đã qua, bây giờ hoặc trước một Backtrack). Với công thức đó, phiên bản mới được đề xuất theo một **bản ghi change chủ đã duyệt**: change về công thức đã được đánh giá, được duyệt triển khai (Approved – Implementation Pending hoặc In Implementation), các mảng kỹ thuật đã được function chịu trách nhiệm đánh giá, và chưa mang phiên bản nào. Kiểm tra lại khi xác nhận phiên bản. Phiên bản thực hiện change đó; không tạo bản ghi change thứ hai. Công thức chưa từng được duyệt giữ lộ trình cũ (phiên bản Major tự tạo bản ghi change).
+- **Sửa công thức đã kiểm soát** nay cần một change về công thức đã **được duyệt triển khai**; change mới nộp hoặc đang xem xét thì chưa đủ.
+- **Thử nghiệm.** Dòng iteration log nêu một change chưa được duyệt được hiện là **thử nghiệm chưa duyệt** và không thể được chọn (quyết định "Adopt this version" hoặc trạng thái "Adopted") cho tới khi change được duyệt.
+- **Change ghi sau khi đã xảy ra.** Form Open Change Request có "This change has already been made", kèm **ngày triển khai thực tế** và **khoảng trống phê duyệt**; cả hai được giữ nguyên như lần ghi đầu và không sửa được sau đó. Bản ghi như vậy được nhận ở bất kỳ gate nào của dự án, và — dù status là gì, kể cả Completed — nó **giữ mức sẵn sàng của các gate nó có thể ảnh hưởng cho tới khi reviewer change-control của Quality đánh giá tác động**; kết quả Material mở lại các gate đã xác nhận như mọi change khác. Reviewer cũng ghi bằng lời có cần deviation không và là cái nào; kết quả **Material** cần một Deviation Record nêu change đó.
+
+**(a)** "Đã duyệt triển khai (hoặc đang triển khai) và chưa mang phiên bản" có phải thời điểm đúng để tạo phiên bản mới không?
+
+**(b)** Phiên bản của công thức chưa từng được duyệt (còn trước Gate 5) có cũng cần change đã duyệt trước không, hay iteration log là đủ cho tới khi khoá?
+
+**(c)** Thử nghiệm chưa duyệt có nên không được mang số phiên bản của công thức đã kiểm soát nữa không, hay "không được chọn" là đủ?
+
+**(d)** Với change ghi sau khi đã xảy ra, deviation bắt buộc mỗi khi tác động là Material như đã xây, hay cả các trường hợp khác (ví dụ tác động Quality hoặc Safety không Material)?

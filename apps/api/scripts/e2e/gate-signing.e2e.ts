@@ -2284,6 +2284,43 @@ export async function run(base: string, db: Client): Promise<number> {
     t('the test decision is removed again', r.status < 300 && (await decisionsNow()).length === 0, `${r.status} ${short(r.json)}`);
   }
 
+  // ---- Round 5 question 32: a change recorded after it happened, and an iteration under a change that is not approved
+  console.log('\n--- Retrospective changes and unapproved trials (Round 5 question 32)');
+  {
+    const retro = (over: Record<string, unknown> = {}) => ({ ...newChange('CHG-E2E-RETRO', 'formula-ingredient'), status: 'Draft', retrospective: true, actualImplementationDate: '2026-10-01', approvalGap: 'Implemented on the line before approval; NP approved on 2026-10-20', ...over });
+    const changesList = async () => ((await project()).project.changes ?? []) as any[];
+    const keep = (await changesList()).filter((c) => c.changeId !== 'CHG-E2E-RETRO');
+    r = await putChanges([...keep, retro({ actualImplementationDate: '', approvalGap: '' })]);
+    t('a change recorded after it happened without its real date and approval gap is refused (400)', r.status === 400 && /real implementation date/.test(JSON.stringify(r.json)) && /approval gap/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await putChanges([...keep, retro({ actualImplementationDate: '2999-01-01' })]);
+    t('...and so is a real date in the future (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await putChanges([...keep, retro()]);
+    t('a complete retrospective record is accepted at whatever gate the project is on', r.status < 300, `${r.status} ${short(r.json)}`);
+    const stored = (await changesList()).find((c) => c.changeId === 'CHG-E2E-RETRO');
+    t('...with its real date and approval gap as first recorded', stored?.retrospective === true && stored?.actualImplementationDate === '2026-10-01' && /NP approved/.test(String(stored?.approvalGap)), short(stored));
+    t('...and it holds the gates it can affect until it has been reviewed', gp.gateBlockers((await project()).project, 'SG08').some((b: any) => b.id === 'change-hold'));
+    r = await putChanges([...keep, retro({ approvalGap: 'edited later to read better' })]);
+    t('the approval gap cannot be edited afterwards (400)', r.status === 400 && /kept as first recorded/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putChanges([...keep, retro({ actualImplementationDate: '2026-10-05' })]);
+    t('...nor the real implementation date (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-RETRO/triage`, { outcome: 'No material impact', confirmedGates: [], reason: 'e2e', expectedVersion: await version() });
+    t('the review of a retrospective change has to say whether a deviation is needed (400)', r.status === 400 && /deviation/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-RETRO/triage`, { outcome: 'Material impact', confirmedGates: ['SG08'], reason: 'e2e', retrospectiveReview: 'DEV-001 raised', expectedVersion: await version() });
+    t('...and a Material outcome needs a deviation record that names the change (400)', r.status === 400 && /deviation record/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+
+    // an iteration under a change that is not approved is an unapproved trial
+    const putIter = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/productDevelopmentIterations`, { rows, expectedVersion: await version() });
+    r = await putIter([{ iterationNo: '1', linkedChangeId: 'CHG-E2E-RETRO', decision: 'Adopt this version' }]);
+    t('an iteration under a change that is not approved cannot be adopted (400)', r.status === 400 && /unapproved trial/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await putIter([{ iterationNo: '1', linkedChangeId: 'CHG-E2E-RETRO', decision: 'Iterate again' }]);
+    const iter = ((await project()).project.registers.productDevelopmentIterations ?? []) as any[];
+    t('...but it can be recorded, and the register marks it as an unapproved trial', r.status < 300 && /Unapproved trial/.test(String(iter[0]?.trialMark)), `${r.status} ${short(iter)}`);
+    r = await putIter([]);
+    t('the test iteration is removed again', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await putChanges(keep);
+    t('a Draft change can be discarded: the test record is removed again', r.status < 300 && !(await changesList()).some((c) => c.changeId === 'CHG-E2E-RETRO'), `${r.status} ${short(r.json)}`);
+  }
+
   // ============================================================ SG08
   console.log('\n--- SG08 (the human-study assessment is Gate 8 data)');
   const putAssess = async (patch: Record<string, string>) =>

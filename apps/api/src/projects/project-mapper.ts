@@ -445,6 +445,10 @@ export function toChangeRecords(p: ProjectWithAll) {
     changedBy: opt(c.changedBy),
     communicatedToMarket: opt(c.communicatedToMarket),
     communicationAcknowledgedBy: opt(c.communicationAcknowledgedBy),
+    ...(c.retrospective ? { retrospective: true } : {}),
+    actualImplementationDate: dateOnly(c.actualImplementationDate),
+    approvalGap: opt(c.approvalGap),
+    retrospectiveReview: opt(c.retrospectiveReview),
     owner: c.owner,
     notes: opt(c.notes),
   }));
@@ -480,7 +484,7 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
   // The Formulation Change Register is a view of the Change Control log (Round 5 question 11): its base columns are the master record's, applied here so
   // every reader of the committed rows — the Final Approver's signature content, the stale and lock checks — sees them, not only the screen.
   // The Regulatory Checklist Status takes its dossier type from the market profile (SW-59), so every reader sees the profile's value.
-  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits', 'formulationChangeRegister', 'regulatoryChecklistStatus']) {
+  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits', 'formulationChangeRegister', 'regulatoryChecklistStatus', 'productDevelopmentIterations']) {
     if (project.registers[watchlist]) {
       project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
     }
@@ -1054,6 +1058,7 @@ function toProjectDataRaw(
             majorCriteria: p.formulaVersionProposal.majorCriteria,
             documentationOnly: p.formulaVersionProposal.documentationOnly,
             confirmNoRelease: p.formulaVersionProposal.confirmNoRelease,
+            ...(p.formulaVersionProposal.changeId ? { changeId: p.formulaVersionProposal.changeId } : {}),
             proposedBy: p.formulaVersionProposal.proposedBy,
             proposedAt: p.formulaVersionProposal.proposedAt.toISOString(),
           },

@@ -1358,6 +1358,8 @@ export interface FormulaVersionProposal {
   majorCriteria: string[];
   documentationOnly: boolean;
   confirmNoRelease: boolean;
+  // Round 5 question 32: for a controlled (previously approved) formula, the approved master change record this version implements.
+  changeId?: string;
   proposedBy: string;
   proposedAt: string;
 }
@@ -1696,6 +1698,13 @@ export interface ChangeRecord {
   // Round 5 question 11: the master change record is the CHG; the numbers other books used for the same change (an FC- number of the
   // Formulation Change Register) are its aliases, so a link to FC-001 resolves to this record. Written by the server only.
   aliasIds?: string[];
+  // Round 5 question 32: a change that HAPPENED before it was recorded. The real implementation date and the approval gap are preserved as first
+  // recorded (never edited afterwards); the record holds the readiness it can affect until its impact has been reviewed, and the reviewer states
+  // whether a deviation is needed.
+  retrospective?: boolean;
+  actualImplementationDate?: string;
+  approvalGap?: string;
+  retrospectiveReview?: string;
   // Round 5 question 11: the base data every change-control view reads — who asked for the change and when, what changed and why, who made it,
   // and the communication to the market. Kept on the master record so a view (the Formulation Change Register) never stores a second copy.
   requestedBy?: string;
@@ -1885,7 +1894,7 @@ export interface ProjectData {
   formulaVersionHistory: FormulaVersionRecord[];
   // The current version's own kind. The history holds every version but this one, and the lifecycle needs to know whether the current
   // version was a Major change, a Minor one or a documentation-only correction (Round 5 question 5).
-  currentFormulaVersionRecord?: Pick<FormulaVersionRecord, 'previousVersion' | 'changeType' | 'documentationOnly'>; // prior versions, audit history (rule A2)
+  currentFormulaVersionRecord?: Pick<FormulaVersionRecord, 'previousVersion' | 'changeType' | 'documentationOnly' | 'linkedChangeId'>; // prior versions, audit history (rule A2)
   // Round 4 question 2 — per-market supersession decisions, and question 13's
   // post-launch reviews. Both are append-mostly records of acts, not settings.
   supersessionDecisions: SupersessionDecision[];

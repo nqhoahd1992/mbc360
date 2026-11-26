@@ -355,6 +355,8 @@ model FormulaVersionProposal {
   majorCriteria    String[]
   documentationOnly Boolean @default(false)
   confirmNoRelease Boolean  @default(false)
+  // Round 5 question 32: for a controlled formula, the approved master change record this version implements.
+  changeId         String?
   proposedBy       String
   proposedAt       DateTime @default(now())
 
@@ -1397,6 +1399,12 @@ model ChangeRecord {
   changedBy             String?
   communicatedToMarket  String?
   communicationAcknowledgedBy String?
+  // Round 5 question 32: a change that happened before it was recorded — the real date and the approval gap are kept as first recorded, and the
+  // reviewer's statement on whether a deviation is needed is written by the triage act.
+  retrospective         Boolean   @default(false)
+  actualImplementationDate DateTime? @db.Date
+  approvalGap           String?
+  retrospectiveReview   String?
   owner                 String
   notes                 String?
   createdAt             DateTime  @default(now())

@@ -43,8 +43,9 @@ export function isTriageRecorded(change: ChangeRecord): boolean {
 }
 
 // An open change nobody has triaged yet: its impact is unassessed.
+// Round 5 question 32: a retrospective change (it happened before it was recorded) awaits its review whatever status it has been given.
 export function isTriagePending(change: ChangeRecord): boolean {
-  return isChangeOpen(change.status) && !isTriageRecorded(change);
+  return (isChangeOpen(change.status) || !!change.retrospective) && !isTriageRecorded(change);
 }
 
 // The trigger's own gates are only the MINIMUM scope. 'ALL' (or a change with no trigger) is every gate.

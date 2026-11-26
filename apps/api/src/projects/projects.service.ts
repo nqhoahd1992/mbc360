@@ -111,6 +111,7 @@ import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateR
 import { bypassable } from './dev-flags';
 import { stampArtworkClaimRevisions } from '@mbc360/shared/utils/artworkApproval';
 import { stampMarketPackRevisions } from '@mbc360/shared/utils/marketPack';
+import { iterationTrialProblems, retrospectiveProblems, retrospectiveReviewProblems, versionChangeProblems, formulaIsControlled, RETROSPECTIVE_PRESERVED_FIELDS } from '@mbc360/shared/utils/changeOrder';
 import { applicabilityRegisterProblems, stampApplicabilityDecisions } from '@mbc360/shared/utils/registerApplicability';
 import {
   PRE_WORK_DECISIONS,
@@ -349,7 +350,7 @@ const GAP_ASSESSMENT_FIELDS = [
 ] as const satisfies readonly (keyof GateRecord)[];
 
 // Round 5 question 10: the triage fields are written by the triage act alone, so a save that omits or alters them is not an edit of them.
-const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates', 'confirmedMarkets', 'areaAssessments', 'aliasIds'];
+const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates', 'confirmedMarkets', 'areaAssessments', 'aliasIds', 'retrospectiveReview'];
 
 // A value the engine compares exactly must be one of its list's values (SME rule
 // audit B13, 2026-10-04). A dropdown is only a dropdown in the browser: a direct
@@ -3184,6 +3185,11 @@ export class ProjectsService {
         const problems = applicabilityRegisterProblems(rows);
         if (problems.length > 0) throw new BadRequestException(listMessage('These applicability decisions cannot be saved:', problems));
         rows = stampApplicabilityDecisions(project.registers[registerKey] ?? [], rows, new Date().toISOString().slice(0, 10));
+      }
+      // Round 5 question 32: an evaluation sample under a change that is not approved is an unapproved trial and cannot be adopted as the controlled formula. [ASSUMPTION: R6-Q40]
+      if (registerKey === 'productDevelopmentIterations') {
+        const trialProblems = iterationTrialProblems(project, rows);
+        if (trialProblems.length > 0) throw new BadRequestException(listMessage('These iterations cannot be saved:', trialProblems));
       }
       if (registerKey === 'marketPackChecklist') {
         rows = stampMarketPackRevisions(project, project.registers[registerKey] ?? [], rows);
@@ -6436,7 +6442,7 @@ export class ProjectsService {
   async proposeFormulaVersion(
     user: SessionUser,
     id: string,
-    input: { version: string; changeType: 'Major' | 'Minor'; reason?: string; majorCriteria?: string[]; documentationOnly?: boolean; confirmNoRelease?: boolean },
+    input: { version: string; changeType: 'Major' | 'Minor'; reason?: string; majorCriteria?: string[]; documentationOnly?: boolean; confirmNoRelease?: boolean; changeId?: string },
     expectedVersion: number,
     idempotencyKey: string,
   ): Promise<ProjectEnvelope> {
@@ -6457,6 +6463,13 @@ export class ProjectsService {
         throw new BadRequestException('A new formula version can be proposed only while Gate 05 is the open gate');
       }
       if (version === project.formulaVersion) throw new BadRequestException(`Project is already on formula version ${version}`);
+      // Round 5 question 32: a new version of a controlled (previously approved) formula is created against the approved master change record, which has
+      // to exist first. A formula never approved keeps the earlier route (its Major version raises its own change record, Round 5 question 11). [ASSUMPTION: R6-Q40]
+      const changeRef = (input.changeId ?? '').trim();
+      if (formulaIsControlled(project)) {
+        const problems = versionChangeProblems(project, changeRef);
+        if (problems.length > 0) throw new BadRequestException(listMessage('This formula is a controlled baseline, so the new version needs its approved change record:', problems));
+      }
       if (project.formulaVersionProposal) {
         throw new BadRequestException(
           `Formula version ${project.formulaVersionProposal.version} proposed by ${project.formulaVersionProposal.proposedBy} is waiting for confirmation — confirm or withdraw it first`,
@@ -6471,6 +6484,7 @@ export class ProjectsService {
           majorCriteria,
           documentationOnly: !!input.documentationOnly,
           confirmNoRelease: !!input.confirmNoRelease,
+          changeId: formulaIsControlled(project) ? (resolveChangeRef(project.changes, changeRef)?.changeId ?? changeRef) : null,
           // Who proposed comes from the session, never from the request.
           proposedBy: user.displayName,
         },
@@ -6516,6 +6530,7 @@ export class ProjectsService {
       majorCriteria: proposal.majorCriteria,
       documentationOnly: proposal.documentationOnly,
       confirmNoRelease: proposal.confirmNoRelease,
+      changeId: proposal.changeId ?? undefined,
     };
     const version = input.version.trim();
     // F5: "an authorised technical or quality reviewer must confirm it", and (question 23(c)) not the person who proposed it.
@@ -6555,6 +6570,12 @@ export class ProjectsService {
         }
         if (version === project.formulaVersion) {
           throw new BadRequestException(`Project is already on formula version ${version}`);
+        }
+        // Round 5 question 32: checked again at the confirmation — the change may have moved on since the proposal. [ASSUMPTION: R6-Q40]
+        const controlled = formulaIsControlled(project);
+        if (controlled) {
+          const problems = versionChangeProblems(project, input.changeId);
+          if (problems.length > 0) throw new BadRequestException(listMessage('This formula is a controlled baseline, so the new version needs its approved change record:', problems));
         }
         const previous = row.formulaVersions.at(-1);
 
@@ -6782,7 +6803,18 @@ export class ProjectsService {
         // Review with its impact NOT yet assessed: the cascade above already reopened the gates, but whether this is a controlled change to
         // a released baseline or a development-only one is Quality's triage, never the version creator's. [ASSUMPTION: R6-Q17]
         let masterChangeId: string | undefined;
-        if (input.changeType === 'Major') {
+        if (controlled) {
+          // The version implements the approved master change record named in the proposal: no second record is raised for it.
+          const linked = resolveChangeRef(project.changes, input.changeId ?? '');
+          if (linked) {
+            await tx.formulaVersion.update({ where: { id: created.id }, data: { linkedChangeId: linked.changeId } });
+            await tx.changeRecord.update({
+              where: { changeId: linked.changeId },
+              data: { newVersion: linked.newVersion || version, oldVersion: linked.oldVersion || project.formulaVersion || null },
+            });
+            await this.syncFormulationOverlay(tx, id, project.changes, user.id);
+          }
+        } else if (input.changeType === 'Major') {
           const used = await tx.changeRecord.findMany({ where: { changeId: { startsWith: 'CHG-' } }, select: { changeId: true } });
           const nextChg =
             used.reduce((max, r) => {
@@ -6946,6 +6978,21 @@ export class ProjectsService {
         }
       }
 
+      // Round 5 question 32: a retrospective change (it happened before it was recorded) keeps its real implementation date and approval gap exactly as
+      // first recorded — they are never edited afterwards — and a new one has to carry both. [ASSUMPTION: R6-Q40]
+      const today = new Date().toISOString().slice(0, 10);
+      for (const c of records) {
+        const old = before.get(c.changeId);
+        if (!old) {
+          const missing = retrospectiveProblems(c, today);
+          if (missing.length > 0) throw new BadRequestException(listMessage(`${c.changeId} is recorded after it happened and still needs:`, missing));
+          continue;
+        }
+        const changed = RETROSPECTIVE_PRESERVED_FIELDS.filter((k) => JSON.stringify(old[k] || null) !== JSON.stringify(c[k] || null));
+        if (changed.length > 0) {
+          throw new BadRequestException(`${c.changeId}: the real implementation date and the approval gap of a retrospective record are kept as first recorded and cannot be changed (${changed.join(', ')})`);
+        }
+      }
       // SW-54: a change names only markets the project sells into; one already on the stored record stays
       // valid even if the project has since dropped it, so an old record can still be saved.
       for (const c of records) {
@@ -6963,7 +7010,8 @@ export class ProjectsService {
           // SW-30: a new change is only accepted once its trigger's earliest gate has passed.
           // Only NEW records are checked — editing one that already exists must stay possible.
           const trig = c.triggerId ? getChangeTrigger(c.triggerId) : undefined;
-          const availability = trig ? changeTriggerAvailability(project, trig) : undefined;
+          // A change that already happened is recorded whatever gate the project is on (Round 5 question 32).
+          const availability = trig && !c.retrospective ? changeTriggerAvailability(project, trig) : undefined;
           if (availability && !availability.allowed) {
             throw new BadRequestException(`${c.changeId}: "${trig!.label}" cannot be opened yet — ${availability.reason}`);
           }
@@ -7024,6 +7072,11 @@ export class ProjectsService {
             changedBy: c.changedBy || null,
             communicatedToMarket: c.communicatedToMarket || null,
             communicationAcknowledgedBy: c.communicationAcknowledgedBy || null,
+            // The retrospective facts are first-recorded values: the stored ones win for an existing record (the check above refused a change).
+            retrospective: before.has(c.changeId) ? !!before.get(c.changeId)?.retrospective : !!c.retrospective,
+            actualImplementationDate: this.dateOrNull(before.has(c.changeId) ? before.get(c.changeId)?.actualImplementationDate : c.actualImplementationDate),
+            approvalGap: (before.has(c.changeId) ? before.get(c.changeId)?.approvalGap : c.approvalGap) || null,
+            retrospectiveReview: before.get(c.changeId)?.retrospectiveReview ?? null,
             restoreConfirmation: c.restoreConfirmation ?? null,
             owner: c.owner,
             notes: c.notes ?? null,
@@ -7178,7 +7231,7 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     changeId: string,
-    body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string },
+    body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string; retrospectiveReview?: string },
     expectedVersion: number,
     idempotencyKey?: string,
   ): Promise<ProjectEnvelope> {
@@ -7198,7 +7251,11 @@ export class ProjectsService {
       const project = toProjectData(row, [], await this.loadReference(tx));
       const c = project.changes.find((x) => x.changeId === changeId);
       if (!c) throw new BadRequestException(`${changeId} is not a change of this project`);
-      if (!isChangeOpen(c.status)) throw new BadRequestException(`${changeId} is closed (${c.status}) — its impact can no longer be triaged`);
+      // A retrospective record is reviewed whatever status it carries: it holds readiness until it is (Round 5 question 32).
+      if (!isChangeOpen(c.status) && !c.retrospective) throw new BadRequestException(`${changeId} is closed (${c.status}) — its impact can no longer be triaged`);
+      const retroReview = (body.retrospectiveReview ?? '').trim();
+      const retroProblems = retrospectiveReviewProblems(project, c, body.outcome, retroReview);
+      if (retroProblems.length > 0) throw new BadRequestException(listMessage('The review of a change that was implemented before it was recorded still needs:', retroProblems));
       // A recorded triage can be REVISED by the same function holder with a reason: the earlier assessment is never overwritten silently, it
       // stays in the audit event as `before`. Gates an earlier Material outcome already reopened stay reopened (they are decided again, not
       // restored). [ASSUMPTION: R6-Q16]
@@ -7216,6 +7273,7 @@ export class ProjectsService {
           triageDate: new Date(),
           confirmedGates: body.outcome === TRIAGE_MATERIAL ? confirmedGates : [],
           confirmedMarkets: body.outcome === TRIAGE_MATERIAL ? confirmedMarkets : [],
+          retrospectiveReview: c.retrospective ? retroReview : null,
         },
       });
 

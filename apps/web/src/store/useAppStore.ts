@@ -147,6 +147,7 @@ interface AppState {
       majorCriteria?: string[];
       documentationOnly?: boolean;
       confirmNoRelease?: boolean;
+      changeId?: string;
     },
   ) => Promise<boolean>;
   confirmFormulaVersionProposal: (id: string) => Promise<boolean>;
@@ -339,7 +340,7 @@ interface AppState {
   reopenChange: (projectId: string, changeId: string, reason: string) => Promise<boolean>;
   resolveGap: (projectId: string, gateId: string) => Promise<boolean>;
   assessChangeArea: (projectId: string, changeId: string, body: { area: string; outcome: string; note: string }) => Promise<boolean>;
-  triageChange: (projectId: string, changeId: string, body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string }) => Promise<boolean>;
+  triageChange: (projectId: string, changeId: string, body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string; retrospectiveReview?: string }) => Promise<boolean>;
   assessMarketAddition: (projectId: string, market: string, body: Parameters<typeof projectsApi.assessMarketAddition>[2]) => Promise<boolean>;
 
 }

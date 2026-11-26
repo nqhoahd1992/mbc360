@@ -659,7 +659,7 @@ export const resolveGap = (id: string, gateId: string, v: number) =>
 export const triageChange = (
   id: string,
   changeId: string,
-  body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string },
+  body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string; retrospectiveReview?: string },
   v: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/changes/${encodeURIComponent(changeId)}/triage`, {
@@ -690,6 +690,7 @@ export function proposeFormulaVersion(
     majorCriteria?: string[];
     documentationOnly?: boolean;
     confirmNoRelease?: boolean;
+    changeId?: string;
   },
   expectedVersion: number,
   idempotencyKey: string,

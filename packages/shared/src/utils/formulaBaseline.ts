@@ -8,7 +8,8 @@
 import type { ProjectData } from '../types';
 import { isChangeOpen } from '../config/changeTriggers';
 import { isFormulationChange } from './changeViews';
-import { isGateRecordedPassed } from './changeTriage';
+import { VERSION_READY_STATUSES_FOR_BOM } from './changeOrderStatuses';
+import { isGateRecordedPassed, isTriageRecorded } from './changeTriage';
 
 export function formulaWasApproved(project: ProjectData): boolean {
   if (isGateRecordedPassed(project.gates.find((g) => g.gateId === 'SG05'))) return true;
@@ -22,9 +23,21 @@ export function hasOpenFormulationChange(project: ProjectData): boolean {
   );
 }
 
+// Round 5 question 32: an open change that is only SUBMITTED does not yet permit editing the controlled formula — evaluation samples are made under it as
+// unapproved trials (Development Iteration Log) and cannot overwrite the controlled version. The change must be approved to implement first.
+export function hasApprovedFormulationChange(project: ProjectData): boolean {
+  return project.changes.some(
+    (c) =>
+      (!c.projectId || c.projectId === project.identity.id) && isFormulationChange(c) && VERSION_READY_STATUSES_FOR_BOM.includes(c.status) && isTriageRecorded(c),
+  );
+}
+
 // Why the Formula BOM may not be edited right now under this rule, or undefined when it may.
 export function formulaChangeRequirement(project: ProjectData): string | undefined {
   if (!formulaWasApproved(project)) return undefined;
-  if (hasOpenFormulationChange(project)) return undefined;
-  return 'This formula has been approved before, so it is a controlled baseline: raise a formulation change on the Change Control page (and keep it open while you work) before editing it, even though the project is back at Gate 05';
+  if (hasApprovedFormulationChange(project)) return undefined;
+  if (hasOpenFormulationChange(project)) {
+    return 'This formula has been approved before, so it is a controlled baseline, and its formulation change is not approved to implement yet. Until it is, evaluation samples are made as unapproved trials in the Development Iteration Log; the controlled formula cannot be edited';
+  }
+  return 'This formula has been approved before, so it is a controlled baseline: raise a formulation change on the Change Control page, and have it assessed and approved to implement, before editing it, even though the project is back at Gate 05';
 }

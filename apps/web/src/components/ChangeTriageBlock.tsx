@@ -37,7 +37,8 @@ const PHASE_GROUPS = [1, 2, 3, 4].map((phase) => ({
 // What the panel's summary strip says about the triage, and which gates the change is holding until it is recorded.
 export function triageSummary(change: ChangeRecord): { label: string; tone: string; pending: boolean; holds?: string } {
   if (isTriageRecorded(change)) return { label: `Impact: ${change.impactTriage}`, tone: 'c-tag-ok', pending: false };
-  if (!isChangeOpen(change.status)) return { label: 'Closed without impact assessment', tone: '', pending: false };
+  // Round 5 question 32: a change implemented before it was recorded is reviewed whatever its status.
+  if (!isChangeOpen(change.status) && !change.retrospective) return { label: 'Closed without impact assessment', tone: '', pending: false };
   const scope = suggestedScopeGateIds(change).map((id) => GATES.find((g) => g.id === id)?.number ?? id);
   const range = scope.length > 1 ? `Gates ${scope[0]}\u2013${scope[scope.length - 1]}` : `Gate ${scope[0]}`;
   return { label: 'Impact not assessed', tone: 'c-tag-warn', pending: true, holds: `Holds ${range} until assessed` };
@@ -53,6 +54,7 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
   const [outcome, setOutcome] = useState<string | undefined>();
   const [scope, setScope] = useState<string[]>(suggested);
   const [reason, setReason] = useState('');
+  const [deviationReview, setDeviationReview] = useState('');
   const [markets, setMarkets] = useState<string[]>(change.markets ?? []);
   const projectMarkets = useAppStore((st) => st.projects.find((x) => x.identity.id === projectId)?.identity.markets ?? NO_MARKETS);
   const reachesMarketGates = scope.some((id) => PER_MARKET_GATES.includes(id));
@@ -72,6 +74,12 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
         </dd>
         <dt>Reason</dt>
         <dd>{change.triageReason ?? '—'}</dd>
+        {change.retrospective && (
+          <>
+            <dt>Deviation</dt>
+            <dd>{change.retrospectiveReview ?? '—'}</dd>
+          </>
+        )}
         {gates.length > 0 && (
           <>
             <dt>Confirmed scope</dt>
@@ -81,7 +89,7 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
             </dd>
           </>
         )}
-        {isChangeOpen(change.status) && (
+        {(isChangeOpen(change.status) || change.retrospective) && (
           <>
             <dt />
             <dd>
@@ -93,18 +101,21 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
       </dl>
     );
   }
-  if (!isChangeOpen(change.status)) {
+  if (!isChangeOpen(change.status) && !change.retrospective) {
     return <p className="rt-muted" style={{ margin: 0, fontSize: 13 }}>This change was closed without an impact assessment.</p>;
   }
 
   const sentMarkets = outcome === TRIAGE_MATERIAL && reachesMarketGates ? markets : [];
-  const problems = triageProblems({ outcome: outcome ?? '', confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], reason, confirmedMarkets: sentMarkets, projectMarkets });
+  const problems = [
+    ...triageProblems({ outcome: outcome ?? '', confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], reason, confirmedMarkets: sentMarkets, projectMarkets }),
+    ...(change.retrospective && deviationReview.trim() === '' ? ['whether a deviation is needed, and which — or why not'] : []),
+  ];
 
   const record = async () => {
     if (!projectId || !outcome) return;
     setBusy(true);
     try {
-      const ok = await triageChange(projectId, change.changeId, { outcome, confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], confirmedMarkets: sentMarkets, reason: reason.trim() });
+      const ok = await triageChange(projectId, change.changeId, { outcome, confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], confirmedMarkets: sentMarkets, reason: reason.trim(), ...(change.retrospective ? { retrospectiveReview: deviationReview.trim() } : {}) });
       if (ok) {
         message.success(`${change.changeId}: impact recorded as "${outcome}"`);
         setRevising(false);
@@ -174,6 +185,19 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
         <RecordField label="Reason" wide>
           <Input.TextArea autoSize={{ minRows: 2, maxRows: 5 }} value={reason} placeholder="Why this outcome" onChange={(e) => setReason(e.target.value)} />
         </RecordField>
+        {change.retrospective && (
+          <RecordField label="Deviation — needed? which one, or why not" wide>
+            <Input.TextArea
+              autoSize={{ minRows: 2, maxRows: 5 }}
+              value={deviationReview}
+              placeholder="e.g. DEV-003 raised, or: no deviation — implemented under an emergency instruction approved the same day"
+              onChange={(e) => setDeviationReview(e.target.value)}
+            />
+            <p className="rt-note">
+              This change was implemented before it was recorded. A Material outcome needs a Deviation Record that names {change.changeId} (Change Control column).
+            </p>
+          </RecordField>
+        )}
       </div>
       <div style={{ marginTop: 16 }}>
         <Button type="primary" disabled={problems.length > 0 || busy} loading={busy} onClick={confirm}>

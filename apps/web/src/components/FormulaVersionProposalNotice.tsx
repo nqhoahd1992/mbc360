@@ -63,7 +63,8 @@ export default function FormulaVersionProposalNotice({ project }: { project: Pro
     >
       <div>
         Proposed by <strong>{proposal.proposedBy}</strong> on {dayjs(proposal.proposedAt).format('YYYY-MM-DD HH:mm')}
-        {proposal.reason ? ` — ${proposal.reason}` : ''}. Nothing changes until a different reviewer with Technical or Quality authority confirms it.
+        {proposal.reason ? ` — ${proposal.reason}` : ''}
+        {proposal.changeId ? ` — implements the approved change ${proposal.changeId}` : ''}. Nothing changes until a different reviewer with Technical or Quality authority confirms it.
       </div>
       {why && <div>{why}</div>}
     </Notice>

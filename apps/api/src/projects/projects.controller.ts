@@ -1043,7 +1043,7 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('changeId') changeId: string,
-    @Body() body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string; expectedVersion: number },
+    @Body() body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string; retrospectiveReview?: string; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.triageChange(user, id, changeId, body, body.expectedVersion);
   }
@@ -1061,6 +1061,7 @@ export class ProjectsController {
       majorCriteria?: string[];
       documentationOnly?: boolean;
       confirmNoRelease?: boolean;
+      changeId?: string;
       expectedVersion: number;
     },
     @Headers('idempotency-key') key: string | undefined,
