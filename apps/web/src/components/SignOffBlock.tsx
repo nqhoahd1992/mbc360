@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { blockedPeopleFor, type SignerSlot, type SignerSlots } from '@mbc360/shared/utils/signerIndependence';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import { Alert, Button, Input, Modal, Select, Spin, Tooltip } from 'antd';
-import { ArrowLeftOutlined, CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CheckOutlined, ClockCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { PhaseSignedContent, PhaseSignOffEvent, SignOff } from '@mbc360/shared/types';
 import { isSignedOff } from '@mbc360/shared/types';
@@ -97,6 +99,7 @@ export default function SignOffBlock({
   const { user: me } = useSession();
   const { isAdmin } = usePermissionView();
   const users = usePickerUsers();
+  const allowSameSigner = useAllowSameSigner();
 
   // Only the evidence summary is a free-text field with a draft; a decision and
   // a comment are submitted WITH the signature (one act), not saved separately.
@@ -163,20 +166,9 @@ export default function SignOffBlock({
     roleName: u.roleName ?? '—',
   }));
 
-  // D1 requires an independent reviewer/approver for safety-, regulatory-,
-  // claims- or release-critical decisions — written for GATE sign-off, so this
-  // is a visible warning rather than a block at phase level. Silence would be
-  // worse: three signatures from one person read as three people.
-  const signedByCounts = new Map<string, number>();
-  for (const row of closure.signOffs) {
-    if (isSignedOff(row) && row.signedByUserId) {
-      signedByCounts.set(row.signedByUserId, (signedByCounts.get(row.signedByUserId) ?? 0) + 1);
-    }
-  }
-  const sharedSigner = closure.signOffs.find(
-    (r) => r.signedByUserId && (signedByCounts.get(r.signedByUserId) ?? 0) > 1,
-  );
-
+  // Round 5 question 23(d): the preparer differs from the reviewer and the approver; the reviewer may also approve.
+  const heldBy: SignerSlots = {};
+  for (const row of closure.signOffs) heldBy[row.role as keyof SignerSlots] = row.signedByUserId ?? row.assignedToUserId ?? null;
   const unassigned = closure.signOffs.filter((r) => !r.assignedToUserId).map((r) => r.role);
 
   const assign = (role: SignOff['role'], userId?: string) =>
@@ -276,16 +268,6 @@ export default function SignOffBlock({
               Signers are nominated by this project's Lead ({projectLead}). You can sign a row nominated to you, never for anyone else.
             </>,
           )}
-        {sharedSigner && (
-          <div className="gso-gate-hold gso-notice">
-            <ExclamationCircleOutlined />
-            <span>
-              <strong>{sharedSigner.name}</strong> signed more than one role on this phase. Rule D1 asks for an independent reviewer or
-              approver on safety-, regulatory-, claims- or release-critical decisions. Not blocked here — shown so it is visible.
-            </span>
-          </div>
-        )}
-
         <div className="pso-summary">
           <div className="pso-label">Evidence summary / decision rationale</div>
           <Input.TextArea
@@ -332,10 +314,15 @@ export default function SignOffBlock({
                       optionFilterProp="label"
                       placeholder="Nominate a signer"
                       value={r.assignedToUserId}
-                      options={userOptions.map((o) => ({
-                        value: o.value,
-                        label: o.roleName && o.roleName !== '—' ? `${o.label} — ${o.roleName}` : o.label,
-                      }))}
+                      options={userOptions.map((o) => {
+                        const blockedBy = allowSameSigner ? undefined : blockedPeopleFor(r.role as SignerSlot, heldBy, false).get(o.value);
+                        return {
+                          value: o.value,
+                          label: o.roleName && o.roleName !== '—' ? `${o.label} — ${o.roleName}` : o.label,
+                          disabled: !!blockedBy,
+                          title: blockedBy ? `Already on "${blockedBy}" — the preparer must differ from the reviewer and the approver` : undefined,
+                        };
+                      })}
                       onChange={(v?: string) => assign(r.role, v)}
                     />
                   ) : (

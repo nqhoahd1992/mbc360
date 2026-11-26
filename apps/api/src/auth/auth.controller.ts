@@ -1,3 +1,4 @@
+import { sameSignerAllowed } from '../projects/dev-flags';
 import {
   Body,
   Controller,
@@ -28,7 +29,7 @@ export class AuthController {
   @Get('options')
   options() {
     const { hubUrl, hubApp } = this.auth.config;
-    return { microsoft: !!(hubUrl && hubApp) };
+    return { microsoft: !!(hubUrl && hubApp), allowSameSigner: sameSignerAllowed() };
   }
 
   // Browser navigation target ("Sign in with Microsoft 365" button href).

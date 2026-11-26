@@ -30,7 +30,8 @@ export default function FormulaVersionModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const createFormulaVersion = useAppStore((s) => s.createFormulaVersion);
+  const proposeFormulaVersion = useAppStore((s) => s.proposeFormulaVersion);
+  const pending = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.formulaVersionProposal);
   // Whether the current version is on sale anywhere: a version that was never released is superseded only once a person confirms there
   // was no release (Round 5 question 5(d)).
   const onSale = useAppStore((s) =>
@@ -86,7 +87,7 @@ export default function FormulaVersionModal({
   const onConfirm = async () => {
     setCreating(true);
     try {
-      const created = await createFormulaVersion(projectId, {
+      const created = await proposeFormulaVersion(projectId, {
         version: version.trim(),
         changeType,
         reason: reason.trim() || undefined,
@@ -98,24 +99,21 @@ export default function FormulaVersionModal({
     } finally {
       setCreating(false);
     }
-    message.success(
-      changeType === 'Major'
-        ? `Formula version ${version} created — Gates 4-9 reopened for rework.`
-        : `Formula version ${version} recorded in the change register.`,
-    );
+    message.success(`Formula version ${version} proposed — a different Technical or Quality reviewer must confirm it before anything changes.`);
     onClose();
   };
 
   return (
     <FormDrawer
-      title={`New formula version (current: ${currentVersion})`}
+      title={`Propose a new formula version (current: ${currentVersion})`}
       open={open}
       onOk={() => void onConfirm()}
       confirmLoading={creating}
       onCancel={onClose}
-      okText="Create version"
+      okText="Propose version"
       okButtonProps={{
         disabled:
+          !!pending ||
           !version.trim() ||
           version.trim() === currentVersion ||
           !reason.trim() ||
@@ -187,19 +185,20 @@ export default function FormulaVersionModal({
             placeholder="What changed and why? (required — recorded in the Formulation Change Register)"
           />
         </div>
-        {/* F5: the classification is confirmed by "an authorised technical or
-            quality reviewer". Recorded by the server as you — the person
-            creating the version — and refused if you do not hold that
-            authority. It used to be two typed names. */}
+        {/* Round 5 question 23(c): the initiator proposes the classification; a DIFFERENT authorised Technical or Quality reviewer confirms it.
+            Both are recorded by the server from the people who act, never typed. */}
         <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
-          Recorded as initiated and classification-confirmed by <b>you</b>. Creating a version needs Technical or
-          Quality authority (F5).
+          Recorded as proposed by <b>you</b>. The version is created, and the classification confirmed, when a <b>different</b> reviewer with Technical or Quality
+          authority confirms it. Being qualified does not make confirming your own proposal independent.
         </Typography.Paragraph>
+        {pending && (
+          <Alert type="warning" showIcon title={`Version ${pending.version} proposed by ${pending.proposedBy} is waiting for confirmation — confirm or withdraw it first.`} />
+        )}
         {changeType === 'Major' && (
           <Alert
             type="warning"
             showIcon
-            title="Gates 4-9 will be reopened and Phase 2-3 approvals invalidated. Nothing is deleted — previous decisions and sign-offs stay in the backtrack audit log."
+            title="When it is confirmed, Gates 4-9 will be reopened and Phase 2-3 approvals invalidated. Nothing is deleted — previous decisions and sign-offs stay in the backtrack audit log."
           />
         )}
       </div>

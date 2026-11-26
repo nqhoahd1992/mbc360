@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { message } from 'antd';
 import { ADMIN_ROLE } from '@mbc360/shared/config/roles';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from './useSession';
@@ -65,6 +66,22 @@ export function setPreviewWriteLock(active: boolean): void {
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+// Development only (DEV_ALLOW_SAME_SIGNER on the API): when a response says it skipped a rule that needs two people, say so, once per rule per
+// response, so a bypassed run is never mistaken for the SME's logic accepting it.
+function announceDevBypass(res: Response): void {
+  const header = res.headers.get('X-Dev-Bypass');
+  if (!header) return;
+  for (const part of header.split(',')) {
+    let rule = part;
+    try {
+      rule = decodeURIComponent(part);
+    } catch {
+      // keep the raw text
+    }
+    void message.warning(`Dev bypass: this went through with one account. The SME's rule still applies in real use — ${rule}`, 10);
+  }
+}
+
 if (typeof window !== 'undefined' && !(window.fetch as { __previewGuard?: boolean }).__previewGuard) {
   const original = window.fetch.bind(window);
   const guarded = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -81,7 +98,10 @@ if (typeof window !== 'undefined' && !(window.fetch as { __previewGuard?: boolea
         );
       }
     }
-    return original(input, init);
+    return original(input, init).then((res) => {
+      announceDevBypass(res);
+      return res;
+    });
   };
   (guarded as { __previewGuard?: boolean }).__previewGuard = true;
   window.fetch = guarded as typeof window.fetch;

@@ -1207,6 +1207,18 @@ Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh v
 
 **(b)(iii)** Có. Phân biệt câu hỏi về hiệu năng/hiệu quả, an toàn/biến cố bất lợi, chất lượng/bao bì, quy định và thông tin chung. Một thách thức về hiệu năng kích hoạt rà soát kỹ thuật theo mức độ đáng kể; một câu hỏi thường về câu chữ có thể được xử lý mà không đẩy cả lịch rà soát lên.
 
+### Câu 23 — Khi nào một người được giữ hai vai trò
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 31.
+
+**(a)** Ở các gate trọng yếu 3, 4, 7, 8, 9, 10 và 11, dùng ba người đã xác thực khác nhau cho Prepared, Reviewed và Approved, gồm cả chức năng độc lập đủ năng lực theo yêu cầu. Ở các gate khác, người chuẩn bị phải khác người rà soát và người phê duyệt cuối; người rà soát và người phê duyệt có thể là cùng một người đủ năng lực. Một người có thể chuẩn bị nhiều bản ghi gate khác nhau.
+
+**(b)** Chủ action được hoàn thành action và nộp bằng chứng. Cần xác minh độc lập cho action Critical/High và action đóng rủi ro an toàn, quy định, claim, phát hành hay chất lượng nguyên liệu trọng yếu. Chỉ định một người xác minh đủ năng lực; người nêu action/chủ gate chỉ được xác minh nếu có năng lực và độc lập với công việc. Action hành chính rủi ro thấp có thể tự đóng kèm bằng chứng và dấu vết kiểm toán khi loại action cho phép. Huỷ một action thực chất cần lý do được uỷ quyền và đánh giá tác động, không chỉ quyền của chủ action.
+
+**(c)** Với thay đổi công thức có kiểm soát, người khởi xướng có thể đề xuất Major/Minor nhưng một người Technical/Quality có thẩm quyền khác phải xác nhận. Đủ năng lực không làm việc tự xác nhận thành độc lập. Hộp thoại tạo phải ghi riêng người đề xuất và người xác nhận.
+
+**(d)** Khi đóng phase cần rà soát độc lập: người chuẩn bị khác người rà soát và người phê duyệt. Người rà soát có thể phê duyệt bản tóm tắt phase khi được phép, vì các gate trọng yếu bên dưới đã có phê duyệt riêng biệt. Nếu phê duyệt phase đưa ra quyết định trọng yếu mới thì áp quy tắc ba người. Không có phê duyệt phase trùng lặp nào được ghi đè gate chưa đạt.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

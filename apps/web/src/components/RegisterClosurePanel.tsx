@@ -27,6 +27,7 @@ import {
   registerClosureRoles,
 } from '@mbc360/shared/utils/registerClosures';
 import { usePickerUsers } from '../hooks/useUserOptions';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import { scrollToRegister, useClosingAside } from './closingAside';
 import './RegisterClosurePanel.css';
 
@@ -178,7 +179,8 @@ function GateClosureCard({
   // qualified reviewer is assigned." At a gate that needs independent review, a Review owner and a Co-sign who are the same person block the
   // closure (the server refuses it too); at a gate that does not, the closure has the owner alone, so there is no second signature to warn about.
   // [ASSUMPTION: R6-Q19]
-  const sameSignerName = config ? closureSignerConflict(config, gateId, reviewers) : undefined;
+  const allowSameSigner = useAllowSameSigner();
+  const sameSignerName = config && !allowSameSigner ? closureSignerConflict(config, gateId, reviewers) : undefined;
 
   // One block per person. Someone who holds both roles reads once, with a line per role (each still its own signature). A row the Lead
   // can still nominate keeps its own block, since its signer is a picker and not yet a person.

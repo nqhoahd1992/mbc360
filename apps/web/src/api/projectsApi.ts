@@ -656,15 +656,27 @@ export const triageChange = (
     body: JSON.stringify({ ...body, expectedVersion: v }),
   });
 
-export function createFormulaVersion(
+// Round 5 question 23(c): proposing a version changes nothing; a different authorised reviewer confirms it.
+export const confirmFormulaVersionProposal = (id: string, expectedVersion: number, idempotencyKey: string) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/formula-versions/proposal/confirm`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ expectedVersion }),
+  });
+
+export const withdrawFormulaVersionProposal = (id: string, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/formula-versions/proposal/withdraw`, {
+    method: 'POST',
+    body: JSON.stringify({ expectedVersion }),
+  });
+
+export function proposeFormulaVersion(
   id: string,
   input: {
     version: string;
     changeType: 'Major' | 'Minor';
     reason?: string;
-    initiatedBy?: string;
     majorCriteria?: string[];
-    classificationConfirmedBy?: string;
     documentationOnly?: boolean;
     confirmNoRelease?: boolean;
   },

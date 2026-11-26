@@ -133,19 +133,20 @@ interface AppState {
 
   // A2: create a new formula version; Major changes reopen Gates 4-9.
   // F5: majorCriteria / classificationConfirmedBy capture the classification trail.
-  createFormulaVersion: (
+  // Round 5 question 23(c): creating a version is two acts — the initiator proposes, a different authorised reviewer confirms.
+  proposeFormulaVersion: (
     id: string,
     input: {
       version: string;
       changeType: 'Major' | 'Minor';
       reason?: string;
-      initiatedBy?: string;
       majorCriteria?: string[];
-      classificationConfirmedBy?: string;
       documentationOnly?: boolean;
       confirmNoRelease?: boolean;
     },
   ) => Promise<boolean>;
+  confirmFormulaVersionProposal: (id: string) => Promise<boolean>;
+  withdrawFormulaVersionProposal: (id: string) => Promise<boolean>;
 
   setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => Promise<boolean>;
   setRequirementSection: (id: string, section: string, items: RequirementItem[]) => Promise<boolean>;
@@ -587,10 +588,11 @@ export const useAppStore = create<AppState>()(
         // logic; keeping a second copy here is exactly what "never fork a copy"
         // forbids, and a half-applied cascade is the kind of thing a transaction
         // exists to prevent.
-        createFormulaVersion: (id, input) =>
-          tryWriteSection(id, (v) =>
-            projectsApi.createFormulaVersion(id, input, v, projectsApi.newIdempotencyKey()),
-          ),
+        proposeFormulaVersion: (id, input) =>
+          tryWriteSection(id, (v) => projectsApi.proposeFormulaVersion(id, input, v, projectsApi.newIdempotencyKey())),
+        confirmFormulaVersionProposal: (id) =>
+          tryWriteSection(id, (v) => projectsApi.confirmFormulaVersionProposal(id, v, projectsApi.newIdempotencyKey())),
+        withdrawFormulaVersionProposal: (id) => tryWriteSection(id, (v) => projectsApi.withdrawFormulaVersionProposal(id, v)),
 
 
         // Gate-level edit lock (B4), the per-row requirement merge and the

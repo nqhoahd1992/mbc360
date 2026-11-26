@@ -1342,6 +1342,19 @@ export interface SupersessionDecision {
   notes?: string;
 }
 
+// Round 5 question 23(c): the version the initiator proposes. It changes nothing until a DIFFERENT authorised Technical / Quality reviewer confirms
+// it; the proposer and the confirmer are recorded separately on the version it creates (initiatedBy / classificationConfirmedBy). [ASSUMPTION: R6-Q31]
+export interface FormulaVersionProposal {
+  version: string;
+  changeType: 'Major' | 'Minor';
+  reason?: string;
+  majorCriteria: string[];
+  documentationOnly: boolean;
+  confirmNoRelease: boolean;
+  proposedBy: string;
+  proposedAt: string;
+}
+
 export interface FormulaVersionRecord {
   version: string;
   previousVersion: string;
@@ -1413,6 +1426,12 @@ export interface NextAction {
   completionCriteria?: string;
   escalationTrigger?: string;
   evidenceLink?: string;
+  // Round 5 question 23(b): the kind of action (Administrative, Safety, Regulatory, Claims, Release, Material quality, Other), the verifier nominated
+  // where closure needs independent verification, and what cancelling a substantive action carries. [ASSUMPTION: R6-Q31]
+  actionType?: string;
+  verifier?: string;
+  cancellationReason?: string;
+  cancellationImpact?: string;
   // Gates 10-12 are signed per market, so an action belongs to ONE market or to all of them (project owner, 2026-11-11: an open
   // action in one market must not hold another). Absent = every market, which holds every lane — the same convention as a change
   // record that names no market (SW-54). Always absent on a gate that is not signed per market.
@@ -1826,6 +1845,8 @@ export interface ProjectData {
   scaleUpAssessments: ScaleUpAssessment[];
   // Round 5 question 12, one per market added after Gate 1 — see MarketAdditionAssessment.
   marketAdditionAssessments: MarketAdditionAssessment[];
+  // Round 5 question 23(c): the formula version waiting for a different reviewer's confirmation, if any.
+  formulaVersionProposal?: FormulaVersionProposal;
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
   phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals

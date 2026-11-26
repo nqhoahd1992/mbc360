@@ -95,6 +95,7 @@ export const PROJECT_INCLUDE = {
   changeControlAssessments: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   scaleUpAssessments: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   marketAdditionAssessments: { orderBy: { addedAt: 'asc' } },
+  formulaVersionProposal: true,
   gateSignOffs: {
     orderBy: [{ gateId: 'asc' }, { market: 'asc' }, { role: 'asc' }],
     include: { assignedTo: { select: { displayName: true } } },
@@ -824,6 +825,10 @@ function toProjectDataRaw(
       completionCriteria: opt(a.completionCriteria),
       escalationTrigger: opt(a.escalationTrigger),
       evidenceLink: opt(a.evidenceLink),
+      actionType: opt(a.actionType),
+      verifier: opt(a.verifier),
+      cancellationReason: opt(a.cancellationReason),
+      cancellationImpact: opt(a.cancellationImpact),
       ...(a.market ? { market: a.market } : {}),
     })),
     // E3(b): the readiness engine evaluates each open change's impact at Gate 11,
@@ -1006,6 +1011,20 @@ function toProjectDataRaw(
       ...(v.documentationOnly ? { documentationOnly: true } : {}),
       ...(v.noReleaseConfirmedBy ? { noReleaseConfirmedBy: v.noReleaseConfirmedBy } : {}),
     })),
+    ...(p.formulaVersionProposal
+      ? {
+          formulaVersionProposal: {
+            version: p.formulaVersionProposal.version,
+            changeType: p.formulaVersionProposal.changeType as 'Major' | 'Minor',
+            ...(p.formulaVersionProposal.reason ? { reason: p.formulaVersionProposal.reason } : {}),
+            majorCriteria: p.formulaVersionProposal.majorCriteria,
+            documentationOnly: p.formulaVersionProposal.documentationOnly,
+            confirmNoRelease: p.formulaVersionProposal.confirmNoRelease,
+            proposedBy: p.formulaVersionProposal.proposedBy,
+            proposedAt: p.formulaVersionProposal.proposedAt.toISOString(),
+          },
+        }
+      : {}),
     reference,
     impactAssessments: p.impactAssessments.map(toImpactAssessment),
     ...gateReferenceDiffering(p.referenceSnapshots, reference),

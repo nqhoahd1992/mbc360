@@ -1,6 +1,7 @@
 import { Alert, Card, DatePicker, Input, Select, Table, Tag } from 'antd';
 import UserSelect from './UserSelect';
 import { usePickerUsers } from '../hooks/useUserOptions';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
@@ -39,7 +40,8 @@ export default function StudyApprovalCard({
   const author = draft.find((a) => a.role === 'Study Author');
   const independent = draft.find((a) => a.role === 'Independent Reviewer');
   // C2: the same check the server runs, on the SSO departments shown below.
-  const sameDepartment =
+  const allowSameSigner = useAllowSameSigner();
+  const sameDepartment = !allowSameSigner &&
     !!author?.department && !!independent?.department &&
     author.department.trim().toLowerCase() === independent.department.trim().toLowerCase();
 

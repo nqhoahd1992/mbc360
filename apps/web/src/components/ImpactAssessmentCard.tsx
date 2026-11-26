@@ -12,6 +12,7 @@ import {
 } from '@mbc360/shared/utils/impactAssessments';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import Notice from './Notice';
 import '../styles/concept.css';
 import './ImpactAssessmentCard.css';
@@ -115,6 +116,7 @@ function ConfirmCriticality({ project, a, functionKey, label }: { project: Proje
 
 export default function ImpactAssessmentCard({ project }: { project: ProjectData }) {
   const { user } = useSession();
+  const allowSameSigner = useAllowSameSigner();
   const list = project.impactAssessments ?? [];
   if (list.length === 0) return null;
   const today = new Date().toISOString().slice(0, 10);
@@ -173,7 +175,7 @@ export default function ImpactAssessmentCard({ project }: { project: ProjectData
                 const label = REVIEW_ROLES.find((r) => r.key === k)?.label ?? k;
                 const holder = project.identity.reviewers?.[k];
                 const done = a.conclusions.find((c) => c.functionKey === k);
-                const mine = !!holder && norm(holder) === norm(user?.displayName) && a.raisedById !== user?.id;
+                const mine = !!holder && norm(holder) === norm(user?.displayName) && (allowSameSigner || a.raisedById !== user?.id);
                 return (
                   <li key={k}>
                     <div className="ia-fn-line">

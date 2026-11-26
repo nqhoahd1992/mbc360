@@ -1016,8 +1016,9 @@ export class ProjectsController {
     return this.projects.triageChange(user, id, changeId, body, body.expectedVersion);
   }
 
+  // Round 5 question 23(c): proposing a version changes nothing; a different Technical / Quality reviewer confirms it.
   @Post(':id/formula-versions')
-  createFormulaVersion(
+  proposeFormulaVersion(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Body()
@@ -1025,9 +1026,7 @@ export class ProjectsController {
       version: string;
       changeType: 'Major' | 'Minor';
       reason?: string;
-      initiatedBy?: string;
       majorCriteria?: string[];
-      classificationConfirmedBy?: string;
       documentationOnly?: boolean;
       confirmNoRelease?: boolean;
       expectedVersion: number;
@@ -1036,7 +1035,26 @@ export class ProjectsController {
   ): Promise<ProjectEnvelope> {
     const idempotencyKey = this.idempotency.requireKey(key);
     const { expectedVersion, ...input } = body;
-    return this.projects.createFormulaVersion(user, id, input, expectedVersion, idempotencyKey);
+    return this.projects.proposeFormulaVersion(user, id, input, expectedVersion, idempotencyKey);
+  }
+
+  @Post(':id/formula-versions/proposal/confirm')
+  confirmFormulaVersionProposal(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { expectedVersion: number },
+    @Headers('idempotency-key') key: string | undefined,
+  ): Promise<ProjectEnvelope> {
+    return this.projects.confirmFormulaVersionProposal(user, id, body.expectedVersion, this.idempotency.requireKey(key));
+  }
+
+  @Post(':id/formula-versions/proposal/withdraw')
+  withdrawFormulaVersionProposal(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.withdrawFormulaVersionProposal(user, id, body.expectedVersion);
   }
 
   @Post(':id/backtrack')

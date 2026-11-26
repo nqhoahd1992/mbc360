@@ -116,6 +116,7 @@ async function main(): Promise<number> {
         NODE_ENV: 'development',
         SESSION_SECRET: 'e2e-secret-e2e-secret-e2e-secret',
         PINNED_ADMINS: 'app.admin@maxbiocare.com',
+        DEV_ALLOW_SAME_SIGNER: 'false',
       },
       stdio: 'ignore',
     });

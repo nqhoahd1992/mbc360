@@ -39,7 +39,9 @@ import {
 } from '@mbc360/shared/utils/gateProgress';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { isPerMarketGate } from '@mbc360/shared/config/gateSignOff';
+import { blockedPeopleFor, gateNeedsThreeDistinctSigners, type SignerSlots } from '@mbc360/shared/utils/signerIndependence';
 import { useAppStore } from '../store/useAppStore';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
@@ -71,6 +73,7 @@ export default function GateSignOffPanel({
   const projectId = project.identity.id;
   const session = useSession();
   const users = usePickerUsers();
+  const allowSameSigner = useAllowSameSigner();
   const setAssignees = useAppStore((s) => s.setGateSignOffAssignees);
   const sign = useAppStore((s) => s.signGateSignOff);
   const withdraw = useAppStore((s) => s.withdrawGateSignOff);
@@ -376,7 +379,7 @@ export default function GateSignOffPanel({
               </Button>
               {critical && (
                 <Tooltip
-                  title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
+                  title={`A critical gate: Prepared, Reviewed and Approved are three different people, and at least one reviewer or approver must represent ${independent?.label}.`}
                 >
                   <span className="c-tag c-tag-warn">Critical gate</span>
                 </Tooltip>
@@ -419,10 +422,10 @@ export default function GateSignOffPanel({
                 in the picker rather than only when the nominee reaches the
                 authenticator prompt — the server refuses it at nomination too. */}
             {rows.map((r, i) => {
-              const conflictWith: GateSignOffRole | null =
-                r.role === 'Reviewed by' ? 'Prepared by' : r.role === 'Prepared by' ? 'Reviewed by' : null;
-              const conflictRow = conflictWith ? rows.find((x) => x.role === conflictWith) : undefined;
-              const conflictUserId = conflictRow?.signedByUserId ?? conflictRow?.assignedToUserId ?? null;
+              // Round 5 question 23(a): who may not take this slot because they already hold another one on this gate.
+              const heldBy: SignerSlots = {};
+              for (const x of rows) heldBy[x.role] = x.signedByUserId ?? x.assignedToUserId ?? null;
+              const blockedPeople = allowSameSigner ? new Map<string, GateSignOffRole>() : blockedPeopleFor(r.role, heldBy, gateNeedsThreeDistinctSigners(gateId));
               const stale = r.signedAt ? gateSignOffStaleChanges(project, gateId, market, r.role) : [];
               const why = r.signedAt ? null : blockedReason(market, r.role);
               // Question 29(5) fixes the order, so only one step is ever
@@ -475,12 +478,13 @@ export default function GateSignOffPanel({
                             value: u.id,
                             label: u.roleName ? `${u.displayName} — ${u.roleName}` : u.displayName,
                             disabled:
-                              (!!conflictUserId && u.id === conflictUserId) ||
+                              blockedPeople.has(u.id) ||
                               (r.role === 'Prepared by' && u.id === gateRepresentative(project, gateId, market)?.assignedToUserId),
-                            title:
-                              !!conflictUserId && u.id === conflictUserId
-                                ? `Already on "${conflictWith}" — the reviewer must be a different person`
-                                : undefined,
+                            title: blockedPeople.has(u.id)
+                              ? `Already on "${blockedPeople.get(u.id)}" — ${
+                                  gateNeedsThreeDistinctSigners(gateId) ? 'at a critical gate the three signatures are three different people' : 'the preparer must differ from the reviewer and the approver'
+                                }`
+                              : undefined,
                           }))}
                           onChange={(v?: string) => setAssignees(projectId, gateId, market, [{ role: r.role, userId: v ?? null }])}
                         />

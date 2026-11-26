@@ -238,6 +238,7 @@ model Project {
   changeControlAssessments ChangeControlAssessment[]
   scaleUpAssessments       ScaleUpAssessment[]
   marketAdditionAssessments MarketAdditionAssessment[]
+  formulaVersionProposal    FormulaVersionProposal?
   reviewers       ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -339,6 +340,25 @@ model MarketAdditionAssessment {
   @@map("market_addition_assessments")
 }
 
+// Round 5 question 23(c): a controlled formula change is PROPOSED by its initiator and confirmed by a different authorised Technical / Quality reviewer.
+// At most one proposal waits per project; confirming it creates the version (the whole Major/Minor cascade), withdrawing it deletes it. The audit
+// trail keeps both acts.
+model FormulaVersionProposal {
+  id               String   @id @default(cuid())
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String   @unique
+  version          String
+  changeType       String
+  reason           String?
+  majorCriteria    String[]
+  documentationOnly Boolean @default(false)
+  confirmNoRelease Boolean  @default(false)
+  proposedBy       String
+  proposedAt       DateTime @default(now())
+
+  @@map("formula_version_proposals")
+}
+
 model ProjectMarket {
   id        String  @id @default(cuid())
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -411,6 +431,11 @@ model NextAction {
   completionCriteria String?
   escalationTrigger  String?
   evidenceLink       String?
+  // Round 5 question 23(b): the kind of action, the nominated verifier and what cancelling a substantive action carries.
+  actionType         String?
+  verifier           String?
+  cancellationReason String?
+  cancellationImpact String?
   // The market this action belongs to on a gate signed per market (Gates 10-12). Null = every market, which holds every lane.
   market        String?
   createdAt     DateTime  @default(now())

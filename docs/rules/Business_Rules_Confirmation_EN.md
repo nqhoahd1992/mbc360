@@ -1207,6 +1207,18 @@ Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional 
 
 **(b)(iii)** Yes. Distinguish performance/efficacy questions, safety/adverse events, quality/packaging, regulatory and general information. A performance challenge triggers technical review according to significance; a routine wording query can be handled without advancing the whole review schedule.
 
+### Question 23 — When one person may hold two roles
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 31.
+
+**(a)** At critical Gates 3, 4, 7, 8, 9, 10 and 11, use three distinct authenticated people for Prepared, Reviewed and Approved, including the required independent qualified function. At other gates, require the preparer to differ from the reviewer and the final approver; reviewer and approver may be the same qualified person. One person may prepare multiple different gate records.
+
+**(b)** Owners may complete actions and submit evidence. Independent verification is required for Critical/High actions and those closing safety, regulatory, claims, release or material quality risks. Nominate a qualified verifier; a raiser/gate owner may verify only if competent and independent of the work. Low-risk administrative actions may be self-closed with evidence and an audit trail where their action type permits it. Cancellation of a substantive action requires authorised justification and impact review, not only owner access.
+
+**(c)** For a controlled formula change, the initiator may propose Major/Minor but a different authorised Technical/Quality reviewer must confirm. Being qualified does not make self-confirmation independent. The creation dialog should record proposer and confirmer separately.
+
+**(d)** At phase closure require an independent review: preparer differs from reviewer and approver. Reviewer may also approve the phase summary where permitted, since the underlying critical gates already have their distinct approvals. If the phase approval makes a new substantive critical decision, apply the three-person rule. No duplicate phase approval may override a failed gate.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { DevBypassInterceptor } from '../projects/dev-flags';
 import { JwtModule } from '@nestjs/jwt';
 import { loadAuthConfig } from './auth-config';
 import { AuthController } from './auth.controller';
@@ -23,6 +24,8 @@ import { HubAppsController } from '../hub/hub-apps.controller';
     PinnedAdminsService,
     // Global: every route requires a session unless marked @Public().
     { provide: APP_GUARD, useClass: SessionAuthGuard },
+    // Development only: reports, per response, which two-person rules the DEV_ALLOW_SAME_SIGNER switch skipped (a no-op unless it is on).
+    { provide: APP_INTERCEPTOR, useClass: DevBypassInterceptor },
   ],
   exports: [AuthService],
 })

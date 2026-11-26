@@ -108,6 +108,20 @@ import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
+import { bypassable } from './dev-flags';
+import {
+  NEXT_ACTION_TYPES,
+  actionCancellationGaps,
+  actionClosureRefusal,
+  actionVerifierProblem,
+} from '@mbc360/shared/utils/actionVerification';
+import {
+  gateNeedsThreeDistinctSigners,
+  gateSignerConflicts,
+  phaseSignerConflicts,
+  signerConflictMessage,
+  type SignerSlots,
+} from '@mbc360/shared/utils/signerIndependence';
 import {
   GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
@@ -1521,6 +1535,16 @@ export class ProjectsService {
         this.assertIsProjectLead(user, project);
         const closureId = await this.phaseClosureId(tx, id, phase);
         const rows = await tx.signOff.findMany({ where: { phaseClosureId: closureId } });
+        // Round 5 question 23(d): the preparer differs from the reviewer and from the approver (the reviewer may also approve). [ASSUMPTION: R6-Q31]
+        {
+          const wouldBe: SignerSlots = {};
+          for (const r of rows) {
+            const asked = assignments.find((a) => a.role === r.role);
+            wouldBe[r.role as keyof SignerSlots] = asked ? (asked.userId ?? null) : (r.signedByUserId ?? r.assignedToUserId);
+          }
+          const conflicts = phaseSignerConflicts(wouldBe);
+          if (conflicts.length > 0) bypassable(new BadRequestException(signerConflictMessage(conflicts, false)));
+        }
         let changed = 0;
         for (const assignment of assignments) {
           const existing = rows.find((r) => r.role === assignment.role);
@@ -1639,7 +1663,14 @@ export class ProjectsService {
       }
       // The three phase signatures are an order, like a gate's (project owner, 2026-10-14): Prepared by, then
       // Reviewed by, then Approved by. A review of nothing, or an approval before the review, is not a sign-off.
-      this.assertSequence(await tx.signOff.findMany({ where: { phaseClosureId: closureId } }), role as GateSignOffRole);
+      const phaseRows = await tx.signOff.findMany({ where: { phaseClosureId: closureId } });
+      this.assertSequence(phaseRows, role as GateSignOffRole);
+      {
+        const taken: SignerSlots = { [role]: user.id };
+        for (const r of phaseRows) if (r.role !== role && r.signedByUserId) taken[r.role as keyof SignerSlots] = r.signedByUserId;
+        const conflicts = phaseSignerConflicts(taken);
+        if (conflicts.length > 0) bypassable(new ForbiddenException(signerConflictMessage(conflicts, false, 'You')));
+      }
       // SW-37: the "Approved by" row needs nothing beyond being the person the Lead nominated for it (it used to also need
       // `phase:N|approve`; the nomination is the authority now).
       // B3: the closure conditions are enforced HERE, not only by the UI lock
@@ -1986,18 +2017,9 @@ export class ProjectsService {
   // The human-study workflow keeps its stricter outside-department rule (C2); the
   // answer says so explicitly, and nothing here touches it.
   //
-  // NARROWED BACK on 2026-10-05 (project owner: if the review team did not say it,
-  // do not enforce it). Two further pairs used to be refused here —
-  // approver != preparer and approver != reviewer — which together forced THREE
-  // distinct people on every one of the twelve gates. Neither appears in any
-  // answer: 29(4) names only reviewer != preparer, and D1 says the opposite way
-  // ("where risk is low the same person may prepare several gate records").
-  //
-  // What removing them permits, stated plainly because it is not obvious: the
-  // approver may now be the same person as the preparer, i.e. somebody can approve
-  // the gate they prepared, and the approver's decision IS the gate decision. That
-  // is a real loosening of a control, taken deliberately rather than by oversight.
-  // [ASSUMPTION: R5-Q56]
+  // Round 5 question 23(a) (answered 2026-11-05) settled what the 2026-10-05 narrowing left open: the approver is never the preparer, and at
+  // a critical gate the three signatures are three different people (utils/signerIndependence.ts). The reviewer and the approver may still be
+  // one qualified person at a gate that is not critical. [ASSUMPTION: R6-Q31]
   private async assertIndependence(
     user: SessionUser,
     gateId: string,
@@ -2008,9 +2030,20 @@ export class ProjectsService {
     if (role === 'Reviewed by') {
       const preparer = rows.find((r) => r.role === 'Prepared by')?.signedByUserId;
       if (preparer && preparer === user.id) {
-        throw new ForbiddenException(
-          `You signed "Prepared by" on this gate — the reviewer must be a different person`,
-        );
+        bypassable(new ForbiddenException(`You signed "Prepared by" on this gate — the reviewer must be a different person`));
+      }
+    }
+    // Round 5 question 23(a): the approver is not the preparer (any gate) and, at a critical gate, not the reviewer either. The reviewer and
+    // the approver MAY be one qualified person at a gate that is not critical. [ASSUMPTION: R6-Q31]
+    if (role === 'Approved by') {
+      const taken: SignerSlots = {
+        'Prepared by': rows.find((r) => r.role === 'Prepared by')?.signedByUserId,
+        'Reviewed by': rows.find((r) => r.role === 'Reviewed by')?.signedByUserId,
+        'Approved by': user.id,
+      };
+      const conflicts = gateSignerConflicts(gateId, taken);
+      if (conflicts.length > 0) {
+        bypassable(new ForbiddenException(signerConflictMessage(conflicts, gateNeedsThreeDistinctSigners(gateId), 'You')));
       }
     }
     const required = INDEPENDENT_FUNCTION_BY_GATE[gateId];
@@ -2083,7 +2116,7 @@ export class ProjectsService {
           }
         }
         if (rep && assignees['Prepared by'] && assignees['Prepared by'] === rep.assignedToUserId) {
-          throw new BadRequestException('The function representative cannot also be "Prepared by"');
+          bypassable(new BadRequestException('The function representative cannot also be "Prepared by"'));
         }
       }
 
@@ -2096,13 +2129,16 @@ export class ProjectsService {
         const row = existing.find((r: { role: string }) => r.role === role);
         return row?.signedByUserId ?? row?.assignedToUserId ?? null;
       };
-      const preparer = wouldBe('Prepared by');
-      const reviewer = wouldBe('Reviewed by');
-      if (preparer && reviewer && preparer === reviewer) {
-        const who = await tx.user.findUnique({ where: { id: preparer }, select: { displayName: true } });
-        throw new BadRequestException(
-          `${who?.displayName ?? 'That person'} cannot be both "Prepared by" and "Reviewed by" on the same gate — the reviewer must be a different person`,
-        );
+      // Round 5 question 23(a): three distinct people at a critical gate; at any other the preparer differs from both. [ASSUMPTION: R6-Q31]
+      const nominated: SignerSlots = {
+        'Prepared by': wouldBe('Prepared by'),
+        'Reviewed by': wouldBe('Reviewed by'),
+        'Approved by': wouldBe('Approved by'),
+      };
+      const nominationConflicts = gateSignerConflicts(gateId, nominated);
+      if (nominationConflicts.length > 0) {
+        const who = await tx.user.findUnique({ where: { id: nominated[nominationConflicts[0].a] as string }, select: { displayName: true } });
+        bypassable(new BadRequestException(signerConflictMessage(nominationConflicts, gateNeedsThreeDistinctSigners(gateId), who?.displayName)));
       }
 
       for (const [role, userId] of Object.entries(assignees) as [GateSignOffRole, string | null][]) {
@@ -2194,7 +2230,13 @@ export class ProjectsService {
       }
       const preparer = rows.find((r: Row) => r.role === 'Prepared by');
       if ((preparer?.signedByUserId ?? preparer?.assignedToUserId) === candidate.id) {
-        throw new BadRequestException(`${candidate.displayName} is "Prepared by" on this gate and cannot also represent the independent function`);
+        bypassable(new BadRequestException(`${candidate.displayName} is "Prepared by" on this gate and cannot also represent the independent function`));
+      }
+      // The representative takes one slot; the OTHER slot's person must not be the same one at a critical gate (question 23(a)).
+      const otherSlot: GateSignOffRole = slot === 'Reviewed by' ? 'Approved by' : 'Reviewed by';
+      const otherRow = rows.find((r: Row) => r.role === otherSlot);
+      if ((otherRow?.signedByUserId ?? otherRow?.assignedToUserId) === candidate.id) {
+        bypassable(new BadRequestException(`${candidate.displayName} is already "${otherSlot}" on this gate — at a critical gate the three signatures are three different people`));
       }
       // The previous representative's slot (if it is the other one) is freed; the target slot must be unsigned.
       if (current && current.role !== slot) await free(current);
@@ -3864,8 +3906,10 @@ export class ProjectsService {
     const people = Object.fromEntries((await db.projectReviewer.findMany({ where: { projectId } })).map((r) => [r.roleKey, r.name]));
     const same = closureSignerConflict(config, gateId, people);
     if (same) {
-      throw new BadRequestException(
-        `"${config.key}" needs an independent reviewer at ${gateId}, but its Review owner and its Co-sign are both ${same} — the project's Lead assigns a different person to one of them first`,
+      bypassable(
+        new BadRequestException(
+          `"${config.key}" needs an independent reviewer at ${gateId}, but its Review owner and its Co-sign are both ${same} — the project's Lead assigns a different person to one of them first`,
+        ),
       );
     }
     if (closureSignersAreNominated(config)) {
@@ -5385,6 +5429,10 @@ export class ProjectsService {
           completionCriteria: a.completionCriteria ?? null,
           escalationTrigger: a.escalationTrigger ?? null,
           evidenceLink: a.evidenceLink ?? null,
+          actionType: a.actionType ?? null,
+          verifier: a.verifier ?? null,
+          cancellationReason: a.cancellationReason ?? null,
+          cancellationImpact: a.cancellationImpact ?? null,
         };
         if (keep.has(a.id)) {
           await tx.nextAction.update({ where: { id: a.id }, data });
@@ -5488,33 +5536,32 @@ export class ProjectsService {
       const raisedBy = old ? old.raisedBy : user.displayName;
       let verifiedBy = old?.verifiedBy;
       const entering = terminal(a.status) && !(old && terminal(old.status));
+      if (a.actionType && !(NEXT_ACTION_TYPES as readonly string[]).includes(a.actionType)) {
+        throw new BadRequestException(`"${a.description}": "${a.actionType}" is not a type of action`);
+      }
+      const verifierProblem = actionVerifierProblem(a);
+      if (verifierProblem) bypassable(new BadRequestException(`"${a.description}": ${verifierProblem}`));
       if (entering) {
-        // "The owner cannot unilaterally verify closure where independent
-        // confirmation is required." Applied to every action — when independent
-        // confirmation is NOT required is not stated [ASSUMPTION: R5-Q39].
-        if ((a.owner ?? '').trim() !== '' && a.owner === user.displayName) {
-          throw new BadRequestException(
-            `"${a.description}": you own this action, so someone else — its raiser, the gate owner or an authorised reviewer — must verify and close it (F8)`,
-          );
-        }
-        // F8: the raiser, the relevant gate owner or an authorised reviewer verifies
-        // and closes — for every priority (F8 does not tier this by priority).
-        // "Authorised reviewer" is read as someone who may decide this gate, the only
-        // per-gate authorisation the app has [ASSUMPTION: R5-Q39]. Since SW-37 that is
-        // the gate's nominated Approved-by signer, the project Lead or an administrator
-        // (the same function the screen reads), not a Role Editor grant.
+        // Round 5 question 23(b): who may close or cancel an action depends on what it is — see utils/actionVerification.ts. [ASSUMPTION: R6-Q31]
+        // "Authorised reviewer" is read as someone who may decide this gate: its nominated Approved-by signer, the project Lead or an administrator
+        // (the same function the screen reads, SW-37).
         const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
-        const allowed =
-          user.displayName === raisedBy ||
-          (!!gateOwner && user.displayName === gateOwner) ||
-          canDecideGateInProject(project, a.gateId, {
-            displayName: user.displayName,
-            isAdmin: this.permissions.isAdmin(user),
-          });
-        if (!allowed) {
-          throw new ForbiddenException(
-            `"${a.description}": only its raiser, the ${a.gateId} gate owner or an authorised reviewer (someone who may decide ${a.gateId}) can close or cancel it (F8)`,
-          );
+        const refusal = actionClosureRefusal(a, {
+          me: user.displayName,
+          raisedBy,
+          gateOwner,
+          authorised: canDecideGateInProject(project, a.gateId, { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) }),
+          to: a.status as 'Closed' | 'Cancelled',
+        });
+        // The evidence link of a self-closed administrative action is not a two-person rule, so the dev switch does not waive it.
+        if (refusal) {
+          const refused = new ForbiddenException(`"${a.description}": ${refusal}`);
+          if (/evidence link must be filled/.test(refusal)) throw refused;
+          bypassable(refused);
+        }
+        const cancellationGaps = actionCancellationGaps(a);
+        if (cancellationGaps.length > 0) {
+          throw new BadRequestException(`"${a.description}": cancelling a substantive action needs ${cancellationGaps.join(' and ')}`);
         }
         verifiedBy = user.displayName;
       } else if (!terminal(a.status)) {
@@ -6002,9 +6049,7 @@ export class ProjectsService {
         independent?.department?.trim() &&
         author.department.trim().toLowerCase() === independent.department.trim().toLowerCase()
       ) {
-        throw new BadRequestException(
-          'The Independent Reviewer must not belong to the same department as the Study Author (rule C2)',
-        );
+        bypassable(new BadRequestException('The Independent Reviewer must not belong to the same department as the Study Author (rule C2)'));
       }
       for (const a of approvals) {
         const target = row.studyApprovals.find((s) => s.role === a.role);
@@ -6178,21 +6223,77 @@ export class ProjectsService {
   // pre-change state preserved in a BacktrackEvent (B4 — nothing is deleted).
   // Ported from the store's createFormulaVersion; the reopen/invalidate half is
   // deliberately the same shape as `backtrack` above, because it IS a backtrack.
-  async createFormulaVersion(
+  // Round 5 question 23(c) (answered 2026-11-05): "the initiator may propose Major/Minor but a different authorised Technical/Quality reviewer must
+  // confirm. Being qualified does not make self-confirmation independent. The creation dialog should record proposer and confirmer separately."
+  // So creating a version is two acts. The initiator PROPOSES (nothing changes: no version, no reopened gate); a different holder of Technical or
+  // Quality authority CONFIRMS, which creates the version below and records both people. [ASSUMPTION: R6-Q31]
+  async proposeFormulaVersion(
     user: SessionUser,
     id: string,
-    input: {
-      version: string;
-      changeType: 'Major' | 'Minor';
-      reason?: string;
-      initiatedBy?: string;
-      majorCriteria?: string[];
-      classificationConfirmedBy?: string;
-      // Round 5 question 5(c): the manufactured formula is unchanged — a document revision.
-      documentationOnly?: boolean;
-      // Round 5 question 5(d): a person confirms the version this one replaces was never released.
-      confirmNoRelease?: boolean;
-    },
+    input: { version: string; changeType: 'Major' | 'Minor'; reason?: string; majorCriteria?: string[]; documentationOnly?: boolean; confirmNoRelease?: boolean },
+    expectedVersion: number,
+    idempotencyKey: string,
+  ): Promise<ProjectEnvelope> {
+    const scope = 'project.formula_version.propose';
+    const replayed = await this.idempotency.replay(scope, idempotencyKey);
+    if (replayed) return replayed as ProjectEnvelope;
+    const version = input.version.trim();
+    if (!version) throw new BadRequestException('A formula version is required');
+    if (input.changeType !== 'Major' && input.changeType !== 'Minor') throw new BadRequestException('The change type is Major or Minor');
+    const majorCriteria = (input.majorCriteria ?? []).filter((c) => MAJOR_CHANGE_CRITERIA.some((m) => m.id === c));
+    if (majorCriteria.length !== (input.majorCriteria ?? []).length) throw new BadRequestException('Unknown change-impact criterion');
+    if (majorCriteria.length > 0 && input.changeType !== 'Major') throw new BadRequestException('A change that touches any impact area is Major (F5)');
+    if (input.documentationOnly && (input.changeType !== 'Minor' || !input.reason?.trim())) {
+      throw new BadRequestException('A documentation-only correction is a Minor change and needs its reason');
+    }
+    const envelope = await this.mutate(user, id, expectedVersion, 'formula_version.proposed', async (tx, _row, project) => {
+      if (currentGateIndex(project) !== gateIndex('SG05')) {
+        throw new BadRequestException('A new formula version can be proposed only while Gate 05 is the open gate');
+      }
+      if (version === project.formulaVersion) throw new BadRequestException(`Project is already on formula version ${version}`);
+      if (project.formulaVersionProposal) {
+        throw new BadRequestException(
+          `Formula version ${project.formulaVersionProposal.version} proposed by ${project.formulaVersionProposal.proposedBy} is waiting for confirmation — confirm or withdraw it first`,
+        );
+      }
+      await tx.formulaVersionProposal.create({
+        data: {
+          projectId: id,
+          version,
+          changeType: input.changeType,
+          reason: input.reason?.trim() || null,
+          majorCriteria,
+          documentationOnly: !!input.documentationOnly,
+          confirmNoRelease: !!input.confirmNoRelease,
+          // Who proposed comes from the session, never from the request.
+          proposedBy: user.displayName,
+        },
+      });
+      return { version, changeType: input.changeType };
+    });
+    await this.prisma.$transaction((tx) =>
+      this.idempotency.remember(tx, scope, idempotencyKey, 201, envelope as unknown as Prisma.InputJsonValue),
+    );
+    return envelope;
+  }
+
+  // The initiator, the project's Lead or an administrator may withdraw a proposal that has not been confirmed.
+  async withdrawFormulaVersionProposal(user: SessionUser, id: string, expectedVersion: number): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'formula_version.proposal_withdrawn', async (tx, _row, project) => {
+      const proposal = project.formulaVersionProposal;
+      if (!proposal) throw new NotFoundException('No formula version is waiting for confirmation');
+      const allowed = proposal.proposedBy === user.displayName || project.identity.projectLead === user.displayName || this.permissions.isAdmin(user);
+      if (!allowed) {
+        throw new ForbiddenException(`Only the person who proposed it (${proposal.proposedBy}), the project Lead or an administrator can withdraw it`);
+      }
+      await tx.formulaVersionProposal.deleteMany({ where: { projectId: id } });
+      return { version: proposal.version };
+    });
+  }
+
+  async confirmFormulaVersionProposal(
+    user: SessionUser,
+    id: string,
     expectedVersion: number,
     idempotencyKey: string,
   ): Promise<ProjectEnvelope> {
@@ -6200,17 +6301,26 @@ export class ProjectsService {
     const replayed = await this.idempotency.replay(scope, idempotencyKey);
     if (replayed) return replayed as ProjectEnvelope;
 
+    const proposal = await this.prisma.formulaVersionProposal.findUnique({ where: { projectId: id } });
+    if (!proposal) throw new NotFoundException('No formula version is waiting for confirmation');
+    const input = {
+      version: proposal.version,
+      changeType: proposal.changeType as 'Major' | 'Minor',
+      reason: proposal.reason ?? undefined,
+      majorCriteria: proposal.majorCriteria,
+      documentationOnly: proposal.documentationOnly,
+      confirmNoRelease: proposal.confirmNoRelease,
+    };
     const version = input.version.trim();
-    if (!version) throw new BadRequestException('A formula version is required');
-    // F5 (SME rule audit C1, 2026-10-04): "the change initiator may propose the
-    // classification, but an authorised technical or quality reviewer must
-    // confirm it." The confirmer used to be a typed name and nothing checked who
-    // created a version at all. Now the person creating it is the confirmer, and
-    // must hold Technical or Quality authority. Whether the initiator and the
-    // confirmer may be the same person is ours to ask [ASSUMPTION: R5-Q42].
+    // F5: "an authorised technical or quality reviewer must confirm it", and (question 23(c)) not the person who proposed it.
     if (!(await this.holdsAnyCapability(user, [...FORMULA_CLASSIFICATION_CAPABILITIES]))) {
-      throw new ForbiddenException(
-        'Creating a formula version confirms its Major/Minor classification, which needs Technical or Quality authority (F5)',
+      throw new ForbiddenException("Confirming a formula version's Major/Minor classification needs Technical or Quality authority (F5)");
+    }
+    if (proposal.proposedBy === user.displayName) {
+      bypassable(
+        new ForbiddenException(
+          `You proposed formula version ${version}. A different authorised Technical or Quality reviewer must confirm it — being qualified does not make confirming your own proposal independent.`,
+        ),
       );
     }
     // Any ticked impact area makes it Major — the modal enforced this, the API did not.
@@ -6282,14 +6392,15 @@ export class ProjectsService {
             previousVersionId: previous?.id,
             changeType: input.changeType,
             reason: input.reason ?? null,
-            // C8/C1: who did it comes from the session, never from the request.
-            initiatedBy: user.displayName,
+            // The initiator is whoever proposed it; the confirmer is the signed-in reviewer. Both come from the records, never from a request.
+            initiatedBy: proposal.proposedBy,
             majorCriteria,
             classificationConfirmedBy: user.displayName,
             documentationOnly: !!input.documentationOnly,
             status: 'Active',
           },
         });
+        await tx.formulaVersionProposal.deleteMany({ where: { id: proposal.id } });
         // Carry the current composition forward so the new version starts from
         // the old one rather than empty.
         const carried = previous?.bomLines ?? [];
@@ -7694,7 +7805,7 @@ export class ProjectsService {
         throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may conclude this as ${functionLabel}`);
       }
       if (a.raisedById && a.raisedById === user.id) {
-        throw new ForbiddenException('You raised this change, so someone else must conclude its impact');
+        bypassable(new ForbiddenException('You raised this change, so someone else must conclude its impact'));
       }
       const problem = impactConclusionProblem(
         { conclusion: input.conclusion, rationale: input.rationale ?? '', linkedChangeId: input.linkedChangeId, affects: input.affects },
@@ -7755,7 +7866,7 @@ export class ProjectsService {
         throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may confirm this as ${functionLabel}`);
       }
       if (a.raisedById && a.raisedById === user.id) {
-        throw new ForbiddenException('You proposed this as Critical, so someone else must confirm it');
+        bypassable(new ForbiddenException('You proposed this as Critical, so someone else must confirm it'));
       }
       const confirmed = { by: user.displayName, functionKey: input.functionKey, at: new Date().toISOString() };
       await tx.impactAssessment.update({

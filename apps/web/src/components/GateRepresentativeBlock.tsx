@@ -8,6 +8,7 @@ import {
   independentFunctionsForGate,
 } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
+import { useAllowSameSigner } from '../hooks/useAllowSameSigner';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import './GateSignOffPanel.css';
@@ -29,6 +30,7 @@ export default function GateRepresentativeBlock({
   canEdit: boolean;
 }) {
   const users = usePickerUsers();
+  const allowSameSigner = useAllowSameSigner();
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const setRepresentative = useAppStore((s) => s.setGateRepresentative);
   const functions = independentFunctionsForGate(gateId);
@@ -42,7 +44,7 @@ export default function GateRepresentativeBlock({
 
   const label = functions.map((f) => INDEPENDENT_FUNCTIONS[f].label).join(' or ');
   const holds = (keys: string[] | undefined, f: string) => hasCapability(grants, keys ?? [], INDEPENDENT_FUNCTIONS[f].capability);
-  const candidates = users.filter((u) => u.id !== preparerId && functions.some((f) => holds(u.roleKeys, f)));
+  const candidates = users.filter((u) => (allowSameSigner || u.id !== preparerId) && functions.some((f) => holds(u.roleKeys, f)));
   const chosen = users.find((u) => u.id === userId);
   const chosenFunctions = chosen ? functions.filter((f) => holds(chosen.roleKeys, f)) : [];
   const signed = !!rep?.signedAt;

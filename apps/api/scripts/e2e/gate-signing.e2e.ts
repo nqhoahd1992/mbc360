@@ -60,10 +60,10 @@ export async function run(base: string, db: Client): Promise<number> {
   const sessions: Record<string, Session> = {};
   const short = (v: unknown) => (JSON.stringify(v) ?? 'undefined').slice(0, 220);
 
-  async function api(key: string, method: string, path: string, body?: unknown) {
+  async function api(key: string, method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: { 'content-type': 'application/json', cookie: sessions[key].cookie },
+      headers: { 'content-type': 'application/json', cookie: sessions[key].cookie, ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
@@ -298,6 +298,68 @@ export async function run(base: string, db: Client): Promise<number> {
       expectedVersion: await version(),
     });
     t('the nomination is cleared again', r.status < 300, `${r.status} ${short(r.json)}`);
+  }
+
+  // ============================================================ Round 5 question 23(b): who may verify, self-close or cancel an action
+  console.log('\n--- closing and cancelling an action: independent verification, self-closure of low-risk administrative actions, cancellation (question 23(b))');
+  {
+    let r: any;
+    const GATE = 'SG02';
+    const nameOf = async (key: string): Promise<string> => (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
+    const [tuanName, sekarName, adminName] = [await nameOf('tuan'), await nameOf('sekar'), await nameOf('admin')];
+    const actions = async () => ((await project()).project.nextActions as any[]).filter((a) => a.gateId === GATE);
+    const put = async (key: string, list: any[]) => api(key, 'PUT', `/projects/${PROJECT}/next-actions`, { gateIds: [GATE], actions: list, expectedVersion: await version() });
+    const base = { gateId: GATE, dueDate: '2030-01-01', status: 'Open' };
+    const withChange = async (id: string, change: Record<string, unknown>) => (await actions()).map((a) => (a.id === id ? { ...a, ...change } : a));
+    const find = async (id: string) => (await actions()).find((a) => a.id === id);
+
+    // A High action: independent verification by the nominated verifier.
+    const HIGH = 'NA-E2E-HIGH';
+    r = await put('tuan', [...(await actions()), { ...base, id: HIGH, description: 'e2e: high action', owner: adminName, priority: 'High', actionType: 'Other', verifier: adminName }]);
+    t('a verifier who owns the action is refused (400)', r.status === 400 && /independent of the work/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('tuan', [...(await actions()), { ...base, id: HIGH, description: 'e2e: high action', owner: adminName, priority: 'High', actionType: 'Other' }]);
+    t('a High action is raised', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(HIGH, { status: 'Closed' }));
+    t('its raiser cannot close it: independent verification needs a nominated verifier (403)', r.status === 403 && /nominate a qualified verifier/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(HIGH, { verifier: sekarName }));
+    t('the raiser nominates a verifier', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(HIGH, { status: 'Closed' }));
+    t('...and still cannot close it themselves: only the nominated verifier can (403)', r.status === 403 && /nominated verifier/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('sekar', await withChange(HIGH, { status: 'Closed' }));
+    t('the nominated verifier closes it', r.status < 300 && (await find(HIGH))?.status === 'Closed' && (await find(HIGH))?.verifiedBy === sekarName, `${r.status} ${short(await find(HIGH))}`);
+
+    // The kind of action cannot be re-typed by the person who owns it to give themselves the right to close it.
+    const RETYPE = 'NA-E2E-RETYPE';
+    r = await put('admin', [...(await actions()), { ...base, id: RETYPE, description: 'e2e: owned by someone else', owner: tuanName, priority: 'Low', actionType: 'Safety' }]);
+    t('a Safety action owned by tuan is raised by the Lead', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(RETYPE, { actionType: 'Administrative' }));
+    t("its owner cannot re-type it as Administrative (403: the record is the creator's)", r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await put('admin', await withChange(RETYPE, { actionType: 'Smoke' }));
+    t('a type that is not on the list is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+    // A low-risk administrative action: its owner closes it with evidence.
+    const ADMIN_ACTION = 'NA-E2E-ADMIN';
+    r = await put('tuan', [...(await actions()), { ...base, id: ADMIN_ACTION, description: 'e2e: administrative', owner: tuanName, priority: 'Low', actionType: 'Administrative' }]);
+    t('a low-risk administrative action is raised', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(ADMIN_ACTION, { status: 'Closed' }));
+    t('its owner cannot close it without the evidence link (403)', r.status === 403 && /evidence link/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(ADMIN_ACTION, { status: 'Closed', evidenceLink: 'https://x/evidence' }));
+    t('...and closes it themselves once the evidence is there', r.status < 300 && (await find(ADMIN_ACTION))?.status === 'Closed' && (await find(ADMIN_ACTION))?.verifiedBy === tuanName, `${r.status} ${short(await find(ADMIN_ACTION))}`);
+
+    // An action that is not administrative is not self-closable by its owner, even at Low priority.
+    const OWN = 'NA-E2E-OWN';
+    r = await put('tuan', [...(await actions()), { ...base, id: OWN, description: 'e2e: owner closes own regulatory action', owner: tuanName, priority: 'Low', actionType: 'Regulatory', verifier: sekarName }]);
+    t('a Regulatory action is raised with its verifier', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await put('tuan', await withChange(OWN, { status: 'Closed', evidenceLink: 'https://x/e' }));
+    t('...and cannot be closed by its owner even with evidence (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+
+    // Cancelling a substantive action: an authorised person, with a justification and an impact review.
+    r = await put('tuan', await withChange(OWN, { status: 'Cancelled', cancellationReason: 'x', cancellationImpact: 'y' }));
+    t('its owner cannot cancel it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await put('admin', await withChange(OWN, { status: 'Cancelled' }));
+    t('an authorised person (the Lead) cannot cancel it without a justification and an impact review (400)', r.status === 400 && /impact review/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await put('admin', await withChange(OWN, { status: 'Cancelled', cancellationReason: 'Raised by mistake', cancellationImpact: 'Nothing left unaddressed: the dossier item is covered by another action' }));
+    t('...with both it is cancelled and the record keeps them', r.status < 300 && (await find(OWN))?.status === 'Cancelled' && !!(await find(OWN))?.cancellationImpact, `${r.status} ${short(await find(OWN))}`);
   }
 
   // ============================================================ N/A with a rationale on the Phase 2-4 requirement tables
@@ -1454,6 +1516,54 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('SG02 passed (with conditions)', gp.isGatePassed(pj.project, 'SG02'));
 
+  // ============================================================ Round 5 question 23: when one person may hold two roles on one record
+  console.log('\n--- one person, two roles on one record (question 23)');
+  {
+    const assignUrl = (gate: string) => `/projects/${PROJECT}/gates/${gate}/sign-off-assignees`;
+    const idOf = (key: string) => sessions[key].id;
+    const setRoles = async (gate: string, assignments: { role: string; userId: string | null }[]) =>
+      api('admin', 'PUT', assignUrl(gate), { assignments, expectedVersion: await version() });
+    const clear = async (gate: string) => setRoles(gate, ROLES.map((role) => ({ role, userId: null })));
+
+    // (a) a gate that is not critical: the preparer differs from the reviewer and the approver; reviewer and approver may be one person
+    r = await setRoles('SG06', [{ role: 'Prepared by', userId: idOf('tuan') }]);
+    t('SG06 (not critical): a preparer is nominated', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await setRoles('SG06', [{ role: 'Approved by', userId: idOf('tuan') }]);
+    t('...the preparer cannot also be the approver (400)', r.status === 400 && /preparer must differ/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await setRoles('SG06', [{ role: 'Reviewed by', userId: idOf('tuan') }]);
+    t('...nor the reviewer (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await setRoles('SG06', [{ role: 'Reviewed by', userId: idOf('sekar') }, { role: 'Approved by', userId: idOf('sekar') }]);
+    t('...but one other person may be both reviewer and approver', r.status < 300, `${r.status} ${short(r.json)}`);
+    await clear('SG06');
+
+    // (a) a critical gate: three different people
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/SG07/sign-off-representative`, {
+      userId: idOf(signerKey('SG07', 'Approved by')),
+      slot: 'Approved by',
+      expectedVersion: await version(),
+    });
+    t('SG07 (critical): the function representative takes the Approved by slot', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await setRoles('SG07', [{ role: 'Reviewed by', userId: idOf(signerKey('SG07', 'Approved by')) }]);
+    t('...and cannot also be the reviewer: three different people (400)', r.status === 400 && /three different people/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await setRoles('SG07', [{ role: 'Prepared by', userId: idOf(signerKey('SG07', 'Approved by')) }]);
+    t('...nor the preparer (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/SG07/sign-off-representative`, { userId: null, expectedVersion: await version() });
+    t('the representative is cleared again', r.status < 300, `${r.status} ${short(r.json)}`);
+    await clear('SG07');
+
+    // (d) the phase: the preparer differs from the reviewer and the approver; the reviewer may also approve
+    const phaseUrl = `/projects/${PROJECT}/phases/4/sign-off-assignees`;
+    const setPhase = async (assignments: { role: string; userId: string | null }[]) => api('admin', 'PUT', phaseUrl, { assignments, expectedVersion: await version() });
+    r = await setPhase([{ role: 'Prepared by', userId: idOf('tuan') }]);
+    t('Phase 4: a preparer is nominated', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await setPhase([{ role: 'Approved by', userId: idOf('tuan') }]);
+    t('...the preparer cannot also approve the phase (400)', r.status === 400 && /preparer must differ/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await setPhase([{ role: 'Reviewed by', userId: idOf('sekar') }, { role: 'Approved by', userId: idOf('sekar') }]);
+    t('...but the reviewer may also approve it', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await setPhase(ROLES.map((role) => ({ role, userId: null })));
+    t('the phase nominations are cleared again', r.status < 300, `${r.status} ${short(r.json)}`);
+  }
+
   // ============================================================ SG03: register columns
   console.log('\n--- SG03 (claim ledger: Gate 3 columns versus later-gate columns)');
   // The independent-function representative (project owner, 2026-10-15): named by the Lead before anyone signs.
@@ -1763,6 +1873,55 @@ export async function run(base: string, db: Client): Promise<number> {
   t('productStatus is Gate 7\'s column: still editable after SG04 passed', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
   t('...and SG04 is still passed with its signature current (its change is information only)', gp.isGatePassed(pj.project, 'SG04') && (await stale('SG04', 'Approved by')).length === 0, short(await stale('SG04', 'Approved by')));
+
+  // ============================================================ Round 5 question 23(c): a formula version is proposed by one person and confirmed by another
+  console.log('\n--- a formula version: proposed by the initiator, confirmed by a different authorised reviewer (question 23(c))');
+  {
+    const nameOf = async (key: string): Promise<string> => (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
+    const proposerKey = 'tuan';
+    const confirmerKey = poolKey('Approved by', 1); // a clone of the administrator account: holds the authority, is a different person
+    const proposerName = await nameOf(proposerKey);
+    const confirmerName = await nameOf(confirmerKey);
+    t('the proposer and the confirmer are two different people', !!proposerName && !!confirmerName && proposerName !== confirmerName, `${proposerName} / ${confirmerName}`);
+    const url = `/projects/${PROJECT}/formula-versions`;
+    const body = async () => ({ version: 'F1.1', changeType: 'Minor', confirmNoRelease: true, reason: 'e2e: preservative level adjusted', expectedVersion: await version() });
+    const propose = async (key: string) => api(key, 'POST', url, await body(), { 'Idempotency-Key': `e2e-propose-${Date.now()}-${Math.random()}` });
+    const decide = async (key: string, action: 'confirm' | 'withdraw') =>
+      api(key, 'POST', `${url}/proposal/${action}`, { expectedVersion: await version() }, { 'Idempotency-Key': `e2e-${action}-${Date.now()}-${Math.random()}` });
+    const before = (await project()).project.formulaVersion;
+
+    r = await propose(proposerKey);
+    t('proposing a version succeeds and records the proposer from the session', r.status < 300, `${r.status} ${short(r.json)}`);
+    {
+      const pj = (await project()).project;
+      t('...it changes nothing: the version, the history and the gates are as they were', pj.formulaVersion === before && pj.formulaVersionProposal?.version === 'F1.1' && pj.formulaVersionProposal?.proposedBy === proposerName, short(pj.formulaVersionProposal));
+    }
+    r = await propose(proposerKey);
+    t('a second proposal while one waits is refused (400)', r.status === 400 && /waiting for confirmation/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+    r = await decide(proposerKey, 'confirm');
+    t('the proposer cannot confirm their own proposal (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    t('...and the proposal still waits', (await project()).project.formulaVersionProposal?.version === 'F1.1');
+    r = await decide('sekar', 'withdraw');
+    t('somebody who is not the proposer, the Lead or an administrator cannot withdraw it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await decide(proposerKey, 'withdraw');
+    t('the proposer withdraws it', r.status < 300 && !(await project()).project.formulaVersionProposal, `${r.status} ${short(r.json)}`);
+    r = await decide(confirmerKey, 'confirm');
+    t('confirming with nothing proposed is refused (404)', r.status === 404, `${r.status} ${short(r.json)}`);
+
+    r = await propose(proposerKey);
+    t('the version is proposed again', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await decide(confirmerKey, 'confirm');
+    t('a different authorised reviewer confirms it', r.status < 300, `${r.status} ${short(r.json)}`);
+    {
+      const pj = (await project()).project;
+      const rec = (pj.formulaVersionHistory as any[]).find((h) => h.version === before);
+      const created = (pj.formulaVersionHistory as any[]).find((h) => h.version === 'F1.1');
+      t('...the version now exists and the proposal is gone', pj.formulaVersion === 'F1.1' && !pj.formulaVersionProposal, `${pj.formulaVersion} ${short(pj.formulaVersionProposal)}`);
+      t('...and the previous version is in the history', !!rec || !!created, short(pj.formulaVersionHistory));
+      const row = (await db.query(`SELECT "initiatedBy", "classificationConfirmedBy" FROM formula_versions WHERE "projectId" = $1 AND version = 'F1.1'`, [PROJECT])).rows[0];
+      t('the proposer and the confirmer are recorded separately on the version', row?.initiatedBy === proposerName && row?.classificationConfirmedBy === confirmerName, short(row));
+    }
+  }
 
   console.log('\n--- SG05 (the Formula BOM, costing and formula properties are Gate 5 data)');
   await nominate('SG05');

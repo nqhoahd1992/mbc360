@@ -341,12 +341,21 @@ async function main() {
 
   if (stage === 'versions') {
     console.log('Formula versions (through the route)');
+    // Round 5 question 23(c): a version is proposed by one person and confirmed by a DIFFERENT one. This tool acts as a single administrator, so —
+    // like the closure below — it writes the proposer straight to the database between the two real calls (a dev-tool bypass).
+    const proposeAndConfirmVersion = async (input: Record<string, unknown>, tag: string) => {
+      await reload();
+      take(await api('POST', `/projects/${id}/formula-versions`, { ...input, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-${tag}-propose` }));
+      await prisma.formulaVersionProposal.updateMany({ where: { projectId: id }, data: { proposedBy: 'SEED Proposer' } });
+      await reload();
+      take(await api('POST', `/projects/${id}/formula-versions/proposal/confirm`, { expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-${tag}` }));
+    };
     await step('formula version F1.1 (Minor)', async () =>
-      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F1.1', changeType: 'Minor', confirmNoRelease: true, reason: `${SEED}: preservative level adjusted`, initiatedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v11` })),
+      proposeAndConfirmVersion({ version: 'F1.1', changeType: 'Minor', confirmNoRelease: true, reason: `${SEED}: preservative level adjusted` }, 'v11'),
     );
     await step('formula version F2.0 (Major: reopens Gates 04-09)', async () => {
       await reload();
-      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F2.0', changeType: 'Major', confirmNoRelease: true, reason: `${SEED}: new emollient system and preservative`, initiatedBy: adminName, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id], classificationConfirmedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v20` }));
+      await proposeAndConfirmVersion({ version: 'F2.0', changeType: 'Major', confirmNoRelease: true, reason: `${SEED}: new emollient system and preservative`, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id] }, 'v20');
     });
     // Round 5 question 11: a Major version raises the master Change Control record, which stays open (and blocks Gate 11) until its impact is
     // assessed and it is closed. This is the dev tool's one bypass: write the triage and the closure straight to the database, so the gates that

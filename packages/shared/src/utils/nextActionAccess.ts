@@ -13,7 +13,9 @@ import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 // Status as well would make F8's own closure route impossible for anyone who did
 // not happen to create the action. The server and the screen both call this one
 // predicate so they cannot disagree.
-export const NEXT_ACTION_RECORD_FIELDS = ['description', 'gateId', 'owner', 'dueDate', 'priority'] as const;
+// Round 5 question 23(b): the type and the nominated verifier are part of the record too — they decide who may close it, so the owner cannot
+// re-type their own action to give themselves the right.
+export const NEXT_ACTION_RECORD_FIELDS = ['description', 'gateId', 'owner', 'dueDate', 'priority', 'actionType', 'verifier'] as const;
 
 export interface NextActionActor {
   displayName?: string;
@@ -86,9 +88,9 @@ export function nextActionFreeze(committed: NextAction | undefined, gatePassed: 
 // they move with it on an open action and are not separately editable.
 const FROZEN_WHEN_TERMINAL = [
   'description', 'gateId', 'owner', 'dueDate', 'priority', 'status', 'dateCompleted', 'verifiedBy',
-  'completionCriteria', 'escalationTrigger', 'evidenceLink',
+  'completionCriteria', 'escalationTrigger', 'evidenceLink', 'actionType', 'verifier', 'cancellationReason', 'cancellationImpact',
 ] as const;
-const FROZEN_WHEN_OPEN = ['description', 'gateId', 'priority'] as const;
+const FROZEN_WHEN_OPEN = ['description', 'gateId', 'priority', 'actionType'] as const;
 
 // Why a proposed change to a committed action is refused after its gate passed, or
 // undefined when it is allowed.

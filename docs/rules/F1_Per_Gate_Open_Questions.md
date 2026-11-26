@@ -1416,7 +1416,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q31 · R6-Q28 | **20** (đã trả lời 05/11, xây 25/11/2026; R6-Q28 hỏi lại một chỗ ta đọc) | Gate 10: trạng thái checklist và approval nào tính là xong |
 | ✅ R5-Q32 · R6-Q29 | **21** (đã trả lời 05/11, xây 26/11/2026; R6-Q29 hỏi lại một chỗ ta đọc) | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
 | ✅ R5-Q30 · R5-Q45 · R6-Q30 | **22(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q30 hỏi lại một chỗ ta đọc) | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
-| R5-Q56 · R5-Q39 · R5-Q42 · R5-Q2 | **23(a) · (b) · (c) · (d)** | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
+| ✅ R5-Q56 · R5-Q39 · R5-Q42 · R6-Q31 (R5-Q2 còn mở) | **23(a) · (b) · (c) · (d)** (đã trả lời 05/11, xây 26/11/2026; R6-Q31 hỏi lại các chỗ ta đọc) | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
 | R5-Q60 · R5-Q61 | **24(a) · (b)** | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
 | R5-Q40 | **25** | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
 | R5-Q41 | **26** | Bản ghi deviation khi phát hành chưa được duyệt |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q31 · Một người giữ hai vai trên một bản ghi: các chỗ ta đọc câu trả lời (Vòng 5 câu 23) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 23.** SME nêu: (a) ở Gate 3, 4, 7, 8, 9, 10, 11 ba chữ ký là ba người khác nhau gồm cả chức năng độc lập; ở gate khác người chuẩn bị khác người rà soát và người phê duyệt, hai người này có thể là một; một người được chuẩn bị nhiều gate khác nhau; (b) chủ action được hoàn thành và nộp bằng chứng, xác minh độc lập cho action Critical/High và action đóng rủi ro an toàn/quy định/claim/phát hành/chất lượng nguyên liệu, chỉ định người xác minh đủ năng lực, action hành chính rủi ro thấp được tự đóng kèm bằng chứng và dấu vết kiểm toán khi loại action cho phép, huỷ action thực chất cần lý do được uỷ quyền và đánh giá tác động; (c) người khởi xướng đề xuất Major/Minor, một người Technical/Quality khác xác nhận, hộp thoại ghi riêng hai người; (d) đóng phase: người chuẩn bị khác người rà soát và phê duyệt, người rà soát có thể phê duyệt, nếu phê duyệt phase đưa ra quyết định trọng yếu mới thì áp quy tắc ba người. Cách đọc của ta: (1) **gate**: \`utils/signerIndependence.ts\` (\`gateSignerConflicts\`: gate trọng yếu cấm mọi cặp trùng, gate khác cấm người chuẩn bị trùng với hai người còn lại), áp ở chỉ định, chỉ định người đại diện chức năng và lúc ký (\`setGateSignOffAssignees\`, \`setGateRepresentative\`, \`assertIndependence\`) và ở bộ chọn trên màn hình; (2) **action**: \`utils/actionVerification.ts\` — trường mới \`actionType\` (Administrative, Safety, Regulatory, Claims, Release, Material quality, Other — lấy từ các rủi ro SME nêu), \`verifier\` (người xác minh), \`cancellationReason\`, \`cancellationImpact\` (migration \`20261126200000\`); cần xác minh độc lập khi Critical/High hoặc loại thuộc năm rủi ro; người xác minh do người nêu action hoặc Lead chỉ định, không phải chủ action, và là người duy nhất đóng; "đủ năng lực" = người được chỉ định, không gắn chức năng; hành chính rủi ro thấp = loại Administrative ở Low/Medium, chủ action tự đóng khi có liên kết bằng chứng; action khác không cần xác minh độc lập giữ quy tắc cũ (người nêu, chủ gate, người có quyền quyết định gate; không bao giờ chủ action); huỷ action không phải hành chính rủi ro thấp cần người có quyền quyết định gate (không phải chủ action) kèm lý do và đánh giá tác động; action chưa ghi loại coi là thực chất; loại và người xác minh nằm trong "bản ghi" nên chỉ người tạo, Lead, quản trị viên sửa (\`NEXT_ACTION_RECORD_FIELDS\`) và bị đóng băng sau khi gate qua; (3) **phiên bản công thức**: \`proposeFormulaVersion\` → \`confirmFormulaVersionProposal\` (bảng \`formula_version_proposals\`, migration \`20261126210000\`), người xác nhận giữ \`gate-signoff|represent-technical\` hoặc \`…represent-quality\` và khác người đề xuất; mỗi lúc một đề xuất chờ; người đề xuất, Lead hoặc quản trị viên rút lại được; (4) **phase**: \`phaseSignerConflicts\` áp ở chỉ định và lúc ký; câu cuối của (d) không thực thi được vì hệ thống không nhận ra "quyết định trọng yếu mới".
+
+**Câu hỏi:** (a) "Low hoặc Medium, loại Administrative" có đúng ranh giới tự đóng không, hay chỉ Low; (b) "người được chỉ định" đủ cho "đủ năng lực" chưa; (c) huỷ action thực chất có cần báo người nêu không; (d) nhận ra phê duyệt phase "quyết định trọng yếu mới" bằng tín hiệu nào.
+
+**Nếu trả lời khác:** \`utils/signerIndependence.ts\`; \`utils/actionVerification.ts\`; \`utils/nextActionAccess.ts\`; \`projects.service.ts\` (\`setGateSignOffAssignees\`, \`setGateRepresentative\`, \`assertIndependence\`, \`setSignOffAssignees\`, \`signSignOff\`, \`guardNextActions\`, \`proposeFormulaVersion\`, \`confirmFormulaVersionProposal\`, \`withdrawFormulaVersionProposal\`); \`GateSignOffPanel.tsx\`, \`SignOffBlock.tsx\`, \`NextActionsCard.tsx\`, \`FormulaVersionModal.tsx\`, \`FormulaVersionProposalNotice.tsx\` [ASSUMPTION: R6-Q31].
 
 #### R6-Q30 · Phản hồi hiệu năng và rà soát sớm sau ra mắt: các chỗ ta đọc câu trả lời (Vòng 5 câu 22) 🟡
 
@@ -2367,7 +2375,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/claimEvidence.ts` — `claimUseBlocker`.
 
-#### R5-Q39 · Khi nào chủ action không được tự đóng action của mình 🔴
+#### R5-Q39 · Khi nào chủ action không được tự đóng action của mình ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 23(b)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Chủ action được hoàn thành và nộp bằng chứng; xác minh độc lập cho Critical/High và action đóng rủi ro an toàn/quy định/claim/phát hành/chất lượng nguyên liệu, chỉ định người xác minh đủ năng lực; action hành chính rủi ro thấp được tự đóng kèm bằng chứng; huỷ action thực chất cần lý do được uỷ quyền và đánh giá tác động. → **R6-Q31** [ASSUMPTION: R5-Q39].
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B24).** F8: chủ action không được tự xác nhận đóng "where independent confirmation is required". Không nói khi nào là required. Đang áp cho **mọi** action; riêng action Critical chỉ người nêu, chủ gate hoặc người có quyền quyết gate mới đóng/huỷ được.
 
@@ -2397,7 +2407,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** thêm một `RegisterConfig` mới trong `packages/shared/src/config/registers.ts`, và nếu (c) là có thì thêm một mục readiness ở `gateReadiness.ts`; chú thích tại `publishedInfoViolations` trong `packages/shared/src/utils/claimEvidence.ts`.
 
-#### R5-Q42 · Người tạo phiên bản công thức có được tự xác nhận phân loại Major/Minor không 🔴
+#### R5-Q42 · Người tạo phiên bản công thức có được tự xác nhận phân loại Major/Minor không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 23(c)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Không: người khởi xướng đề xuất, một người Technical/Quality khác xác nhận; hộp thoại ghi riêng hai người. → **R6-Q31** [ASSUMPTION: R5-Q42].
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục C1).** F5: *"the change initiator may propose the classification, but an authorised technical or quality reviewer must confirm it."* Trước đây người xác nhận là một tên gõ tay. Giờ người tạo phiên bản chính là người xác nhận, ghi theo phiên đăng nhập, và phải có quyền Technical hoặc Quality.
 
@@ -2532,7 +2544,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/web/src/components/GateSignOffPanel.tsx` — bỏ nhánh `stageIncomplete` trong `blockedReason` và khối `gso-gate-hold`.
 
-#### R5-Q56 · Ba chữ ký gate có phải ba người khác nhau không 🔴
+#### R5-Q56 · Ba chữ ký gate có phải ba người khác nhau không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 23(a)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Gate 3, 4, 7, 8, 9, 10, 11: ba người khác nhau; gate khác: người chuẩn bị khác người rà soát và người phê duyệt, hai người này có thể là một; một người được chuẩn bị nhiều gate khác nhau. → **R6-Q31** [ASSUMPTION: R5-Q56].
 
 **Lộ ra khi chủ dự án hỏi lại (05/10/2026).** Câu 29(4) chỉ nêu **một** cặp: *"at all gates the reviewer must be a different authenticated person from the preparer"*. D1 còn nới theo chiều ngược: *"where risk is low the same person may prepare several gate records"*.
 

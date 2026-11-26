@@ -12,6 +12,7 @@ import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
+import FormulaVersionProposalNotice from '../components/FormulaVersionProposalNotice';
 import HistoryTimeline from '../components/HistoryTimeline';
 import OpenChangesNotice from '../components/OpenChangesNotice';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
@@ -467,7 +468,7 @@ export default function BomCosting() {
             <Tooltip title={formulaVersionOpen ? undefined : 'Available only while Gate 05 is the open gate.'}>
               <span>
                 <Button disabled={!formulaVersionOpen} onClick={() => setVersionOpen(true)}>
-                  New formula version
+                  Propose formula version
                 </Button>
               </span>
             </Tooltip>
@@ -510,6 +511,8 @@ export default function BomCosting() {
           <FormulaPropertiesCard project={project} />
         </>
       )}
+
+      {showFormula && <FormulaVersionProposalNotice project={project} />}
 
       {/* C3: automatic watch-list cross-check on every BOM ingredient. */}
       {showFormula && watchMatches.length > 0 && (
