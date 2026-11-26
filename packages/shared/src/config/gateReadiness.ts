@@ -406,6 +406,8 @@ export type ReadinessCheck =
   | { kind: 'noOpenCriticalCapa' }
   // Round 5 question 28(b): every active market (or the one lane asked about) has a standing authorisation to release the current formula version.
   | { kind: 'marketReleaseAuthorised' }
+  // Round 5 question 29: every released-label row of the market names an approved artwork record and matches it (version, file, market, formula).
+  | { kind: 'releasedLabelMatchesApproval' }
   // Round 5 question 26: no deviation of the market leaves a safety, compliance, claims or version mismatch unresolved; every deviation is reviewed and
   // dispositioned; no Critical deviation is left unresolved.
   | { kind: 'noUnresolvedDeviation' }
@@ -3108,9 +3110,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'registerHasRows', register: 'releasedLabelRegister' },
-          { kind: 'registerRowsComplete', register: 'releasedLabelRegister', columns: ['newLabelVersion', 'newArtworkFile'] },
+          { kind: 'registerRowsComplete', register: 'releasedLabelRegister', columns: ['newLabelVersion', 'newArtworkFile', 'approvedArtworkId', 'formulaVersion'] },
+          // Round 5 question 29: "Gate 11 confirms that the proposed release matches the approved record; a filename alone is not approval." Whether the
+          // label was already released to the market (and when) is NOT read here — it is recorded after deployment. [ASSUMPTION: R6-Q37]
+          { kind: 'releasedLabelMatchesApproval' },
         ],
       },
+      assumption: 'R6-Q37',
     },
     {
       // Merged 2026-07-27 (user-requested) from sg11-production +

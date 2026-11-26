@@ -83,6 +83,7 @@ import {
 import { impactHolds } from './impactAssessments';
 import { pendingPreWork } from './preWork';
 import { RELEASE_AUTHORISATION_REGISTER, marketsWithoutReleaseAuthorisation } from './releaseAuthorisation';
+import { RELEASED_LABEL_REGISTER, releasedLabelApprovalGaps } from './artworkApproval';
 import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
@@ -1400,6 +1401,8 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: openCriticalCapa(project).length === 0 };
     case 'marketReleaseAuthorised':
       return { evaluable: true, satisfied: marketsWithoutReleaseAuthorisation(project, market).length === 0 };
+    case 'releasedLabelMatchesApproval':
+      return { evaluable: true, satisfied: releasedLabelApprovalGaps(project, market).length === 0 };
     // Round 5 question 26: deviations, judged on the market's lane.
     case 'noUnresolvedDeviation':
       return { evaluable: true, satisfied: unresolvedBlockingDeviations(project, market).length === 0 };
@@ -2089,6 +2092,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/post-market' };
     case 'marketReleaseAuthorised':
       return { href: `/registers/reg/${RELEASE_AUTHORISATION_REGISTER}` };
+    case 'releasedLabelMatchesApproval':
+      return { href: `/registers/reg/${RELEASED_LABEL_REGISTER}` };
     case 'noUnresolvedDeviation':
     case 'deviationsReviewed':
     case 'noCriticalDeviation':

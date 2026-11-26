@@ -1259,6 +1259,12 @@ The accountable subject-area owner accepts the relevant entries when that phase/
 
 **(b)** Record the technical stability/compatibility conclusion at Gate 9. Record the market/version-specific authorisation to release at Gate 11, linked to the approved Gate 9 evidence and Quality release pathway. Separate fields avoid confusing a successful test conclusion with launch permission. Actual batch release remains linked to the external GMP/Quality record.
 
+### Question 29 — Artwork approval versus release history
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 37.
+
+Read both. Packaging Specs & Artwork Evidence holds the approved artwork revision, file and linked Claim IDs/approved claim revisions. Released Label Control records which approved label/artwork/formula version is authorised and actually used in each market, plus transition and reconciliation. Gate 11 confirms that the proposed release matches the approved record; a filename alone is not approval. A Yes and actual market-release date are recorded after deployment, not required before first-launch authorisation. Do not force a false "already released" answer to pass Gate 11.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

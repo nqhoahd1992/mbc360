@@ -1259,6 +1259,12 @@ Chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liê
 
 **(b)** Ghi kết luận kỹ thuật về ổn định/tương thích ở Gate 9. Ghi việc cho phép phát hành theo thị trường/phiên bản ở Gate 11, liên kết với bằng chứng Gate 9 đã duyệt và quy trình phát hành của Quality. Các trường riêng tránh nhầm kết luận kiểm nghiệm thành công với phép ra mắt. Việc xuất lô thực tế vẫn liên kết với hồ sơ GMP/Quality bên ngoài.
 
+### Câu 29 — Phê duyệt artwork so với lịch sử phát hành
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 37.
+
+Đọc cả hai. Packaging Specs & Artwork Evidence giữ bản sửa đổi artwork đã duyệt, tệp và các Claim ID liên kết/revision claim đã duyệt. Released Label Control ghi phiên bản nhãn/artwork/công thức đã duyệt nào được cho phép và thực tế đang dùng ở mỗi thị trường, kèm chuyển tiếp và đối chiếu. Gate 11 xác nhận bản phát hành đề xuất khớp với bản ghi đã duyệt; chỉ tên tệp thì không phải phê duyệt. "Yes" và ngày phát hành thực tế ra thị trường được ghi sau khi triển khai, không bắt buộc trước khi cho phép ra mắt lần đầu. Không ép câu trả lời sai "đã phát hành" để qua Gate 11.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

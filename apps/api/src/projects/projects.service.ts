@@ -109,6 +109,7 @@ import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safety
 import { deriveRegisterRows, snapshotWatchlistBasis } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import { bypassable } from './dev-flags';
+import { stampArtworkClaimRevisions } from '@mbc360/shared/utils/artworkApproval';
 import {
   PRE_WORK_DECISIONS,
   PRE_WORK_DECISIONS_NEEDING_NOTE,
@@ -3163,6 +3164,10 @@ export class ProjectsService {
       // the formula) is written here, never taken from the request. An approval by a function is recorded by the person who holds that function
       // on this project (Regulatory Claims / Technical Claims) in their own name; since 2026-11-25 every function is named when the project is
       // created (project owner), so there is always such a person. [ASSUMPTION: R6-Q25]
+      // Round 5 question 29: the claim revisions an artwork approval stands on are written here when it is approved, never taken from the request. [ASSUMPTION: R6-Q37]
+      if (registerKey === 'packagingSpecsArtwork') {
+        rows = stampArtworkClaimRevisions(project, project.registers[registerKey] ?? [], rows);
+      }
       if (registerKey === 'skuClaimsPifRegister') {
         const committedUse = project.registers[registerKey] ?? [];
         rows = stampClaimUseDecisions(project, committedUse, rows);

@@ -1423,7 +1423,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q43 · R6-Q35 | **27** (đã trả lời 05/11, xây 26/11/2026; R6-Q35 hỏi lại các chỗ ta đọc) | Ai chấp nhận pre-work của một phase |
 | ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
 | ✅ R5-Q47 · R5-Q62 · R6-Q36 | **28(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q36 hỏi lại các chỗ ta đọc) | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
-| R5-Q50 | **29** | "Approved artwork version" ở Gate 11 đọc gì |
+| ✅ R5-Q50 · R6-Q37 | **29** (đã trả lời 05/11, xây 26/11/2026; R6-Q37 hỏi lại các chỗ ta đọc) | "Approved artwork version" ở Gate 11 đọc gì |
 | R5-Q51 | **30** | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
 | R5-Q65 | **31** | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
 | R5-Q66 | **32(a)(b)** (phần (a)(c) cũ đã quyết SW-44) | Change Control mở trước hay sau khi thay đổi xảy ra |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q37 · Artwork đã duyệt và lịch sử phát hành: các chỗ ta đọc câu trả lời (Vòng 5 câu 29) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 29.** SME: đọc cả hai sổ; Packaging Specs & Artwork Evidence giữ revision artwork đã duyệt, tệp, Claim ID và revision claim đã duyệt; Released Label Control ghi phiên bản nhãn/artwork/công thức đã duyệt được cho phép và thực tế dùng ở mỗi thị trường, kèm chuyển tiếp và đối chiếu; Gate 11 xác nhận bản phát hành đề xuất khớp bản ghi đã duyệt, chỉ tên tệp không phải phê duyệt; Yes và ngày phát hành thực tế ghi sau triển khai, không bắt buộc trước khi cho phép ra mắt lần đầu; không ép trả lời sai "đã phát hành". Cách đọc của ta (`utils/artworkApproval.ts`): (1) sổ packaging thêm `artworkId` (sinh tự động, tiền tố ART), `artworkFile` (Gate 10), `approvedClaimRevisions` (server ghi khi duyệt: `CLM-001 r2, …`, `stampArtworkClaimRevisions`); claim sau đó lên revision khác thì phê duyệt cũ (`artworkClaimRevisionDrift`, đọc trong `artworkClaimBlockers` nên giữ `sg10-artwork-claims`); (2) Released Label Control thêm `approvedArtworkId` (rowRef tới Artwork ID) và `formulaVersion` (Gate 11); `marketReleaseDate` bắt buộc khi `newLabelReleased = Yes`; (3) `sg11-artwork` thêm kiểm tra `releasedLabelMatchesApproval` theo thị trường: dòng nhãn phải nêu bản ghi tồn tại và Approved, cùng phiên bản nhãn, cùng tệp, được duyệt cho thị trường (để trống = mọi thị trường), cùng phiên bản công thức hiện tại (`releasedLabelApprovalGaps`); (4) Gate 11 không đọc `newLabelReleased`/`marketReleaseDate`; chuyển tiếp/đối chiếu giữ nguyên (sổ Platform Rollout và Shipment Verification). Dòng artwork/nhãn cũ chưa có Artwork ID/tệp/công thức sẽ chặn Gate 11 cho tới khi điền.
+
+**Câu hỏi:** (a) khớp theo bản ghi đã duyệt (phiên bản, tệp, thị trường, công thức) hay chỉ phiên bản nhãn và tệp; (b) phê duyệt cũ do claim đổi revision giữ Gate 10 hay chỉ cảnh báo; (c) dòng nhãn có cần mang cả cho-phép theo thị trường không.
+
+**Nếu trả lời khác:** `utils/artworkApproval.ts`; `utils/claimEvidence.ts` (`artworkClaimBlockers`); `config/registers.ts` (`packagingSpecsArtwork`, `releasedLabelRegister`); `config/gateReadiness.ts` (`sg11-artwork`); `projects.service.ts` (`setRegisterRows`) [ASSUMPTION: R6-Q37].
 
 #### R6-Q36 · Cơ sở bằng chứng qua các gate và việc cho phép phát hành: các chỗ ta đọc câu trả lời (Vòng 5 câu 28) 🟡
 
@@ -2531,7 +2539,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `setMarkets`.
 
-#### R5-Q50 · "Approved artwork version" ở Gate 11 đọc những cột nào 🔴
+#### R5-Q50 · "Approved artwork version" ở Gate 11 đọc những cột nào ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 29) và đã xây 26/11/2026 — phần dưới là lịch sử.** Đọc cả hai sổ: sổ packaging giữ artwork đã duyệt, Released Label Control ghi cái được phép và đang dùng; Gate 11 xác nhận bản đề xuất khớp bản ghi đã duyệt, tên tệp không phải phê duyệt; Yes và ngày phát hành ghi sau triển khai. → **R6-Q37**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục Gate 11).** Trước đây chỉ cần sổ Released Label Control có một dòng bất kỳ. Giờ mỗi dòng phải có 'New label version' và 'New artwork file'.
 

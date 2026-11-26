@@ -1684,6 +1684,9 @@ export const packagingSpecsArtwork: RegisterConfig = {
   // own gate; Gate 11 is part of the list because the label is still being finished there.
   gate: '06/10/11',
   columns: [
+    // Round 5 question 29: this register holds the APPROVED artwork record — its revision, file and the claims (with their revisions) it carries — and a
+    // released label names the record it releases by this generated ID. [ASSUMPTION: R6-Q37]
+    { key: 'artworkId', label: 'Artwork ID', type: 'text', width: 100, gate: '10' },
     // Round 4 question 30(c), 2026-08-29: "final artwork approval is represented
     // in the Packaging/Artwork Approval record, which must link EVERY Claim ID on
     // the artwork" and must hard-block where any linked claim is Pending ·
@@ -1698,10 +1701,13 @@ export const packagingSpecsArtwork: RegisterConfig = {
     { key: 'compatibilityEvidence', label: 'Compatibility evidence', type: 'text', width: 160, gate: '06' },
     { key: 'migrationRisk', label: 'Migration/contact risk', type: 'text', width: 160 },
     { key: 'artworkVersion', label: 'Artwork / label version', type: 'text', width: 150, gate: '06' },
+    { key: 'artworkFile', label: 'Approved artwork file', type: 'text', width: 180, gate: '10' },
     { key: 'packCodeBarcode', label: 'Pack code / barcode', type: 'text', width: 140 },
     { key: 'market', label: 'Market', type: 'market', width: 110, gate: '10' },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approval', label: 'Approval', type: 'select', options: DECISION_OPTIONS, width: 120, gate: '10' },
+    // Written by the server when the artwork is approved: the revision of every claim it names, as it stood then. A claim that moves on makes the approval stale.
+    { key: 'approvedClaimRevisions', label: 'Claim revisions approved', type: 'text', width: 200, gate: '10', editable: false },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
@@ -2913,8 +2919,13 @@ export const releasedLabelRegister: RegisterConfig = {
     { key: 'currentArtworkFile', label: 'Current artwork file', type: 'text', width: 150 },
     { key: 'newLabelVersion', label: 'New label version', type: 'text', width: 130 },
     { key: 'newArtworkFile', label: 'New artwork file', type: 'text', width: 150 },
+    // Round 5 question 29: which approved artwork record this label releases, and on which formula version. Gate 11 compares them with the approval.
+    { key: 'approvedArtworkId', label: 'Approved artwork record', type: 'rowRef', refRegister: 'packagingSpecsArtwork', refColumn: 'artworkId', width: 170, gate: '11' },
+    { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110, gate: '11' },
+    // "A Yes and actual market-release date are recorded after deployment, not required before first-launch authorisation." Gate 11 never reads them;
+    // the two go together once deployed.
     { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: YNNA_LABEL },
-    { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130 },
+    { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130, requiredWhen: { column: 'newLabelReleased', values: ['Yes'] } },
     { key: 'marketsAffected', label: 'Markets affected', type: 'markets', width: 190 },
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA_LABEL },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
@@ -4011,6 +4022,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   postMarketTrends: { column: 'trendId', prefix: 'MT' },
   deviationRecords: { column: 'deviationId', prefix: 'DEV' },
   releaseAuthorisation: { column: 'authorisationId', prefix: 'RA' },
+  packagingSpecsArtwork: { column: 'artworkId', prefix: 'ART' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };

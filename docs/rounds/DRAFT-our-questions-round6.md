@@ -899,3 +899,21 @@ You told us that the evidence basis required is proposed at Gate 3 and the plan 
 **(b)** Is "Yes to the demonstrated basis supports the final wording" the right Gate 10 test, and is holding the claim until its wording is revised the right consequence of Partly or No?
 
 **(c)** Should the release authorisation also be held until the Gate 9 conclusion itself is "Meets criteria" (today it is held by the Gate 9 item, and the authorisation names the evidence by text)?
+
+## Question 37 — Approved artwork and the release history: have we read your answer correctly?
+
+*Where in the application:* **Packaging Specs & Artwork Evidence** (new Artwork ID, Approved artwork file and Claim revisions approved columns), **Released Label Control** (new Approved artwork record and Formula version columns), and the Gate 11 item "Approved artwork version".
+
+You told us to read both registers: the packaging register holds the approved artwork revision, file and linked Claim IDs with the approved claim revisions; Released Label Control records which approved label, artwork and formula version is authorised and actually used in each market, with transition and reconciliation; Gate 11 confirms that the proposed release matches the approved record, and a filename alone is not approval; a "Yes" and the actual market-release date are recorded after deployment and are not required before first-launch authorisation; and Gate 11 must never push anyone to give a false "already released" answer. We built it as follows:
+
+- **The approved record.** Each row of the packaging register gets a generated **Artwork ID** and an **Approved artwork file** beside the artwork / label version, the market, the Claim IDs and the approval. When an artwork is approved the server records the revision of every claim it names, as they stood then. If one of those claims later moves to a new revision the approval is shown as stale at Gate 10 until the artwork is approved again.
+- **The release record.** Each Released Label Control row names the **approved artwork record** it releases (picked by Artwork ID) and the **formula version**, besides the new label version and artwork file it already carried.
+- **What Gate 11 confirms.** For each market, every released-label row that covers it must name an approved record that exists and is Approved, with the same label version and the same artwork file, approved for that market (a blank market on the approved record covers all), and on the project's current formula version. A row that gives only a filename does not pass.
+- **Not read at Gate 11.** "New label released to market?" and the market release date. If the answer is Yes the date is required with it; both are recorded after deployment.
+- Transition and reconciliation stay where they were (the Platform / Channel Rollout and the Label Shipment Verification registers).
+
+**(a)** Is naming the approved record (and comparing version, file, market and formula) the right way to say "matches the approved record", or should the match be on label version and file alone?
+
+**(b)** Should a stale approval (a claim moved to a new revision after the artwork was approved) hold Gate 10 as built, or only warn?
+
+**(c)** Should the released-label row also carry the market-specific authorisation, or is the market on the approved record plus the markets affected enough?

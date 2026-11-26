@@ -898,3 +898,21 @@ Các bạn nói cơ sở bằng chứng cần có được đề xuất ở Gate
 **(b)** "Yes cho cơ sở đã chứng minh hỗ trợ wording cuối" có đúng là phép thử Gate 10 không, và giữ claim tới khi wording được sửa có đúng là hậu quả của Partly hoặc No không?
 
 **(c)** Việc cho phép phát hành có nên bị giữ cho tới khi chính kết luận Gate 9 là "Meets criteria" không (hiện do mục Gate 9 giữ, và bản cho phép nêu bằng chứng bằng văn bản)?
+
+## Câu 37 — Artwork đã duyệt và lịch sử phát hành: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* **Packaging Specs & Artwork Evidence** (các cột mới Artwork ID, Approved artwork file và Claim revisions approved), **Released Label Control** (các cột mới Approved artwork record và Formula version), và mục Gate 11 "Approved artwork version".
+
+Các bạn nói đọc cả hai sổ: sổ packaging giữ bản sửa đổi artwork đã duyệt, tệp và các Claim ID liên kết kèm các revision claim đã duyệt; Released Label Control ghi nhãn, artwork và phiên bản công thức đã duyệt nào được cho phép và thực tế đang dùng ở mỗi thị trường, kèm chuyển tiếp và đối chiếu; Gate 11 xác nhận bản phát hành đề xuất khớp với bản ghi đã duyệt, và chỉ tên tệp thì không phải phê duyệt; "Yes" và ngày phát hành thực tế ra thị trường được ghi sau khi triển khai, không bắt buộc trước khi cho phép ra mắt lần đầu; và Gate 11 không được ép ai trả lời sai "đã phát hành rồi". Chúng tôi đã xây như sau:
+
+- **Bản ghi đã duyệt.** Mỗi dòng của sổ packaging có **Artwork ID** sinh tự động và **Approved artwork file**, bên cạnh phiên bản artwork/nhãn, thị trường, các Claim ID và phê duyệt. Khi artwork được duyệt, máy chủ ghi lại revision của từng claim nó nêu, đúng như lúc đó. Nếu một claim sau đó lên revision mới thì phê duyệt được báo là cũ ở Gate 10 cho tới khi artwork được duyệt lại.
+- **Bản ghi phát hành.** Mỗi dòng Released Label Control nêu **bản ghi artwork đã duyệt** nó phát hành (chọn theo Artwork ID) và **phiên bản công thức**, ngoài phiên bản nhãn và tệp artwork mới đã có.
+- **Gate 11 xác nhận gì.** Với mỗi thị trường, mọi dòng nhãn đã phát hành có phủ thị trường đó phải nêu một bản ghi đã duyệt tồn tại và đang Approved, cùng phiên bản nhãn và cùng tệp artwork, được duyệt cho thị trường đó (thị trường để trống trên bản ghi đã duyệt phủ mọi thị trường), và trên phiên bản công thức hiện tại của dự án. Dòng chỉ ghi tên tệp thì không qua.
+- **Gate 11 không đọc:** "New label released to market?" và ngày phát hành ra thị trường. Nếu trả lời Yes thì phải có ngày đi kèm; cả hai ghi sau khi triển khai.
+- Chuyển tiếp và đối chiếu giữ nguyên chỗ cũ (sổ Platform / Channel Rollout và Label Shipment Verification).
+
+**(a)** Nêu bản ghi đã duyệt (và so phiên bản, tệp, thị trường, công thức) có đúng là cách nói "khớp bản ghi đã duyệt" không, hay chỉ cần khớp phiên bản nhãn và tệp?
+
+**(b)** Một phê duyệt cũ (claim lên revision mới sau khi artwork được duyệt) có nên giữ Gate 10 như đã xây, hay chỉ cảnh báo?
+
+**(c)** Dòng nhãn đã phát hành có nên mang cả phép cho phép theo thị trường, hay thị trường trên bản ghi đã duyệt cộng với markets affected là đủ?

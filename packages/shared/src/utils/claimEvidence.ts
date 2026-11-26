@@ -45,6 +45,7 @@
 //       event is Release to Print, which is a channel value there.
 import type { ProjectData, RegisterRow } from '../types';
 import { claimIsExcluded, claimLibraryReuseHolds } from '../config/claimReview';
+import { artworkClaimRevisionDrift } from './artworkApproval';
 import {
   CLAIM_STATUSES_BLOCKING_ARTWORK,
   CLAIM_USE_APPROVING,
@@ -503,6 +504,8 @@ export function artworkClaimBlockers(
       if (useBlock) out.push({ row, claimId: id, reason: useBlock });
     }
   }
+  // Round 5 question 29: an approval given on claim revisions that have since moved on is stale. [ASSUMPTION: R6-Q37]
+  out.push(...artworkClaimRevisionDrift(artworkRows, claimRows));
   return out;
 }
 
