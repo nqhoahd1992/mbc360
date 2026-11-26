@@ -34,7 +34,8 @@ export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 // capture yet.
 import { UNEVALUATED_C1_CONDITIONS } from './claimReview';
 import { NO_VULNERABLE_GROUP } from './vulnerableGroups';
-import { GATE4_DISPOSITION_PROHIBITED } from './registers';
+import { GATE4_DISPOSITION_PROHIBITED, REGISTER_CONFIGS } from './registers';
+import { applicabilityItemRegisters } from './registerApplicability';
 
 export type ReadinessTrigger =
   | 'skincareForTwo'
@@ -406,6 +407,8 @@ export type ReadinessCheck =
   // Round 5 question 29: every released-label row of the market names an approved artwork record and matches it (version, file, market, formula).
   | { kind: 'releasedLabelMatchesApproval' }
   // Round 5 question 30: every market with pack requirements on its Regulatory profile has them identified and assigned in the project's checklist (Gate 6).
+  // Round 5 question 31: the register has entries, or a reviewed applicability decision (reuse of an approved record / not applicable) stands in for them.
+  | { kind: 'registerApplicable'; register: string }
   | { kind: 'marketPackIdentified' }
   // ...and verified compliant on the final artwork / dossier ('final', Gate 10) and for release ('release', Gate 11); stale once the profile changes.
   | { kind: 'marketPackVerified'; stage: 'final' | 'release' }
@@ -3505,3 +3508,29 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     },
   ],
 };
+
+// Round 5 question 31: for each register the SME made Required or Conditional that no item above already reads, one Mandatory item at the gate the answer
+// names: the register has entries, or a reviewed applicability decision stands in for them ("Conditional requires a documented applicability decision").
+// Generated from config/registerApplicability.ts, so the table and the gates cannot drift. Not Conditional items with a trigger: the acknowledgement table of
+// question 1 lists exactly 31 of those, and the decision itself is what makes the requirement conditional. [ASSUMPTION: R6-Q39]
+for (const { register, gate } of applicabilityItemRegisters()) {
+  const config = REGISTER_CONFIGS.find((c) => c.key === register);
+  GATE_READINESS[gate].push({
+    id: `${gate.toLowerCase()}-applic-${register}`,
+    label: `${config?.title ?? register}: entries, or a reviewed decision on whether it applies`,
+    tier: 'Mandatory',
+    source: 'dev-decision',
+    assumption: 'R6-Q39',
+    check: { kind: 'registerApplicable', register },
+  });
+}
+// The Artwork / Label Review Checklist is "complete before Gate 11 Final proof release": every row that applies has its evidence link.
+GATE_READINESS['SG11'].push({
+  id: 'sg11-artwork-review-complete',
+  label: 'Artwork / Label Review Checklist complete before the final proof is released',
+  tier: 'Mandatory',
+  source: 'dev-decision',
+  assumption: 'R6-Q39',
+  check: { kind: 'registerRowsComplete', register: 'artworkLabelReviewChecklist', columns: ['evidenceLink'], when: { column: 'status', notIn: ['Not Applicable'] } },
+});
+

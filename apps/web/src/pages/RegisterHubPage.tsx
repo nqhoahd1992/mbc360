@@ -18,6 +18,7 @@ import DynamicTable from '../components/DynamicTable';
 import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmentTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
+import RegisterApplicabilityBlock from '../components/RegisterApplicabilityBlock';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
 import IngredientMonographTable from '../components/IngredientMonographTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
@@ -223,6 +224,9 @@ export default function RegisterHubPage() {
         )}
         {/* Supplier & RM Evidence has its own table, which does not mount the acknowledgement block the generic one does. */}
         {registerKey === 'supplierRmEvidence' && <GeneratedNaAcks home="register:supplierRmEvidence" />}
+        {(registerKey === 'supplierRmEvidence' || registerKey === 'publishedInfoApproval' || registerKey === 'ingredientMonograph') && (
+          <RegisterApplicabilityBlock registerKey={registerKey} readOnly={locked} />
+        )}
         {registerKey === 'supplierRmEvidence' ? (
           // F14-style Cosmetri raw-material picker for rmCode/grade/supplier —
           // see the tradeoffs noted in docs/rules/F1_Per_Gate_Open_Questions.md.

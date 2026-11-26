@@ -84,6 +84,7 @@ import { impactHolds } from './impactAssessments';
 import { pendingPreWork } from './preWork';
 import { RELEASE_AUTHORISATION_REGISTER, marketsWithoutReleaseAuthorisation } from './releaseAuthorisation';
 import { RELEASED_LABEL_REGISTER, releasedLabelApprovalGaps } from './artworkApproval';
+import { decisionSubstitutes, noClaimsVerified, registerApplicable } from './registerApplicability';
 import { MARKET_PACK_REGISTER, marketPackComplianceGaps, marketPackIdentificationGaps, marketPackTrigger } from './marketPack';
 import { DEVIATION_REGISTER, deviationsAwaitingReview, unresolvedBlockingDeviations, unresolvedCriticalDeviations } from './deviations';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
@@ -1124,6 +1125,8 @@ export function bomMatchesNotTakenUp(project: ProjectData, list: 'prohibited' | 
 // indistinguishable from "nobody has started".
 export function noClaimsDeclared(project: ProjectData): boolean {
   if ((project.registers['claimEvidenceTraceability'] ?? []).length > 0) return false;
+  // Round 5 question 31: "No claims" is recorded only after the label, website and other intended material were checked for express or implied efficacy claims.
+  if (!noClaimsVerified(project)) return false;
   const row = project.gateChecks.find(
     (c) => c.gate === '03' && c.check === 'Claim/benefit areas selected and evidence route identified',
   );
@@ -1515,18 +1518,23 @@ export function evaluateReadinessCheck(
     }
     case 'registerHasRows': {
       const rows = project.registers[check.register] ?? [];
-      return { evaluable: true, satisfied: rows.length > 0 };
+      // Round 5 question 31: a reviewed decision (reuse of an approved record / not applicable) stands in for entries where the table allows it.
+      return { evaluable: true, satisfied: rows.length > 0 || decisionSubstitutes(project, check.register) };
     }
+    case 'registerApplicable':
+      return { evaluable: true, satisfied: registerApplicable(project, check.register) };
     case 'bomHasLines':
       return { evaluable: true, satisfied: project.bom.length > 0 };
     case 'bomIdentityComplete':
       return { evaluable: true, satisfied: project.bom.every((l) => !!l.inciName?.trim()) };
     case 'registerColumnFilled': {
       const rows = rowsOfMarket(check.register, project.registers[check.register] ?? [], market);
+      if (decisionSubstitutes(project, check.register)) return { evaluable: true, satisfied: true };
       return { evaluable: true, satisfied: rows.every((r) => String(r[check.column] ?? '').trim() !== '') };
     }
     case 'registerRowsComplete': {
       const allRows = project.registers[check.register] ?? [];
+      if (decisionSubstitutes(project, check.register)) return { evaluable: true, satisfied: true };
       // Unlike registerColumnFilled, an empty register must NOT vacuously
       // satisfy this — it backs sign-off-style hard blocks (NPD Front-End
       // Roadmap, 2026-07-24) where "no rows yet" must read as incomplete.
@@ -2064,6 +2072,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'registerColumnFilled':
     case 'registerNoBadRows':
     case 'registerRowsComplete':
+    case 'registerApplicable':
       return { href: `/registers/reg/${check.register}` };
     case 'vulnerableGroupsCovered':
       return { href: '/registers/reg/vulnerableUserAssessment' };
@@ -2224,6 +2233,8 @@ function describeReadinessCheck(check: ReadinessCheck): string | undefined {
       return `Complete or mark N/A every row in "${requirementSectionTitle(check.section)}"`;
     case 'registerHasRows':
       return `Add at least one row to "${registerTitle(check.register)}"`;
+    case 'registerApplicable':
+      return `Add entries to "${registerTitle(check.register)}", or record a reviewed decision on that page: the approved record being reused, or why it does not apply`;
     case 'registerColumnFilled': {
       const column = REGISTER_CONFIGS.find((c) => c.key === check.register)?.columns.find((c) => c.key === check.column);
       return `Fill "${column?.label ?? check.column}" on every row of "${registerTitle(check.register)}"`;
@@ -2324,6 +2335,7 @@ export function acknowledgementHome(check: ReadinessCheck): string | undefined {
     case 'registerNoBadRows':
     case 'registerRowsComplete':
     case 'registerSomeRow':
+    case 'registerApplicable':
     case 'watchlistDispositioned':
       return `register:${check.register}`;
     case 'rmEvidenceDispositioned':

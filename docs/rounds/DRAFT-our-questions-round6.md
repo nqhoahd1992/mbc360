@@ -936,3 +936,24 @@ You told us Regulatory maintains versioned market profiles with source, effectiv
 **(c)** Should Gates 10 and 11 have two separate verifications (final artwork / dossier, then the approved release version), or is one verification of the approved version enough?
 
 **(d)** Who may record the verification — the person assigned to the market's requirements, or only Regulatory or Packaging?
+
+## Question 39 — Register applicability across the 78 registers: have we read your table correctly?
+
+*Where in the application:* every register page (a new **Applicability** strip above its table), the new register **Register Applicability Decisions** (System Guide & Reference), the **Gate Rules & Sheet Map** (a new "Applicability" tag per sheet), and about thirty new gate items.
+
+Your table gives each register a rule (Required, Conditional, Reference, Optional, event record), a gate, and what satisfies it, and says that "Conditional" needs a documented applicability decision, that existing evidence may be reused where its version and applicability are confirmed, and that "no claims" waives only claim-specific registers after the label, website and other intended material are checked. We built it as follows:
+
+- **One table.** Each register carries your rule and your wording of "when / what satisfies it"; it is shown above the register and on the Sheet Map.
+- **A decision stands in for entries.** Where your table allows a stand-in, a person records on the register page either **Reuse an approved record** (a link to it and why its version and scope apply) or **Not applicable** (a reviewed rationale), in their own name; the server writes the date. The registers that you made Required with no stand-in (for example the Ingredient-Level Safety Matrix, GMP Links, Released Label vs Current Artwork) accept entries only. **Not applicable** is accepted for the competitor register, the framed research questions and the other items you marked "administrative-only waiver" only on a project confirmed as administrative-only; a blank change type is not a waiver.
+- **Gate items.** Where no gate yet looked at a register that your table makes Required or Conditional, one item at the earliest gate you name is added: the register has entries, or a valid decision stands in for them. This adds, for example, the Anatomy / Physiology notes (Gate 2), Carrier Review Summary (2), Landscape Decision Summary, Current Solutions and Comparative Testing Protocol (3), Twinkle 5 Claims Map (3), Backbone Technology (5), Efficacy Assurance Control (5), Needs → Technology Traceability (5), Product Family & Version (5), Product Safety Profile (7), Eye Safety Evidence (7), Microbiology & PET Evidence (9), Safety / Medical Summary (10), PIF Evidence Closure (10), Platform / Channel Rollout (11), Batch Formula Trace (11), and so on; and the Artwork / Label Review Checklist must be complete before the final proof is released (Gate 11).
+- **Not given a gate item:** Reference sheets, Optional ones, and the event records (Publication / Deployment Record, PIF Evidence Export, HCP packs, Ready-to-Answer Pack, Shipment Label & Batch Verification, Development Iteration Log, Team Feedback, Social Media): they are written when the event occurs.
+- **"No claims" needs the check.** The "no claims" record now also needs three confirmations — label, website and other intended material checked for express or implied efficacy claims — as well as the reason on the Gate 3 check. Projects that had declared "no claims" before need to record these.
+- **Claim-free product.** The evidence plan, test protocol, stability evidence and safety matrix remain required as you said; "Not applicable" is not offered for them.
+
+**(a)** Is the earliest gate you name the right place for the decision where your table lists several ("Gate 2/5", "Gate 4/7", "Gates 3 and 10")?
+
+**(b)** For the registers you marked Conditional, should the item block every project until someone has made the decision (as built), or only when a trigger shows the register is likely to apply?
+
+**(c)** For the Test Report Index, you said it may be generated from the unique linked reports. We kept it manual (entries, or "not applicable" when no report is relied on). Should it be generated?
+
+**(d)** Who may record a reuse or "not applicable" decision — the person assigned to the register's area, the project Lead, or a named function?

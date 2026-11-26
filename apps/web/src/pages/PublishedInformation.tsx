@@ -12,6 +12,7 @@ import { useAppStore } from '../store/useAppStore';
 import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
+import RegisterApplicabilityBlock from '../components/RegisterApplicabilityBlock';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -78,6 +79,7 @@ export default function PublishedInformation() {
           readOnly={isGateRefLocked(project, publicationRules.gate)}
           hideGateNote
         />
+        <RegisterApplicabilityBlock registerKey="publishedInfoApproval" readOnly={isGateRefLocked(project, publishedInfoApproval.gate)} />
         <PublishedInfoApprovalTable
           config={publishedInfoApproval}
           rows={approvalRows}

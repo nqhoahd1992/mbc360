@@ -27,6 +27,8 @@ import { GATE_READINESS, type ReadinessCheck } from '../../../packages/shared/sr
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
+import { REGISTER_APPLICABILITY } from '../../../packages/shared/src/config/registerApplicability';
+import { noClaimsVerified, registerApplicable } from '../../../packages/shared/src/utils/registerApplicability';
 import { registerClosureRoles } from '../../../packages/shared/src/utils/registerClosures';
 import { evaluateTrigger, gateReadinessChecklist, isGatePassed, isPhaseComplete, phaseCompletionChecklist, unsignedGateLanes } from '../../../packages/shared/src/utils/gateProgress';
 import { reviewCycleOptions } from '../../../packages/shared/src/utils/postLaunch';
@@ -105,6 +107,33 @@ async function fixGateCheck(ctx: Ctx, gate: string, check: string, na?: boolean)
     ? { done: false, ynna: 'NA', date: today, initials: 'SD', notes: `${SEED}: not applicable to this seeded project` }
     : { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: `${SEED} evidence`, notes: `${SEED}: recorded by the seed script` };
   take(await api('PUT', `/projects/${ctx.id}/gate-checks`, { updates: rows.map((r) => ({ gate, check, ...(r.market ? { market: r.market } : {}), patch })), expectedVersion: version }));
+  return true;
+}
+
+// Round 5 question 31: a register the SME's table lets a reviewed decision stand in for is given one (the cheapest honest answer: "not applicable" where that is
+// allowed, otherwise the reuse of a seeded record); a register that takes no decision gets one typed cell.
+async function fixApplicability(ctx: Ctx, key: string): Promise<boolean> {
+  if (registerApplicable(project, key)) return false;
+  const spec = REGISTER_APPLICABILITY[key];
+  const config = REGISTER_CONFIGS.find((c) => c.key === key);
+  if (!spec || !config) return false;
+  const useDecision = spec.decisions.length > 0 && !spec.ownRecord && !(spec.naNeedsAdministrativeOnly && !spec.decisions.includes('reuse'));
+  if (useDecision) {
+    const na = spec.decisions.includes('na') && !spec.naNeedsAdministrativeOnly;
+    const rows: RegisterRow[] = (project.registers['registerApplicability'] ?? []).filter((r) => r.register !== config.title).map((r) => ({ ...r }));
+    rows.push({ register: config.title, decision: na ? 'Not applicable' : 'Reuse approved record', rationale: `${SEED}: recorded by the seed script`, evidenceLink: na ? '' : 'https://seed.example/approved', decidedBy: ctx.adminName });
+    take(await api('PUT', `/projects/${ctx.id}/registers/registerApplicability`, { rows, expectedVersion: version }));
+    return true;
+  }
+  const rows: RegisterRow[] = (project.registers[key] ?? []).map((r) => ({ ...r }));
+  if (rows.length === 0) {
+    if (config.mode === 'fixed') return false;
+    rows.push(createEmptyRegisterRow(key));
+  }
+  const col = config.columns.find((c) => c.editable !== false && !c.computed && (c.type === 'text' || c.type === 'textarea') && !c.autoId);
+  if (!col) return false;
+  rows[0][col.key] = `${SEED} entry`;
+  take(await api('PUT', `/projects/${ctx.id}/registers/${key}`, { rows, expectedVersion: version }));
   return true;
 }
 
@@ -598,8 +627,17 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
       if (rows.length > 0 && rows.every((row) => (row.done && row.ynna === 'Y') || (row.ynna === 'NA' && row.notes?.trim()))) return false;
       return fixGateCheck(ctx, check.gate, check.check);
     }
-    case 'noClaimsDeclared':
-      return fixGateCheck(ctx, '03', 'Claim/benefit areas selected and evidence route identified', true);
+    case 'noClaimsDeclared': {
+      const gateCheck = await fixGateCheck(ctx, '03', 'Claim/benefit areas selected and evidence route identified', true);
+      // Round 5 question 31: "no claims" also needs the record that the label, website and other material were checked.
+      if (noClaimsVerified(project)) return gateCheck;
+      const rows: RegisterRow[] = (project.registers['registerApplicability'] ?? []).filter((r) => r.register !== 'Claim -> Evidence Traceability').map((r) => ({ ...r }));
+      rows.push({ register: 'Claim -> Evidence Traceability', decision: 'Not applicable', rationale: `${SEED}: no claims proposed`, decidedBy: ctx.adminName, checkedLabel: true, checkedWebsite: true, checkedOtherMaterial: true });
+      take(await api('PUT', `/projects/${ctx.id}/registers/registerApplicability`, { rows, expectedVersion: version }));
+      return true;
+    }
+    case 'registerApplicable':
+      return fixApplicability(ctx, check.register);
     case 'checklistHasSelection':
     case 'checklistPrimarySelected':
       return fixChecklist(ctx, check.section);

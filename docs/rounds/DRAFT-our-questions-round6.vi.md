@@ -935,3 +935,24 @@ Các bạn nói Regulatory duy trì hồ sơ thị trường có phiên bản, k
 **(c)** Gate 10 và Gate 11 có cần hai lần xác minh riêng (artwork / hồ sơ cuối, rồi phiên bản duyệt để phát hành), hay một lần xác minh phiên bản đã duyệt là đủ?
 
 **(d)** Ai được ghi xác minh — người được phân công cho yêu cầu của thị trường, hay chỉ Regulatory hoặc Packaging?
+
+## Câu 39 — Áp dụng theo từng sổ trong 78 sổ: chúng tôi đọc bảng của các bạn có đúng không?
+
+*Ở đâu trong ứng dụng:* mọi trang sổ (một dải **Applicability** mới phía trên bảng), sổ mới **Register Applicability Decisions** (System Guide & Reference), **Gate Rules & Sheet Map** (nhãn "Applicability" mới cho mỗi sheet), và khoảng ba mươi mục gate mới.
+
+Bảng của các bạn gán cho mỗi sổ một quy tắc (Required, Conditional, Reference, Optional, bản ghi sự kiện), một gate và điều kiện thoả, đồng thời nói rằng "Conditional" cần một quyết định áp dụng có tài liệu, bằng chứng sẵn có có thể dùng lại khi phiên bản và phạm vi áp dụng đã được xác nhận, và "no claims" chỉ miễn các sổ/hoạt động riêng cho claim sau khi đã kiểm tra nhãn, website và tài liệu dự kiến khác. Chúng tôi đã xây như sau:
+
+- **Một bảng duy nhất.** Mỗi sổ mang quy tắc của các bạn và lời "when / what satisfies it"; hiện phía trên sổ và trên Sheet Map.
+- **Một quyết định thay cho dòng nhập.** Nơi bảng cho phép thay thế, một người ghi ngay trên trang sổ **Reuse an approved record** (đường dẫn tới bản ghi đó và vì sao phiên bản, phạm vi của nó áp dụng) hoặc **Not applicable** (lý do đã được review), dưới tên chính mình; ngày do máy chủ ghi. Những sổ các bạn đặt Required mà không có cách thay (ví dụ Ingredient-Level Safety Matrix, GMP Links, Released Label vs Current Artwork) chỉ nhận dòng nhập. **Not applicable** với sổ đối thủ, câu hỏi nghiên cứu và các mục các bạn ghi "administrative-only waiver" chỉ được chấp nhận trên dự án đã xác nhận là chỉ hành chính; loại thay đổi để trống không phải là miễn trừ.
+- **Mục gate.** Nơi chưa gate nào đọc một sổ mà bảng làm Required hoặc Conditional, thêm một mục ở gate sớm nhất các bạn nêu: sổ có dòng nhập, hoặc một quyết định hợp lệ thay cho chúng. Việc này thêm, ví dụ, ghi chú Anatomy / Physiology (Gate 2), Carrier Review Summary (2), Landscape Decision Summary, Current Solutions và Comparative Testing Protocol (3), Twinkle 5 Claims Map (3), Backbone Technology (5), Efficacy Assurance Control (5), Needs → Technology Traceability (5), Product Family & Version (5), Product Safety Profile (7), Eye Safety Evidence (7), Microbiology & PET Evidence (9), Safety / Medical Summary (10), PIF Evidence Closure (10), Platform / Channel Rollout (11), Batch Formula Trace (11), v.v.; và Artwork / Label Review Checklist phải hoàn tất trước khi phát hành final proof (Gate 11).
+- **Không có mục gate:** sheet Reference, sheet Optional, và các bản ghi sự kiện (Publication / Deployment Record, PIF Evidence Export, HCP pack, Ready-to-Answer Pack, Shipment Label & Batch Verification, Development Iteration Log, Team Feedback, Social Media): được ghi khi sự kiện xảy ra.
+- **"No claims" cần kiểm tra.** Bản ghi "no claims" nay cần thêm ba xác nhận — nhãn, website và tài liệu dự kiến khác đã được kiểm tra không có claim hiệu quả rõ ràng hay ngầm — ngoài lý do trên Key Gate Check Gate 3. Dự án đã khai "no claims" trước đây cần ghi thêm các xác nhận này.
+- **Sản phẩm không claim.** Kế hoạch bằng chứng, quy trình thử, bằng chứng ổn định và ma trận an toàn vẫn bắt buộc như các bạn nói; không cung cấp "Not applicable" cho chúng.
+
+**(a)** Gate sớm nhất các bạn nêu có phải chỗ đúng để ghi quyết định khi bảng liệt kê nhiều gate ("Gate 2/5", "Gate 4/7", "Gates 3 and 10") không?
+
+**(b)** Với sổ các bạn ghi Conditional, mục có nên chặn mọi dự án cho tới khi có người ra quyết định (như đã xây), hay chỉ khi có trigger cho thấy sổ nhiều khả năng áp dụng?
+
+**(c)** Test Report Index: các bạn nói có thể sinh từ các báo cáo liên kết duy nhất. Chúng tôi giữ nhập tay (dòng nhập, hoặc "not applicable" khi không dựa vào báo cáo nào). Có nên sinh tự động không?
+
+**(d)** Ai được ghi quyết định reuse hoặc "not applicable" — người được phân công cho khu vực của sổ, Lead dự án, hay một function có tên?

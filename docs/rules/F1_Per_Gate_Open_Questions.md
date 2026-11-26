@@ -1425,7 +1425,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q47 · R5-Q62 · R6-Q36 | **28(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q36 hỏi lại các chỗ ta đọc) | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
 | ✅ R5-Q50 · R6-Q37 | **29** (đã trả lời 05/11, xây 26/11/2026; R6-Q37 hỏi lại các chỗ ta đọc) | "Approved artwork version" ở Gate 11 đọc gì |
 | ✅ R5-Q51 · R6-Q38 | **30** (đã trả lời 05/11, xây 26/11/2026; R6-Q38 hỏi lại các chỗ ta đọc) | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
-| R5-Q65 | **31** | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
+| ✅ R5-Q65 · R6-Q39 | **31** (đã trả lời 05/11, xây 26/11/2026; R6-Q39 hỏi lại các chỗ ta đọc) | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
 | R5-Q66 | **32(a)(b)** (phần (a)(c) cũ đã quyết SW-44) | Change Control mở trước hay sau khi thay đổi xảy ra |
 | R5-Q68 | **33** | Dòng watch-list thuộc phạm vi gate nào theo Linked gate |
 | R5-Q71 · R5-Q72 · R5-Q73 | **34(a) · (b)(c)(d) · (e)** | Chuẩn bằng chứng Sheet 6: gate "đi tiếp" · Grade và transferability · hồ sơ tìm tài liệu |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q39 · Áp dụng theo từng sổ trong 78 sổ: các chỗ ta đọc bảng (Vòng 5 câu 31) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 31.** SME: "Required" = đánh giá/bản ghi thực chất hoặc liên kết hợp lệ tới bằng chứng đã duyệt dùng lại; "Conditional" = một quyết định áp dụng có tài liệu; "Reference" = nội dung tham chiếu có kiểm soát, không cần chữ ký trùng lặp; bằng chứng sẵn có dùng lại được khi đã xác nhận phiên bản và phạm vi; sản phẩm không claim vẫn cần an toàn, ổn định, rủi ro vi sinh, sản xuất; "no claims" chỉ miễn sổ/hoạt động riêng của claim sau khi kiểm tra nhãn, website và tài liệu khác; mọi thông tin công khai vẫn cần duyệt; dự án chỉ ASEAN bỏ được checklist ngoài ASEAN nhưng không bỏ được kết luận tuân thủ theo thị trường (câu 20 đã làm). Cách đọc của ta (`config/registerApplicability.ts`, `utils/registerApplicability.ts`): (1) một bảng cho cả 82 sổ (78 của SME + 4 sổ ta thêm ở vòng này, mỗi sổ có luật riêng): `rule`, lời SME nguyên văn, gate sớm nhất SME nêu khi họ liệt kê nhiều gate, và cái gì được thay cho dòng nhập (`decisions`: reuse / na; `naNeedsAdministrativeOnly`); (2) quyết định ghi trong sổ mới `registerApplicability` (một dòng mỗi sổ, `decidedBy` selfAttest, `decidedOn` do server ghi, `stampApplicabilityDecisions`); `decisionSubstitutes` thay cho dòng nhập trong ba kiểu check đọc sổ (`registerHasRows` / `registerColumnFilled` / `registerRowsComplete`) — nên các mục có sẵn (kế hoạch bằng chứng Gate 5, quy trình thử Gate 8, bao bì, ổn định, publication…) cũng nhận "reuse"; (3) ~33 mục Mandatory mới (`<gate>-applic-<sổ>`, kind `registerApplicable`) sinh từ bảng ở gate sớm nhất, source `dev-decision`; không dùng Conditional-có-trigger vì bảng 31 mục của câu 1 đúng 31 mục; (4) "Not applicable" cho sổ đối thủ, câu hỏi nghiên cứu, Landscape, Current Solutions, Backbone, Needs→Technology chỉ khi `administrativeOnlyConfirmed` ("loại thay đổi để trống không phải miễn trừ"); (5) "no claims" nay cần quyết định N/A trên Claim → Evidence Traceability kèm ba xác nhận (nhãn / website / tài liệu khác) — `noClaimsDeclared` đọc `noClaimsVerified`, nên dự án đã khai "no claims" trước đây phải ghi thêm; (6) Artwork / Label Review Checklist: Gate 6 có dòng nhập, Gate 11 (`sg11-artwork-review-complete`) mọi dòng không N/A có evidence link; (7) sổ sự kiện / Optional / Reference không có mục gate (Publication/Deployment đã có luật riêng, Q17); Test Report Index giữ nhập tay (dòng nhập hoặc N/A), không tự sinh. Hai thay đổi nhỏ: `registerApplicability` có gate 12 và `testReportIndex` đổi gate `ALL` → `08/12` để khoá được (sweep S6).
+
+**Câu hỏi:** (a) gate sớm nhất khi bảng liệt kê nhiều gate; (b) mục Conditional chặn mọi dự án tới khi có quyết định, hay chỉ khi có trigger; (c) Test Report Index sinh tự động hay nhập tay; (d) ai được ghi quyết định reuse / N/A.
+
+**Nếu trả lời khác:** `config/registerApplicability.ts` (bảng); `utils/registerApplicability.ts`; `config/gateReadiness.ts` (khối sinh mục cuối file, `sg11-artwork-review-complete`); `gateProgress.ts` (`decisionSubstitutes`, `noClaimsDeclared`); `RegisterApplicabilityBlock.tsx` [ASSUMPTION: R6-Q39].
 
 #### R6-Q38 · Yêu cầu bao bì theo thị trường: các chỗ ta đọc câu trả lời (Vòng 5 câu 30) 🟡
 
@@ -2722,7 +2730,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — `formulationSafetyMatrix`: cột `rmCode`; `packages/shared/src/utils/gateProgress.ts` — `uncoveredFormulaLines`: thứ tự khóa nối.
 
-#### R5-Q65 · Sản phẩm không có claim: những sổ nào sau Gate 3 vẫn phải có hàng 🔴
+#### R5-Q65 · Sản phẩm không có claim: những sổ nào sau Gate 3 vẫn phải có hàng ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 31) và đã xây 26/11/2026 — phần dưới là lịch sử.** Sản phẩm không claim vẫn cần kế hoạch bằng chứng và quy trình thử áp dụng; công việc đối thủ/khoa học dùng lại hoặc miễn cho phạm vi chỉ hành chính đã xác minh; "no claims" cần kiểm tra nhãn, website, tài liệu khác; bảng 78 sổ có quy tắc, gate và điều kiện thoả riêng. → **R6-Q39**.
 
 **Lộ ra 10/10/2026, khi rà các điều kiện đòi sổ phải có hàng** (40 điều kiện, `registerHasRows` / `registerRowsComplete`). Phần lớn là sổ mà sản phẩm nào cũng có dữ liệu (bao bì, ổn định, ma trận an toàn, nhà cung cấp). Nhưng Round 4 câu 19(d) cho phép một sản phẩm **không có claim**, được ghi rõ bằng sổ claim trống cộng với Key Gate Check claim ở Gate 3 là N/A có lý do (`noClaimsDeclared`), và Gate 3 đã dùng lối thoát đó. Gate 10 thì không: `sg10-claims-register` đòi `skuClaimsPifRegister` có hàng và `sg10-claim-evidence` đòi mọi hàng đủ bằng chứng, nên một sản phẩm không claim qua Gate 3 rồi **không bao giờ qua được Gate 10**.
 

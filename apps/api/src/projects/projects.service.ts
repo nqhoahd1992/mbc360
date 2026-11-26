@@ -111,6 +111,7 @@ import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateR
 import { bypassable } from './dev-flags';
 import { stampArtworkClaimRevisions } from '@mbc360/shared/utils/artworkApproval';
 import { stampMarketPackRevisions } from '@mbc360/shared/utils/marketPack';
+import { applicabilityRegisterProblems, stampApplicabilityDecisions } from '@mbc360/shared/utils/registerApplicability';
 import {
   PRE_WORK_DECISIONS,
   PRE_WORK_DECISIONS_NEEDING_NOTE,
@@ -3079,7 +3080,10 @@ export class ProjectsService {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     return this.mutate(user, id, expectedVersion, 'register.updated', async (tx, _row, project) => {
-      await this.notePreWork(tx, project, phasesOfGateRef(config.gate), 'register', registerKey, config.title, user);
+      // The applicability decisions span every phase and are about OTHER registers, so they are not themselves pre-work of any one phase (Round 5 question 31).
+      if (registerKey !== 'registerApplicability') {
+        await this.notePreWork(tx, project, phasesOfGateRef(config.gate), 'register', registerKey, config.title, user);
+      }
       if (isGateRefLocked(project, config.gate)) {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
@@ -3175,6 +3179,12 @@ export class ProjectsService {
         rows = stampArtworkClaimRevisions(project, project.registers[registerKey] ?? [], rows);
       }
       // Round 5 question 30: the market profile revision an identification or a verification stood on is written here, never taken from the request. [ASSUMPTION: R6-Q38]
+      // Round 5 question 31: an applicability decision names a register that can take one, once; the date it was recorded is the server's. [ASSUMPTION: R6-Q39]
+      if (registerKey === 'registerApplicability') {
+        const problems = applicabilityRegisterProblems(rows);
+        if (problems.length > 0) throw new BadRequestException(listMessage('These applicability decisions cannot be saved:', problems));
+        rows = stampApplicabilityDecisions(project.registers[registerKey] ?? [], rows, new Date().toISOString().slice(0, 10));
+      }
       if (registerKey === 'marketPackChecklist') {
         rows = stampMarketPackRevisions(project, project.registers[registerKey] ?? [], rows);
       }

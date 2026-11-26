@@ -2261,6 +2261,29 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('...and the project carries it with the other roles', pj.project.identity.reviewers?.['project-owner'] === (await fnRow('project-owner'))?.name && !!(await fnRow('project-owner'))?.userId, short(pj.project.identity.reviewers));
 
+  // ---- Round 5 question 31: register applicability decisions (run while the project is still open: the register locks once every gate has passed)
+  console.log('\n--- Register applicability decisions (Round 5 question 31)');
+  {
+    const meName = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const putDecisions = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/registerApplicability`, { rows, expectedVersion: await version() });
+    const decisionsNow = async () => ((await project()).project.registers.registerApplicability ?? []) as any[];
+    const good = { register: 'Anatomy, Physiology, Exposure Science & Contradictory / Null Evidence', decision: 'Reuse approved record', rationale: 'Approved baseline, scope unchanged', evidenceLink: 'https://e2e.example/approved', decidedBy: meName, decidedOn: '1999-01-01' };
+    r = await putDecisions([{ ...good, register: 'Ingredient-Level Safety Matrix' }]);
+    t('a decision naming a register that takes none is refused (400)', r.status === 400 && /does not take|not an option/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putDecisions([good, { ...good }]);
+    t('two decisions for one register are refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await putDecisions([{ ...good, decidedBy: 'Somebody Else' }]);
+    t("a decision recorded in another person's name is refused", r.status >= 400, `${r.status} ${short(r.json)}`);
+    r = await putDecisions([good]);
+    const row = (await decisionsNow()).find((x) => x.register === good.register);
+    t("a valid decision is saved, and the date is the server's, not the request's", r.status < 300 && !!row && row.decidedOn !== '1999-01-01' && /^\d{4}-\d{2}-\d{2}$/.test(String(row.decidedOn)), `${r.status} ${short(row)}`);
+    r = await putDecisions([{ ...good, decidedOn: undefined, rationale: 'Approved baseline v4, scope unchanged' }]);
+    const revised = (await decisionsNow()).find((x) => x.register === good.register);
+    t('a revised decision is kept in place (one row per register)', r.status < 300 && (await decisionsNow()).length === 1 && revised?.rationale === 'Approved baseline v4, scope unchanged', short(await decisionsNow()));
+    r = await putDecisions([]);
+    t('the test decision is removed again', r.status < 300 && (await decisionsNow()).length === 0, `${r.status} ${short(r.json)}`);
+  }
+
   // ============================================================ SG08
   console.log('\n--- SG08 (the human-study assessment is Gate 8 data)');
   const putAssess = async (patch: Record<string, string>) =>
@@ -2302,7 +2325,8 @@ export async function run(base: string, db: Client): Promise<number> {
 
     // Leave the run as it was.
     await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'quality-gmp'`, [PROJECT, savedOwner.name, savedOwner.userId]);
-    for (const key of ['eyeSafetyEvidence', 'microPetEvidence']) await api('admin', 'PUT', `/projects/${PROJECT}/registers/${key}`, { rows: [], expectedVersion: await version() });
+    // eyeSafetyEvidence is left as it is: Gate 7 now reads it (Round 5 question 31), so emptying it after Gate 7 was signed would make that signature stale.
+    for (const key of ['microPetEvidence']) await api('admin', 'PUT', `/projects/${PROJECT}/registers/${key}`, { rows: [], expectedVersion: await version() });
   }
 
   await db.query(

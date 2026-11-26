@@ -1271,6 +1271,12 @@ Read both. Packaging Specs & Artwork Evidence holds the approved artwork revisio
 
 Regulatory maintains versioned market profiles with source, effective date and reviewer. The applicable profile requirements are linked to the project's packaging / artwork checklist. Gate 6 closes identification and assignment of those requirements; Gate 10 verifies compliant final artwork or dossier; Gate 11 verifies the approved version for release. A filled market-profile field is not proof of product compliance. Blank is unassessed; N/A needs a reviewed rationale. A relevant profile change triggers the impact assessment described in Question 1(d).
 
+### Question 31 — Register-by-register applicability (all 78 registers)
+
+**Verdict:** ✅ built (2026-11-26). Our readings of the details are asked in Round 6, question 39.
+
+"Required" means a substantive assessment or record, or a valid link to approved reusable evidence. "Conditional" requires a documented applicability decision. "Reference" means controlled reference content; it does not require duplicate project signatures. Existing evidence may be reused where its version and applicability are confirmed. A claim-free product still needs safety, stability, microbiological-risk and manufacturing evidence, so its prospective plan and applicable protocols remain required; competitor / scientific work can be reused or waived for a verified administrative-only scope. "No claims" waives only claim-specific registers and activities, after checking that the label, website and other intended material contain no express or implied efficacy claims. All public information still needs approval. ASEAN-only projects can omit a duplicate non-ASEAN checklist but cannot omit a per-market compliance / readiness conclusion. The per-register table (groups A, A2, B, C, D, E: rule, gate, what satisfies it) is recorded in `packages/shared/src/config/registerApplicability.ts`.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

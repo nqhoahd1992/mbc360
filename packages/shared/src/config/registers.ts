@@ -6,6 +6,7 @@ import { BASIS_SUPPORT_OPTIONS, FINISHED_PRODUCT_EFFECT_OPTIONS, RELEASE_AUTHORI
 import { DEVIATION_DISPOSITIONS, DEVIATION_ISSUE_TYPES, DEVIATION_SEVERITIES, DEVIATION_SOURCES, VALIDITY_DISPOSITIONS } from './deviations';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
+import { registersWithDecisions } from './registerApplicability';
 
 // `user` = a person, picked from the app's active users (UserSelect); the
 // stored value is their displayName, exactly what these columns held as free
@@ -1289,7 +1290,7 @@ export const fragranceSafety: RegisterConfig = {
   sheetName: 'Fragrance_Safety',
   description: 'Six-step fragrance workflow from supplier selection through post-market surveillance.',
   mode: 'fixed',
-  gate: '07',
+  gate: '04/07',
   columns: [
     { key: 'step', label: 'Step', type: 'text', width: 50, editable: false },
     { key: 'controlPoint', label: 'Control point', type: 'text', width: 180, editable: false },
@@ -1315,7 +1316,7 @@ export const fragranceAllergenLog: RegisterConfig = {
   sheetName: 'Fragrance_Safety',
   description: 'One row per fragrance used — IFRA category, allergen statement and PB caution review.',
   mode: 'register',
-  gate: '07',
+  gate: '04/07',
   columns: [
     { key: 'fragranceCode', label: 'Fragrance code', type: 'text', width: 130 },
     { key: 'supplier', label: 'Supplier', type: 'text', width: 140 },
@@ -1335,7 +1336,7 @@ const microPetEvidence: RegisterConfig = {
   sheetName: 'Micro_PET_Evidence',
   description: 'Capture micro limits, PET/challenge testing and preservation rationale once. Link reports to Test_Report_Index and PIF export.',
   mode: 'register',
-  gate: '08',
+  gate: '08/09',
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 150 },
     { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
@@ -1650,7 +1651,7 @@ const testReportIndex: RegisterConfig = {
   sheetName: 'Test_Report_Index',
   description: 'Record method, score, acceptance limit, conclusion and final report link once. All other tabs should link back to this index.',
   mode: 'register',
-  gate: 'ALL',
+  gate: '08/12',
   columns: [
     { key: 'reportId', label: 'Report ID', type: 'text', width: 100, unique: true },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
@@ -3245,7 +3246,7 @@ export const needsTechnologyTraceability: RegisterConfig = {
   sheetName: '1. Needs & Scientific Basis',
   description: 'Carries into the Target Product & Tech Platform dossier.',
   mode: 'register',
-  gate: '02',
+  gate: '02/05',
   reviewOwner: REVIEW_SPECS.ri,
   columns: [
     { key: 'needId', label: 'Need ID', type: 'text', width: 80, unique: true },
@@ -3948,7 +3949,33 @@ export const marketPackChecklist: RegisterConfig = {
   ],
 };
 
+// Round 5 question 31: where a person records that a register's requirement is met by an approved record they are reusing, or does not apply to this project.
+// One row per register; entries in the register itself need no decision. The rules per register are config/registerApplicability.ts. [ASSUMPTION: R6-Q39]
+const registerApplicability: RegisterConfig = {
+  key: 'registerApplicability',
+  title: 'Register Applicability Decisions',
+  sheetName: 'Requirements',
+  description:
+    'Where a register does not need entries on this project, record why: a reviewed "not applicable", or a link to the approved record being reused (its version and applicability confirmed). A register with entries needs no decision. "No claims" is recorded here too, after the label, website and other intended material have been checked.',
+  mode: 'register',
+  // A decision can be recorded or revised at any gate; the register locks only when the last gate has passed.
+  gate: '02/03/04/05/06/07/08/09/10/11/12',
+  approvalRoute: 'Each decision is recorded on its row by the person who made it',
+  columns: [
+    { key: 'register', label: 'Register', type: 'select', width: 260, options: [], unique: true },
+    { key: 'decision', label: 'Decision', type: 'select', width: 190, options: ['Reuse approved record', 'Not applicable'] },
+    { key: 'rationale', label: 'Reviewed rationale', type: 'textarea', width: 280 },
+    { key: 'evidenceLink', label: 'Approved record reused (link)', type: 'text', width: 240, requiredWhen: { column: 'decision', values: ['Reuse approved record'] } },
+    { key: 'checkedLabel', label: 'Label checked for claims', type: 'checkbox', width: 130 },
+    { key: 'checkedWebsite', label: 'Website checked for claims', type: 'checkbox', width: 130 },
+    { key: 'checkedOtherMaterial', label: 'Other intended material checked', type: 'checkbox', width: 150 },
+    { key: 'decidedBy', label: 'Decided by', type: 'user', width: 150, selfAttest: true },
+    { key: 'decidedOn', label: 'Decided on', type: 'date', width: 130, editable: false },
+  ],
+};
+
 export const REGISTER_CONFIGS: RegisterConfig[] = [
+  registerApplicability,
   marketPackChecklist,
   deviationRecords,
   releaseAuthorisation,
@@ -4060,6 +4087,12 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };
+
+// The Applicability Decisions register offers every register that can take a decision, by its title.
+{
+  const column = registerApplicability.columns.find((c) => c.key === 'register');
+  if (column) column.options = registersWithDecisions().map((key) => REGISTER_CONFIGS.find((c) => c.key === key)?.title ?? key);
+}
 
 for (const config of REGISTER_CONFIGS) {
   const auto = AUTO_ROW_IDS[config.key];
@@ -4784,6 +4817,8 @@ const DEPARTMENTS: RawDept[] = [
       { title: 'Role & Authority Matrix', page: 'role-matrix', gate: 'ALL' },
       'systemRequirements',
       'templateIndex',
+      // Round 5 question 31: where a register's requirement is met by reusing an approved record or recorded as not applicable.
+      'registerApplicability',
       'systemFeedback',
     ],
   },

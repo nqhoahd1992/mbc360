@@ -77,7 +77,12 @@ const LIST_ENTRY = { id: 'e1', ingredient: 'X', kind: 'Restricted', markets: [],
   t('no-claims: nothing recorded -> both items BLOCK (an empty ledger alone is not a declaration)',
     satisfied(p, 'SG10', 'sg10-claims-register') === false && satisfied(p, 'SG10', 'sg10-claim-evidence') === false);
   setCheck(p, '03', CLAIMS_CHECK, { ynna: 'NA', done: false, notes: 'Administrative change, no claims proposed' });
-  t('no-claims: declared (N/A with a reason, empty ledger) -> both items pass',
+  t('no-claims: N/A with a reason but nobody has checked the label, website and other material -> still blocks (Round 5 question 31)',
+    satisfied(p, 'SG10', 'sg10-claims-register') === false);
+  p.registers['registerApplicability'] = [
+    { register: 'Claim -> Evidence Traceability', decision: 'Not applicable', rationale: 'Label, website and brochure read: no express or implied efficacy claim', decidedBy: 'A', checkedLabel: true, checkedWebsite: true, checkedOtherMaterial: true },
+  ];
+  t('no-claims: declared (N/A with a reason, the three checks made, empty ledger) -> both items pass',
     satisfied(p, 'SG10', 'sg10-claims-register') === true && satisfied(p, 'SG10', 'sg10-claim-evidence') === true);
   setCheck(p, '03', CLAIMS_CHECK, { notes: '' });
   t('no-claims: N/A with NO reason is not a declaration -> blocks again',

@@ -17,6 +17,7 @@ import RequiredMark from './RequiredMark';
 import DrawerTabs from './DrawerTabs';
 import { referenceSourceOf } from '../utils/referenceSource';
 import PreWorkMark from './PreWorkMark';
+import RegisterApplicabilityBlock from './RegisterApplicabilityBlock';
 import ReferenceSource from './ReferenceSource';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -829,6 +830,7 @@ export default function DynamicTable({
         </div>
       )}
       <PreWorkMark kind="register" entryKey={config.key} />
+      {!embedded && <RegisterApplicabilityBlock registerKey={config.key} readOnly={readOnly} />}
       <GeneratedNaAcks home={`register:${config.key}`} />
       {saveProblems.length > 0 && (
         <Alert

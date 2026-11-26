@@ -40,6 +40,8 @@ import {
   isGateRefLocked,
 } from '@mbc360/shared/utils/gateProgress';
 import { registerApprovalRequirement } from '@mbc360/shared/utils/registerClosures';
+import { REGISTER_APPLICABILITY } from '@mbc360/shared/config/registerApplicability';
+import { applicabilityState } from '@mbc360/shared/utils/registerApplicability';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -583,6 +585,20 @@ export default function GateRulesMap() {
     );
   };
 
+  // Round 5 question 31: what the SME's applicability table says about the register (Required / Conditional / Reference / …), and where this project stands.
+  const applicabilityTag = (registerKey: string | undefined) => {
+    const spec = registerKey ? REGISTER_APPLICABILITY[registerKey] : undefined;
+    if (!registerKey || !spec || spec.rule === 'Own rules') return null;
+    const state = applicabilityState(project, registerKey);
+    const needsAction = state === 'open' && (spec.rule === 'Required' || spec.rule === 'Scope-dependent' || spec.rule === 'Conditional') && !!spec.gate;
+    return (
+      <span className={`c-tag ${needsAction ? 'c-tag-warn' : ''}`} title={spec.note}>
+        Applicability: {spec.rule}
+        {state !== 'open' ? ` · ${state === 'entries' ? 'entries recorded' : state === 'reuse' ? 'reusing an approved record' : 'reviewed not applicable'}` : ''}
+      </span>
+    );
+  };
+
   const ownerLine = (entry: SheetEntry) =>
     entry.ownerRoles.length > 0
       ? entry.ownerRoles.map((role) => `${ownerName({ owner: { role } }, project.identity.reviewers)} (${reviewRoleLabel(role)})`).join(', ')
@@ -1088,6 +1104,7 @@ export default function GateRulesMap() {
                         </span>
                         {p.gate && <span className="c-tag">{formatGate(p.gate)}</span>}
                         {approvalTag(p.registerKey)}
+                        {applicabilityTag(p.registerKey)}
                         {p.mode === 'form' ? (
                           <span className="c-tag">
                             <LockFilled />

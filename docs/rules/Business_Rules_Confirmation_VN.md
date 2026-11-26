@@ -1271,6 +1271,12 @@ Chủ sở hữu lĩnh vực chịu trách nhiệm chấp nhận các mục liê
 
 Regulatory duy trì hồ sơ thị trường có phiên bản, kèm nguồn, ngày hiệu lực và người review. Các yêu cầu hồ sơ áp dụng được liên kết với checklist packaging / artwork của dự án. Gate 6 đóng việc xác định và phân công các yêu cầu đó; Gate 10 xác minh artwork hoặc hồ sơ cuối đạt yêu cầu; Gate 11 xác minh phiên bản đã duyệt để phát hành. Một trường hồ sơ thị trường đã điền không phải bằng chứng sản phẩm tuân thủ. Để trống là chưa đánh giá; N/A cần lý do đã được review. Thay đổi hồ sơ có liên quan kích hoạt đánh giá tác động nêu ở câu 1(d).
 
+### Câu 31 — Áp dụng theo từng sổ (cả 78 sổ)
+
+**Kết luận:** ✅ đã xây (26/11/2026). Các chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 39.
+
+"Required" nghĩa là một đánh giá hoặc bản ghi thực chất, hoặc một liên kết hợp lệ tới bằng chứng đã duyệt có thể dùng lại. "Conditional" cần một quyết định áp dụng có tài liệu. "Reference" là nội dung tham chiếu có kiểm soát, không cần chữ ký dự án trùng lặp. Bằng chứng sẵn có có thể dùng lại khi phiên bản và phạm vi áp dụng đã được xác nhận. Sản phẩm không claim vẫn cần bằng chứng an toàn, ổn định, rủi ro vi sinh và sản xuất, nên kế hoạch bằng chứng và các quy trình thử áp dụng vẫn bắt buộc; công việc đối thủ / khoa học có thể dùng lại hoặc miễn cho phạm vi chỉ hành chính đã xác minh. "No claims" chỉ miễn các sổ và hoạt động riêng cho claim, sau khi kiểm tra nhãn, website và tài liệu dự kiến khác không có claim hiệu quả rõ ràng hay ngầm. Mọi thông tin công khai vẫn cần duyệt. Dự án chỉ ASEAN có thể bỏ checklist ngoài ASEAN trùng lặp nhưng không bỏ được kết luận tuân thủ / sẵn sàng theo thị trường. Bảng từng sổ (nhóm A, A2, B, C, D, E: quy tắc, gate, điều kiện thoả) ghi trong `packages/shared/src/config/registerApplicability.ts`.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*
